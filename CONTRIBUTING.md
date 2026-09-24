@@ -1,6 +1,6 @@
 # Contributing
 
-The project is in its planning stage. Read [the plan](docs/PLAN.md) and choose an explicitly assigned task from [the task index](docs/TASKS.md). Each task is intended to produce one independently verifiable change.
+The project is in its workspace stage. Read [the plan](docs/PLAN.md) and choose an explicitly assigned task from [the task index](docs/TASKS.md). Each task is intended to produce one independently verifiable change.
 
 ## Working on a task
 
@@ -10,7 +10,7 @@ The project is in its planning stage. Read [the plan](docs/PLAN.md) and choose a
 4. Run the project's documented checks and the task-specific checks. Record exact commands, results, and any limitations in the task card.
 5. Review the diff against the task and architecture. Set `ready_for_fukit` only when every required check passes.
 
-T01 will add actual build and check commands to the README. There is no automated application test suite at the documentation-only stage.
+The [README](README.md) lists the workspace build and check commands. Add focused tests as behavior is introduced, and run the task's required platform checks.
 
 ## Review and commits
 
