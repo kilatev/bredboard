@@ -31,8 +31,8 @@
 - Create a Codex Goal only when explicitly requested. The task cards are reusable Goal text, not active goals.
 - Record implementation state and evidence in the active card. `ready_for_fukit` means acceptance checks passed, not that commit or publication succeeded.
 - Do not implement future tasks to satisfy the active task's completion criteria.
-- Use the user's `fukit` skill when invoked. Its review is scoped to the current milestone, not all unfinished MVP work.
-- Skill reference on the owner's machine: `/home/vetalik/.codex/skills/fukit/SKILL.md`. This personal integration is optional for other contributors; the contributor guide describes equivalent review expectations.
+- Use the user's `fukit` skill when invoked. It only describes, commits, and pushes; it does not review or run checks.
+- Skill reference on the owner's machine: `/home/vetalik/.codex/skills/fukit/SKILL.md`. This personal integration is optional for other contributors; the contributor guide describes review expectations.
 - Do not initialize jj, select a remote/bookmark, commit, or push merely because these documents mention that workflow. Establish those prerequisites separately under user direction.
 - Use jj history for committed status and actual push results for publication status; never pre-record a successful push in the commit it would publish.
 

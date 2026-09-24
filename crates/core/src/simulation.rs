@@ -1,6 +1,7 @@
 use crate::{
     ComponentId, ComponentKind, ControlState, Diagnostic, ElectricalDiagnostic, ElectricalError,
-    Project, SolveResult, compile_topology, solve_transient,
+    MAX_NONLINEAR_ITERATIONS, Project, SolveResult, compile_topology,
+    solver::solve_transient_with_iteration_limit,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -42,6 +43,12 @@ pub struct SimulationState {
     pub last_valid: Option<SolveResult>,
     pub stale: bool,
     pub diagnostics: Vec<SimulationDiagnostic>,
+    #[serde(default = "solve_required")]
+    pub needs_solve: bool,
+}
+
+fn solve_required() -> bool {
+    true
 }
 
 impl SimulationState {
@@ -94,6 +101,7 @@ impl SimulationState {
             last_valid: None,
             stale: false,
             diagnostics: Vec::new(),
+            needs_solve: true,
         }
     }
     pub fn time_seconds(&self) -> f64 {
@@ -129,7 +137,10 @@ pub fn apply_actions(
                 if let Some(c) = candidate.components.iter_mut().find(|c| &c.id == component) {
                     c.parameters.insert(name.clone(), *value);
                     match compile_topology(&candidate) {
-                        Ok(_) => *project = candidate,
+                        Ok(_) => {
+                            *project = candidate;
+                            state.needs_solve = true;
+                        }
                         Err(errors) => {
                             state.diagnostics =
                                 errors.into_iter().map(structural_diagnostic).collect()
@@ -164,6 +175,7 @@ pub fn apply_actions(
                 );
                 if valid {
                     state.controls.insert(component.clone(), *control);
+                    state.needs_solve = true;
                 } else {
                     state.diagnostics = vec![SimulationDiagnostic {
                         code: "invalid_control_state".into(),
@@ -186,7 +198,24 @@ pub fn advance_steps(project: &Project, state: &mut SimulationState, count: u64)
 }
 
 fn step_once(project: &Project, state: &mut SimulationState) -> bool {
-    match solve_transient(project, &state.controls, &state.capacitor_voltages) {
+    step_once_with_iteration_limit(project, state, MAX_NONLINEAR_ITERATIONS)
+}
+
+fn step_once_with_iteration_limit(
+    project: &Project,
+    state: &mut SimulationState,
+    max_iterations: usize,
+) -> bool {
+    if !state.needs_solve && state.last_valid.is_some() && state.capacitor_voltages.is_empty() {
+        state.step += 1;
+        return true;
+    }
+    match solve_transient_with_iteration_limit(
+        project,
+        &state.controls,
+        &state.capacitor_voltages,
+        max_iterations,
+    ) {
         Ok(result) => {
             state
                 .capacitor_voltages
@@ -195,6 +224,7 @@ fn step_once(project: &Project, state: &mut SimulationState) -> bool {
             state.step += 1;
             state.stale = false;
             state.diagnostics.clear();
+            state.needs_solve = false;
             true
         }
         Err(error) => {
@@ -259,6 +289,63 @@ mod tests {
         assert!(!state.running);
         assert_eq!(capacitor_voltage(&state), 0.0);
         assert!(state.last_valid.is_none());
+    }
+
+    #[test]
+    fn dc_readings_recalculate_after_control_actions() {
+        let initial: Project =
+            serde_json::from_str(include_str!("../../../fixtures/projects/led-bench.json"))
+                .unwrap();
+        let mut project = initial.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &initial, &mut state, &[Action::Run]);
+        advance_steps(&project, &mut state, 100);
+        assert_eq!(state.step, 100);
+        let id = ComponentId("D1".into());
+        assert!(state.last_valid.as_ref().unwrap().led_currents[&id] < 1e-6);
+        apply_actions(
+            &mut project,
+            &initial,
+            &mut state,
+            &[Action::SetControl {
+                component: ComponentId("B1".into()),
+                state: ControlState::ButtonPressed,
+            }],
+        );
+        advance_steps(&project, &mut state, 1);
+        assert!(state.last_valid.as_ref().unwrap().led_currents[&id] > 0.008);
+        apply_actions(
+            &mut project,
+            &initial,
+            &mut state,
+            &[Action::SetControl {
+                component: ComponentId("B1".into()),
+                state: ControlState::ButtonReleased,
+            }],
+        );
+        advance_steps(&project, &mut state, 1);
+        assert!(state.last_valid.as_ref().unwrap().led_currents[&id] < 1e-6);
+    }
+
+    #[test]
+    fn nonlinear_failure_stops_and_marks_previous_readings_stale() {
+        let initial: Project =
+            serde_json::from_str(include_str!("../../../fixtures/projects/led-bench.json"))
+                .unwrap();
+        let mut project = initial.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &initial, &mut state, &[Action::Run]);
+        advance_steps(&project, &mut state, 1);
+        let previous = state.last_valid.clone();
+        state.running = true;
+        state.needs_solve = true;
+        assert!(!step_once_with_iteration_limit(&project, &mut state, 0));
+        assert_eq!(state.step, 1);
+        assert!(!state.running);
+        assert!(state.stale);
+        assert_eq!(state.last_valid, previous);
+        assert_eq!(state.diagnostics[0].code, "nonconvergence");
+        assert!(state.diagnostics[0].message.contains("0 iterations"));
     }
 
     #[test]

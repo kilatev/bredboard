@@ -16,7 +16,7 @@ The [README](README.md) lists the workspace build and check commands. Add focuse
 
 Keep each change coherent and describe its concrete behavior in English. Suggested commit titles in task cards are defaults, not substitutes for describing the final implementation.
 
-The project owner uses Jujutsu and the personal `fukit` skill for plan-compliance review, code review, checks, fixes, commit, and targeted push. That workflow requires an existing jj repository and an established remote/bookmark. Loading its instructions is not authorization to publish.
+The project owner uses Jujutsu and the personal `fukit` skill to describe, commit, and push (no review or checks). That workflow requires an existing jj repository and an established remote/bookmark. Loading its instructions is not authorization to publish.
 
 Other contributors do not need that personal skill. They should provide the same acceptance evidence and follow the repository's contribution destination once established. Do not add unrelated changes, hide skipped checks, or rewrite published history as part of a task.
 

@@ -1831,6 +1831,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bredboard-core",
+ "serde_json",
 ]
 
 [[package]]

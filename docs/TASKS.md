@@ -14,15 +14,15 @@ No Codex Goal is currently active merely because these files exist. Copy a card'
 | [T03](tasks/T03-dc-solver.md) | Resistive DC circuit simulation | T02 |
 | [T04](tasks/T04-rc-actions.md) | RC simulation and deterministic actions | T03 |
 | [T05](tasks/T05-snapshots-replay.md) | Simulation snapshots and action replay | T04 |
-| [T06](tasks/T06-rc-bench.md) | End-to-end RC bench on Linux and web | T05 |
-| [T07](tasks/T07-led-model.md) | LED simulation and overload warnings | T06 |
-| [T08](tasks/T08-npn-model.md) | NPN simulation and transistor bench | T07 |
-| [T09](tasks/T09-board-instruments.md) | Educational board presentation and instruments | T08 |
-| [T10](tasks/T10-file-workflow.md) | Complete project import and export experience | T09 |
-| [T11](tasks/T11-led-lesson.md) | Lesson engine and guided LED experiment | T10 |
-| [T12](tasks/T12-remaining-lessons.md) | Guided RC and transistor experiments | T11 |
-| [T13](tasks/T13-cross-platform-verification.md) | Automated native and WASM verification | T12 |
-| [T14](tasks/T14-mvp-release.md) | Verified MVP release artifacts | T13 |
+| [T06](tasks/T06-rc-bench.md) | Buildable RC bench and shared app controls | T05 |
+| [T07](tasks/T07-led-model.md) | Calculated LED circuit and current-driven light | T06 |
+| [T08](tasks/T08-npn-model.md) | Calculated transistor switch circuit | T07 |
+| [T09](tasks/T09-board-instruments.md) | Three-circuit menu and hole-accurate board | T08 |
+| [T15](tasks/T15-capacitor-npn-ranges.md) | Breadboard-scale capacitor and transistor ranges | T09 |
+| [T13](tasks/T13-cross-platform-verification.md) | Integrated Linux and core verification | T15 |
+| [T14](tasks/T14-mvp-release.md) | Verified Linux MVP release artifact | T13 |
+
+The former [T10 file workflow](tasks/T10-file-workflow.md), [T11 LED lesson](tasks/T11-led-lesson.md), and [T12 remaining lessons](tasks/T12-remaining-lessons.md) are deferred to the [post-MVP roadmap](roadmap/POST-MVP.md). Their IDs remain reserved to keep historical references unambiguous.
 
 ## Status and evidence
 
@@ -38,12 +38,12 @@ The [Codex Goals guide](https://developers.openai.com/cookbook/examples/codex/us
 
 ## fukit compatibility
 
-After a card is ready, the owner can invoke `fukit`. Review only that milestone's requirements, run the commands applicable at that point, fix scoped findings, describe the final behavior change in English, and commit/push only after checks pass and the destination is established.
+After a card is ready, the owner can invoke `fukit`. It only describes, commits, and pushes; review and checks happen before it.
 
 The owner's skill is located at `/home/vetalik/.codex/skills/fukit/SKILL.md`; read its current instructions when invoking it. Other contributors can follow [the contributor guide](../CONTRIBUTING.md) without installing that personal skill.
 
 ## Checkpoints and future work
 
-T06 proves the RC vertical slice on Linux and web. Resolve feasibility failures before adding nonlinear models. Property tests are introduced with each feature; T13 integrates and expands them. T14 prepares release artifacts and verifies the existing MIT License and third-party attribution, but does not itself authorize public publication.
+T06 proves the RC vertical slice in the shared app, with Linux interaction acceptance. T07 and T08 add the calculated LED and transistor examples. T09 completes the menu and board presentation. T15 narrows capacitor and transistor ranges to breadboard scale. T13 integrates the checks, and T14 prepares the Linux release artifact. All three circuits' UI systems are shared across Linux and WASM; browser interaction is not tested for MVP acceptance. T14 does not itself authorize public publication.
 
 [Post-MVP phases](roadmap/POST-MVP.md) are intentionally not executable MVP cards. Specify and decompose each phase before implementation.

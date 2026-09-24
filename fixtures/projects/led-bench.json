@@ -1,0 +1,15 @@
+{
+  "format_version": 1,
+  "title": "LED and current-limiting resistor",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A5", "b": "A8" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "B8", "cathode": "A10" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "B1", "kind": "momentary_button", "pins": { "a": "E10", "b": "F10" }, "parameters": {} }
+  ],
+  "wires": [
+    { "id": "W1", "from": "TP+:5", "to": "B5" },
+    { "id": "W2", "from": "G10", "to": "TP-:10" }
+  ]
+}

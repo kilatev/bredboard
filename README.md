@@ -2,9 +2,9 @@
 
 An educational 2D breadboard simulator in Rust and Bevy, with a standalone electrical simulation core.
 
-**Status: T01 workspace scaffold.** The app displays a startup screen; circuit models, lessons, and file workflows belong to later tasks.
+**Status: three-circuit Linux app implemented; integrated verification and release tasks remain.** The shared Bevy app offers LED, RC, and transistor benches. The owner has checked their menu and controls in Linux.
 
-The MVP targets Linux and validates the same application in Chromium and Firefox through WebAssembly. It teaches beginners with three guided experiments: an LED and resistor, capacitor charging/discharging, and a transistor switch. Custom assemblies will be importable through documented JSON.
+One Bevy app contains the menu, board, controls, and readouts for Linux and WASM. Linux is the MVP interaction target. The same app compiles to WASM, but browser runtime testing is deferred. The MVP has three fixed circuits and no user-facing file workflow or assembly editor.
 
 ## Project documents
 
@@ -14,7 +14,7 @@ The MVP targets Linux and validates the same application in Chromium and Firefox
 - [Contributor guide](CONTRIBUTING.md)
 - [Agent instructions](AGENTS.md)
 
-English is the canonical language for documentation, UI, lessons, diagnostics, schemas, and commit messages. Application strings live in `crates/app/src/text.rs`, separate from application logic.
+English is the canonical language for documentation, UI, diagnostics, schemas, and commit messages. The window title lives in `crates/app/src/text.rs`; the shared menu and board view live in `crates/app/src/main.rs`.
 
 ## Build and verification
 
@@ -30,6 +30,10 @@ cargo build -p bredboard-app --target wasm32-unknown-unknown --locked
 
 Run the Linux app with `cargo run -p bredboard-app --locked`. The core can be checked alone with `cargo test -p bredboard-core --locked`; inspect its dependencies with `cargo tree -p bredboard-core --locked`.
 
+Select one of three circuits in the menu. Each bench has Run/Pause, Reset, and its switch or press/release control. Hover over a hole to read its exact ID and any plugged component pin or wire. The shown 5 V source connects to the rail holes. The board remains fixed; component placement and file controls are future work.
+
+The core uses exact 100 microsecond electrical steps. The app advances 1,000 such steps per wall-clock second, so the RC change is easy to watch; solver results never depend on rendering frame rate.
+
 Generate the Project JSON Schema with `cargo run -p bredboard-tools --locked -- schema`; validate a project with `cargo run -p bredboard-tools --locked -- validate path/to/project.json`. See [the project format guide](docs/PROJECT-FORMAT.md) for the board contact model and authoring example.
 
 Run the resistive DC solver headlessly with `cargo run -p bredboard-tools --locked -- solve path/to/project.json`.
@@ -38,15 +42,7 @@ Advance a project by an exact number of 100-microsecond steps with `cargo run -p
 
 Save/validate simulation snapshots and replay action logs with the tools described in [the persistence guide](docs/PERSISTENCE.md).
 
-The web build uses the version of `wasm-bindgen` pinned by `Cargo.lock`. Install its matching CLI and package the compiled WASM:
-
-```sh
-cargo install wasm-bindgen-cli --version 0.2.128 --locked
-wasm-bindgen --target web --out-name bredboard_app --out-dir web/pkg target/wasm32-unknown-unknown/debug/bredboard-app.wasm
-python3 -m http.server 8000 --directory web
-```
-
-Open `http://127.0.0.1:8000/` in Chrome for the T01 browser smoke check. The page uses WebGL2 and must be served over HTTP; opening the HTML file directly will not load the WASM module. Re-run the WASM build and `wasm-bindgen` command after app changes.
+The WASM command above is a compile-only compatibility check. The `web/` page is a canvas and startup wrapper for the same Bevy app; it has no separate product controls. Do not use browser interaction as MVP acceptance evidence. Runtime browser verification belongs to a later deployment phase.
 
 ## Licensing
 

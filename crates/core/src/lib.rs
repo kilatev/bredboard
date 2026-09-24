@@ -12,7 +12,8 @@ pub use simulation::{
     Action, STEP_SECONDS, SimulationDiagnostic, SimulationState, advance_steps, apply_actions,
 };
 pub use solver::{
-    ElectricalDiagnostic, ElectricalError, NodeVoltage, SolveResult, solve_dc, solve_transient,
+    ElectricalDiagnostic, ElectricalError, MAX_NONLINEAR_ITERATIONS, NodeVoltage, SolveResult,
+    solve_dc, solve_transient,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -409,10 +410,10 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
 }
 fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
     match (k, p) {
-        (ComponentKind::DcVoltageSource, "voltage") => Some((-1000.0, 1000.0)),
-        (ComponentKind::Resistor, "resistance") => Some((1e-3, 1e9)),
+        (ComponentKind::DcVoltageSource, "voltage") => Some((0.0, 12.0)),
+        (ComponentKind::Resistor, "resistance") => Some((1.0, 1e7)),
         (ComponentKind::Led, "forward_voltage") => Some((0.0, 10.0)),
-        (ComponentKind::Led, "series_resistance") => Some((1e-3, 1e9)),
+        (ComponentKind::Led, "series_resistance") => Some((1.0, 1e7)),
         (ComponentKind::Capacitor, "capacitance") => Some((1e-12, 1e3)),
         (ComponentKind::NpnTransistor, "beta") => Some((1.0, 1000.0)),
         (ComponentKind::NpnTransistor, "saturation_current") => Some((1e-18, 1.0)),
@@ -556,6 +557,35 @@ mod tests {
         assert!(e.iter().any(|d| d.code == "unsupported_version"));
         assert!(e.iter().any(|d| d.code == "invalid_hole"));
         assert!(e.iter().any(|d| d.code == "non_finite_parameter"));
+    }
+
+    #[test]
+    fn enforces_breadboard_scale_voltage_and_resistance_ranges() {
+        let mut p: Project =
+            serde_json::from_str(include_str!("../../../fixtures/projects/led-bench.json"))
+                .unwrap();
+        for (id, name, value) in [
+            ("V1", "voltage", -0.001),
+            ("V1", "voltage", 12.001),
+            ("R1", "resistance", 0.999),
+            ("R1", "resistance", 10_000_001.0),
+            ("D1", "series_resistance", 0.999),
+            ("D1", "series_resistance", 10_000_001.0),
+        ] {
+            p.components
+                .iter_mut()
+                .find(|component| component.id.0 == id)
+                .unwrap()
+                .parameters
+                .insert(name.into(), value);
+            let diagnostics = compile_topology(&p).unwrap_err();
+            assert!(diagnostics.iter().any(|d| {
+                d.code == "parameter_out_of_range"
+                    && d.path == format!("components.{id}.parameters.{name}")
+            }));
+            p = serde_json::from_str(include_str!("../../../fixtures/projects/led-bench.json"))
+                .unwrap();
+        }
     }
     #[test]
     fn rejects_duplicate_ids_and_scope_overflow() {

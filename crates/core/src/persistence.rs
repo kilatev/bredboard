@@ -199,6 +199,8 @@ pub fn restore_snapshot(
         let resistor_ids = ids_of(ComponentKind::Resistor);
         let source_ids = ids_of(ComponentKind::DcVoltageSource);
         let capacitor_ids = ids_of(ComponentKind::Capacitor);
+        let led_ids = ids_of(ComponentKind::Led);
+        let transistor_ids = ids_of(ComponentKind::NpnTransistor);
         let switch_ids = ids_of(ComponentKind::MomentaryButton)
             .union(&ids_of(ComponentKind::ChangeoverSwitch))
             .cloned()
@@ -229,6 +231,18 @@ pub fn restore_snapshot(
                 .cloned()
                 .collect::<BTreeSet<_>>()
                 != capacitor_ids
+            || readings
+                .led_currents
+                .keys()
+                .cloned()
+                .collect::<BTreeSet<_>>()
+                != led_ids
+            || readings
+                .transistor_collector_currents
+                .keys()
+                .cloned()
+                .collect::<BTreeSet<_>>()
+                != transistor_ids
         {
             return Err(persistence_error(
                 "invalid_readings",
@@ -246,6 +260,8 @@ pub fn restore_snapshot(
                 .chain(readings.switch_currents.values())
                 .chain(readings.capacitor_currents.values())
                 .chain(readings.capacitor_voltages.values())
+                .chain(readings.led_currents.values())
+                .chain(readings.transistor_collector_currents.values())
                 .any(|v| !v.is_finite())
         {
             return Err(persistence_error(
@@ -367,6 +383,36 @@ mod tests {
         assert_eq!(restored, current);
         assert_eq!(restored_reset, reset);
         assert_eq!(resumed, state);
+    }
+
+    #[test]
+    fn transistor_snapshot_preserves_calculated_led_and_collector_readings() {
+        let reset: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/transistor-bench.json"
+        ))
+        .unwrap();
+        let mut current = reset.clone();
+        let mut state = SimulationState::new(&current);
+        apply_actions(
+            &mut current,
+            &reset,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("B1".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::Run,
+            ],
+        );
+        advance_steps(&current, &mut state, 100);
+        let encoded = serde_json::to_string(&Snapshot::capture(&current, &reset, &state)).unwrap();
+        let decoded: Snapshot = serde_json::from_str(&encoded).unwrap();
+        let (restored, _, mut resumed) = restore_snapshot(&decoded).unwrap();
+        advance_steps(&current, &mut state, 100);
+        advance_steps(&restored, &mut resumed, 100);
+        assert_eq!(resumed, state);
+        assert!(resumed.last_valid.unwrap().led_currents[&ComponentId("D1".into())] > 0.008);
     }
 
     #[test]

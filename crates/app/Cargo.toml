@@ -6,4 +6,5 @@ license.workspace = true
 
 [dependencies]
 bredboard-core.workspace = true
+serde_json.workspace = true
 bevy = { version = "=0.19.1", default-features = false, features = ["2d", "default_font", "webgl2"] }

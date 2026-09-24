@@ -1,0 +1,23 @@
+{
+  "format_version": 1,
+  "title": "Transistor-controlled LED",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A5", "b": "A8" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "B8", "cathode": "A10" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "A6", "b": "A9" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "B1", "kind": "momentary_button", "pins": { "a": "F8", "b": "F10" }, "parameters": {} },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "base": "F12", "collector": "F13", "emitter": "F14" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "H12", "b": "H16" }, "parameters": { "resistance": 100000.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "TP+:5", "to": "B5" },
+    { "id": "W2", "from": "B10", "to": "G13" },
+    { "id": "W3", "from": "G14", "to": "TP-:14" },
+    { "id": "W4", "from": "TP+:6", "to": "B6" },
+    { "id": "W5", "from": "B9", "to": "G8" },
+    { "id": "W6", "from": "G10", "to": "G12" },
+    { "id": "W7", "from": "G16", "to": "TP-:16" }
+  ]
+}

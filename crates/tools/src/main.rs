@@ -90,6 +90,12 @@ fn run() -> Result<(), String> {
                     for (id, current) in result.switch_currents {
                         println!("switch {}: {current:.9} A", id.0);
                     }
+                    for (id, current) in result.led_currents {
+                        println!("LED {}: {current:.9} A", id.0);
+                    }
+                    for (id, current) in result.transistor_collector_currents {
+                        println!("transistor {} collector: {current:.9} A", id.0);
+                    }
                 }
                 Err(bredboard_core::ElectricalError::Structure(errors)) => {
                     for e in errors {

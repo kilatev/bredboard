@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "title": "Capacitor charge and discharge",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A5", "b": "A8" }, "parameters": { "resistance": 1000.0 } },
+    { "id": "S1", "kind": "changeover_switch", "pins": { "normally_closed": "F8", "common": "F9", "normally_open": "F10" }, "parameters": {} },
+    { "id": "C1", "kind": "capacitor", "pins": { "positive": "A11", "negative": "A13" }, "parameters": { "capacitance": 0.0001 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "A14", "b": "A18" }, "parameters": { "resistance": 1000.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "TP+:5", "to": "B5" },
+    { "id": "W2", "from": "B8", "to": "G8" },
+    { "id": "W3", "from": "G9", "to": "B11" },
+    { "id": "W4", "from": "G10", "to": "B14" },
+    { "id": "W5", "from": "B18", "to": "TP-:18" },
+    { "id": "W6", "from": "B13", "to": "TP-:13" }
+  ],
+  "initial_conditions": { "capacitor_voltages": { "C1": 0.0 }, "controls": { "S1": "switch_normally_closed" } }
+}
