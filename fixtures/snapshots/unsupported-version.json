@@ -1,0 +1,124 @@
+{
+  "format_version": 99,
+  "model_version": 1,
+  "solver_version": 1,
+  "project": {
+    "format_version": 1,
+    "title": "100 ms RC charging reference",
+    "board": {
+      "model": "half_size_solderless"
+    },
+    "components": [
+      {
+        "id": "V1",
+        "kind": "dc_voltage_source",
+        "pins": {
+          "negative": "TP-:1",
+          "positive": "TP+:1"
+        },
+        "parameters": {
+          "voltage": 5.0
+        }
+      },
+      {
+        "id": "R1",
+        "kind": "resistor",
+        "pins": {
+          "a": "TP+:2",
+          "b": "A1"
+        },
+        "parameters": {
+          "resistance": 1000.0
+        }
+      },
+      {
+        "id": "C1",
+        "kind": "capacitor",
+        "pins": {
+          "negative": "TP-:2",
+          "positive": "A2"
+        },
+        "parameters": {
+          "capacitance": 0.0001
+        }
+      }
+    ],
+    "wires": [
+      {
+        "id": "W1",
+        "from": "A1",
+        "to": "A2"
+      }
+    ],
+    "initial_conditions": {
+      "capacitor_voltages": {
+        "C1": 0.0
+      }
+    }
+  },
+  "reset_project": {
+    "format_version": 1,
+    "title": "100 ms RC charging reference",
+    "board": {
+      "model": "half_size_solderless"
+    },
+    "components": [
+      {
+        "id": "V1",
+        "kind": "dc_voltage_source",
+        "pins": {
+          "negative": "TP-:1",
+          "positive": "TP+:1"
+        },
+        "parameters": {
+          "voltage": 5.0
+        }
+      },
+      {
+        "id": "R1",
+        "kind": "resistor",
+        "pins": {
+          "a": "TP+:2",
+          "b": "A1"
+        },
+        "parameters": {
+          "resistance": 1000.0
+        }
+      },
+      {
+        "id": "C1",
+        "kind": "capacitor",
+        "pins": {
+          "negative": "TP-:2",
+          "positive": "A2"
+        },
+        "parameters": {
+          "capacitance": 0.0001
+        }
+      }
+    ],
+    "wires": [
+      {
+        "id": "W1",
+        "from": "A1",
+        "to": "A2"
+      }
+    ],
+    "initial_conditions": {
+      "capacitor_voltages": {
+        "C1": 0.0
+      }
+    }
+  },
+  "state": {
+    "step": 0,
+    "running": false,
+    "capacitor_voltages": {
+      "C1": 0.0
+    },
+    "controls": {},
+    "last_valid": null,
+    "stale": false,
+    "diagnostics": []
+  }
+}

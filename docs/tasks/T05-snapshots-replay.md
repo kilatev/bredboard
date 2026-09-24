@@ -1,6 +1,6 @@
 # T05 — Simulation snapshots and action replay
 
-Status: pending
+Status: ready_for_fukit
 
 ## Dependencies
 
@@ -57,4 +57,16 @@ An existing jj repository and an unambiguous authorized remote/bookmark are requ
 
 ## Evidence
 
-Not run yet. Record exact commands or manual procedures, results, environment/browser versions when relevant, and limitations here before marking the task ready.
+Environment: Rust 1.95.0. Commands use the installed toolchain via `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin` because the active worktree has no mise version setting.
+
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo fmt --all --check` — passed.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo clippy --workspace --all-targets --locked -- -D warnings` — passed.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo test --workspace --locked` — passed; 24 core tests, including snapshot round-trip/continuation, action-boundary replay, schema validation, and fixed-seed Proptest cases.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked` — passed.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo build -p bredboard-app --target wasm32-unknown-unknown --locked` — passed.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo run -p bredboard-tools --locked -- validate-snapshot fixtures/snapshots/rc-charging-1000.json` — accepted snapshot at step 1000.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo run -p bredboard-tools --locked -- validate-snapshot fixtures/snapshots/unsupported-version.json` — rejected with `unsupported_snapshot_version`.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo run -p bredboard-tools --locked -- validate-snapshot fixtures/snapshots/missing-capacitor-state.json` — rejected with `invalid_capacitor_state`.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo run -p bredboard-tools --locked -- replay fixtures/action-logs/rc-charging-10-steps.json` — replayed through step 10 at 0.001000 s.
+- Proptest uses fixed seed `0xA005_2026`, 24 cases, random save boundaries from 0–999, and generated resistance values. Restored state exactly equals uninterrupted state after both reach step 1000.
+- Snapshot restore rebuilds and validates topology and returns new values; malformed input cannot mutate a caller's active state. No browser/UI behavior is in scope.

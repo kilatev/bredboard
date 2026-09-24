@@ -1,16 +1,20 @@
 use bredboard_core::{
-    Action, Contact, ControlState, Project, SimulationState, advance_steps, apply_actions,
-    compile_topology, solve_dc,
+    Action, ActionLog, Contact, ControlState, Project, SimulationState, Snapshot, advance_steps,
+    apply_actions, compile_topology, replay_action_log, restore_snapshot, solve_dc,
 };
-use schemars::{SchemaGenerator, generate::SchemaSettings};
+use schemars::{JsonSchema, SchemaGenerator, generate::SchemaSettings};
 use std::{env, fs, process};
 
 fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     match args.next().as_deref() {
         Some("schema") => {
-            let schema = SchemaGenerator::new(SchemaSettings::draft2020_12())
-                .into_root_schema_for::<Project>();
+            let schema = match args.next().as_deref().unwrap_or("project") {
+                "project" => schema_for::<Project>(),
+                "snapshot" => schema_for::<Snapshot>(),
+                "action-log" => schema_for::<ActionLog>(),
+                _ => return Err("schema type must be project, snapshot, or action-log".into()),
+            };
             println!(
                 "{}",
                 serde_json::to_string_pretty(&schema).map_err(|e| e.to_string())?
@@ -63,8 +67,9 @@ fn run() -> Result<(), String> {
                 std::collections::BTreeMap::<bredboard_core::ComponentId, ControlState>::new();
             match solve_dc(&project, &states) {
                 Ok(result) => {
-                    for (node, voltage) in result.node_voltages {
+                    for node in result.node_voltages {
                         let labels = node
+                            .contacts
                             .iter()
                             .filter_map(|contact| match contact {
                                 Contact::ComponentPin(id, pin) => {
@@ -74,7 +79,7 @@ fn run() -> Result<(), String> {
                             })
                             .collect::<Vec<_>>()
                             .join(", ");
-                        println!("node [{labels}]: {voltage:.9} V");
+                        println!("node [{labels}]: {:.9} V", node.voltage);
                     }
                     for (id, current) in result.resistor_currents {
                         println!("resistor {}: {current:.9} A", id.0);
@@ -125,13 +130,101 @@ fn run() -> Result<(), String> {
                 return Err("simulation stopped on calculation failure".into());
             }
         }
+        Some("snapshot") => {
+            let project_path = args
+                .next()
+                .ok_or("usage: bredboard-tools snapshot <project.json> <steps> <output.json>")?;
+            let steps: u64 = args
+                .next()
+                .ok_or("usage: bredboard-tools snapshot <project.json> <steps> <output.json>")?
+                .parse()
+                .map_err(|_| "steps must be a nonnegative integer")?;
+            let output_path = args
+                .next()
+                .ok_or("usage: bredboard-tools snapshot <project.json> <steps> <output.json>")?;
+            let text =
+                fs::read_to_string(&project_path).map_err(|e| format!("{project_path}: {e}"))?;
+            let mut project: Project =
+                serde_json::from_str(&text).map_err(|e| format!("invalid project JSON: {e}"))?;
+            let reset = project.clone();
+            let mut state = SimulationState::new(&project);
+            apply_actions(&mut project, &reset, &mut state, &[Action::Run]);
+            advance_steps(&project, &mut state, steps);
+            if state.stale {
+                return Err(state
+                    .diagnostics
+                    .iter()
+                    .map(|d| format!("{}: {}", d.code, d.message))
+                    .collect::<Vec<_>>()
+                    .join("; "));
+            }
+            let snapshot = Snapshot::capture(&project, &reset, &state);
+            fs::write(
+                &output_path,
+                serde_json::to_vec_pretty(&snapshot).map_err(|e| e.to_string())?,
+            )
+            .map_err(|e| format!("{output_path}: {e}"))?;
+            println!("saved snapshot at step {} to {output_path}", state.step);
+        }
+        Some("validate-snapshot") => {
+            let path = args
+                .next()
+                .ok_or("usage: bredboard-tools validate-snapshot <snapshot.json>")?;
+            let value = read_value(&path)?;
+            validate_schema::<Snapshot>(&value)?;
+            let snapshot: Snapshot =
+                serde_json::from_value(value).map_err(|e| format!("invalid snapshot: {e}"))?;
+            match restore_snapshot(&snapshot) {
+                Ok((_, _, state)) => println!("valid snapshot at step {}", state.step),
+                Err(e) => return Err(format!("{}: {}", e.code, e.message)),
+            }
+        }
+        Some("replay") => {
+            let path = args
+                .next()
+                .ok_or("usage: bredboard-tools replay <action-log.json>")?;
+            let value = read_value(&path)?;
+            validate_schema::<ActionLog>(&value)?;
+            let log: ActionLog =
+                serde_json::from_value(value).map_err(|e| format!("invalid action log: {e}"))?;
+            match replay_action_log(&log) {
+                Ok((_, _, state)) => println!(
+                    "replayed through step {} at {:.6} s",
+                    state.step,
+                    state.time_seconds()
+                ),
+                Err(e) => return Err(format!("{}: {}", e.code, e.message)),
+            }
+        }
         _ => {
             return Err(
-                "usage: bredboard-tools <schema|validate|solve|simulate <project.json> ...>".into(),
+                "usage: bredboard-tools <schema|validate|solve|simulate|snapshot|validate-snapshot|replay ...>".into(),
             );
         }
     }
     Ok(())
+}
+fn schema_for<T: JsonSchema>() -> serde_json::Value {
+    let schema = SchemaGenerator::new(SchemaSettings::draft2020_12()).into_root_schema_for::<T>();
+    serde_json::to_value(schema).expect("generated schema serializes")
+}
+fn read_value(path: &str) -> Result<serde_json::Value, String> {
+    let text = fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+    serde_json::from_str(&text).map_err(|e| format!("invalid JSON: {e}"))
+}
+fn validate_schema<T: JsonSchema>(value: &serde_json::Value) -> Result<(), String> {
+    let schema = schema_for::<T>();
+    let validator =
+        jsonschema::validator_for(&schema).map_err(|e| format!("cannot construct schema: {e}"))?;
+    let errors = validator
+        .iter_errors(value)
+        .map(|e| e.to_string())
+        .collect::<Vec<_>>();
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(format!("schema validation failed: {}", errors.join("; ")))
+    }
 }
 fn main() {
     if let Err(error) = run() {

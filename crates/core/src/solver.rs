@@ -2,6 +2,8 @@ use crate::{
     Component, ComponentId, ComponentKind, Contact, ControlState, Diagnostic, Node, Project,
     compile_topology,
 };
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -16,10 +18,10 @@ pub enum ElectricalError {
     Calculation(ElectricalDiagnostic),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SolveResult {
     /// Absolute voltages use one deterministic zero reference per connected circuit.
-    pub node_voltages: BTreeMap<Vec<Contact>, f64>,
+    pub node_voltages: Vec<NodeVoltage>,
     /// Resistor current is positive from pin `a` to pin `b`.
     pub resistor_currents: BTreeMap<ComponentId, f64>,
     /// Source current is positive from pin `positive` to pin `negative`.
@@ -28,6 +30,12 @@ pub struct SolveResult {
     pub switch_currents: BTreeMap<ComponentId, f64>,
     pub capacitor_voltages: BTreeMap<ComponentId, f64>,
     pub capacitor_currents: BTreeMap<ComponentId, f64>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct NodeVoltage {
+    pub contacts: Vec<Contact>,
+    pub voltage: f64,
 }
 
 #[derive(Clone)]
@@ -88,7 +96,7 @@ fn solve_internal(
         make_branches(project, &topology, &control_state, &cap_state, dt)?;
     if branches.is_empty() {
         return Ok(SolveResult {
-            node_voltages: BTreeMap::new(),
+            node_voltages: Vec::new(),
             resistor_currents: BTreeMap::new(),
             source_currents: BTreeMap::new(),
             switch_currents: BTreeMap::new(),
@@ -207,10 +215,13 @@ fn solve_internal(
             "circuit has an underdetermined ideal-source arrangement",
         )
     })?;
-    let mut voltages = BTreeMap::new();
+    let mut voltages = Vec::new();
     for &node in &active_nodes {
         let voltage = voltage_vars.get(&node).map_or(0.0, |&i| solution[i]);
-        voltages.insert(node_contacts[node].clone(), voltage);
+        voltages.push(NodeVoltage {
+            contacts: node_contacts[node].clone(),
+            voltage,
+        });
     }
     let mut resistor_currents = BTreeMap::new();
     let mut source_currents = BTreeMap::new();
@@ -543,15 +554,14 @@ mod tests {
         result
             .node_voltages
             .iter()
-            .find(|(contacts, _)| {
-                contacts.contains(&Contact::ComponentPin(
+            .find(|node| {
+                node.contacts.contains(&Contact::ComponentPin(
                     ComponentId(component.into()),
                     crate::PinId(pin.into()),
                 ))
             })
             .unwrap()
-            .1
-            .to_owned()
+            .voltage
     }
 
     #[test]

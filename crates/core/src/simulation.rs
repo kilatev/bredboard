@@ -2,11 +2,14 @@ use crate::{
     ComponentId, ComponentKind, ControlState, Diagnostic, ElectricalDiagnostic, ElectricalError,
     Project, SolveResult, compile_topology, solve_transient,
 };
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 pub const STEP_SECONDS: f64 = 100e-6;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "action", rename_all = "snake_case")]
 pub enum Action {
     Run,
     Pause,
@@ -23,14 +26,14 @@ pub enum Action {
     },
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SimulationDiagnostic {
     pub code: String,
     pub path: String,
     pub message: String,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SimulationState {
     pub step: u64,
     pub running: bool,

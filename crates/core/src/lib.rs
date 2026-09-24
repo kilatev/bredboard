@@ -1,12 +1,19 @@
 //! Platform-independent project model and derived breadboard connectivity.
+mod persistence;
 mod simulation;
 mod solver;
+pub use persistence::{
+    ACTION_LOG_FORMAT_VERSION, ActionEvent, ActionLog, MODEL_VERSION, PersistenceError,
+    SNAPSHOT_FORMAT_VERSION, SOLVER_VERSION, Snapshot, replay_action_log, restore_snapshot,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 pub use simulation::{
     Action, STEP_SECONDS, SimulationDiagnostic, SimulationState, advance_steps, apply_actions,
 };
-pub use solver::{ElectricalDiagnostic, ElectricalError, SolveResult, solve_dc, solve_transient};
+pub use solver::{
+    ElectricalDiagnostic, ElectricalError, NodeVoltage, SolveResult, solve_dc, solve_transient,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Version of the core crate used by applications and workspace tools.
@@ -31,6 +38,9 @@ string_id!(HoleId);
 string_id!(WireId);
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[schemars(
+    description = "A versioned breadboard project with components, placements, wires, and initial conditions."
+)]
 pub struct Project {
     pub format_version: u32,
     pub title: String,
@@ -109,7 +119,7 @@ impl Diagnostic {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
 pub enum Contact {
     Hole(HoleId),
     ComponentPin(ComponentId, PinId),
@@ -471,6 +481,12 @@ mod tests {
             schemars::SchemaGenerator::new(schemars::generate::SchemaSettings::draft2020_12())
                 .into_root_schema_for::<Project>();
         let schema = serde_json::to_value(schema).unwrap();
+        assert!(
+            schema["description"]
+                .as_str()
+                .unwrap()
+                .contains("versioned breadboard project")
+        );
         let validator = jsonschema::validator_for(&schema).unwrap();
         let accepted: serde_json::Value = serde_json::from_str(include_str!(
             "../../../fixtures/projects/valid-resistor.json"

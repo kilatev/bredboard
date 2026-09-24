@@ -36,6 +36,8 @@ Run the resistive DC solver headlessly with `cargo run -p bredboard-tools --lock
 
 Advance a project by an exact number of 100-microsecond steps with `cargo run -p bredboard-tools --locked -- simulate path/to/project.json 1000`.
 
+Save/validate simulation snapshots and replay action logs with the tools described in [the persistence guide](docs/PERSISTENCE.md).
+
 The web build uses the version of `wasm-bindgen` pinned by `Cargo.lock`. Install its matching CLI and package the compiled WASM:
 
 ```sh

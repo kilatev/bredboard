@@ -1,0 +1,403 @@
+{
+  "format_version": 1,
+  "model_version": 1,
+  "solver_version": 1,
+  "project": {
+    "format_version": 1,
+    "title": "100 ms RC charging reference",
+    "board": {
+      "model": "half_size_solderless"
+    },
+    "components": [
+      {
+        "id": "V1",
+        "kind": "dc_voltage_source",
+        "pins": {
+          "negative": "TP-:1",
+          "positive": "TP+:1"
+        },
+        "parameters": {
+          "voltage": 5.0
+        }
+      },
+      {
+        "id": "R1",
+        "kind": "resistor",
+        "pins": {
+          "a": "TP+:2",
+          "b": "A1"
+        },
+        "parameters": {
+          "resistance": 1000.0
+        }
+      },
+      {
+        "id": "C1",
+        "kind": "capacitor",
+        "pins": {
+          "negative": "TP-:2",
+          "positive": "A2"
+        },
+        "parameters": {
+          "capacitance": 0.0001
+        }
+      }
+    ],
+    "wires": [
+      {
+        "id": "W1",
+        "from": "A1",
+        "to": "A2"
+      }
+    ],
+    "initial_conditions": {
+      "capacitor_voltages": {
+        "C1": 0.0
+      },
+      "controls": {}
+    }
+  },
+  "reset_project": {
+    "format_version": 1,
+    "title": "100 ms RC charging reference",
+    "board": {
+      "model": "half_size_solderless"
+    },
+    "components": [
+      {
+        "id": "V1",
+        "kind": "dc_voltage_source",
+        "pins": {
+          "negative": "TP-:1",
+          "positive": "TP+:1"
+        },
+        "parameters": {
+          "voltage": 5.0
+        }
+      },
+      {
+        "id": "R1",
+        "kind": "resistor",
+        "pins": {
+          "a": "TP+:2",
+          "b": "A1"
+        },
+        "parameters": {
+          "resistance": 1000.0
+        }
+      },
+      {
+        "id": "C1",
+        "kind": "capacitor",
+        "pins": {
+          "negative": "TP-:2",
+          "positive": "A2"
+        },
+        "parameters": {
+          "capacitance": 0.0001
+        }
+      }
+    ],
+    "wires": [
+      {
+        "id": "W1",
+        "from": "A1",
+        "to": "A2"
+      }
+    ],
+    "initial_conditions": {
+      "capacitor_voltages": {
+        "C1": 0.0
+      },
+      "controls": {}
+    }
+  },
+  "state": {
+    "step": 1000,
+    "running": true,
+    "capacitor_voltages": {
+      "C1": 3.1596834785562296
+    },
+    "controls": {},
+    "last_valid": {
+      "node_voltages": [
+        {
+          "contacts": [
+            {
+              "Hole": "A1"
+            },
+            {
+              "Hole": "A2"
+            },
+            {
+              "Hole": "B1"
+            },
+            {
+              "Hole": "B2"
+            },
+            {
+              "Hole": "C1"
+            },
+            {
+              "Hole": "C2"
+            },
+            {
+              "Hole": "D1"
+            },
+            {
+              "Hole": "D2"
+            },
+            {
+              "Hole": "E1"
+            },
+            {
+              "Hole": "E2"
+            },
+            {
+              "ComponentPin": [
+                "C1",
+                "positive"
+              ]
+            },
+            {
+              "ComponentPin": [
+                "R1",
+                "b"
+              ]
+            }
+          ],
+          "voltage": 3.1596834785562296
+        },
+        {
+          "contacts": [
+            {
+              "Hole": "TP+:1"
+            },
+            {
+              "Hole": "TP+:10"
+            },
+            {
+              "Hole": "TP+:11"
+            },
+            {
+              "Hole": "TP+:12"
+            },
+            {
+              "Hole": "TP+:13"
+            },
+            {
+              "Hole": "TP+:14"
+            },
+            {
+              "Hole": "TP+:15"
+            },
+            {
+              "Hole": "TP+:16"
+            },
+            {
+              "Hole": "TP+:17"
+            },
+            {
+              "Hole": "TP+:18"
+            },
+            {
+              "Hole": "TP+:19"
+            },
+            {
+              "Hole": "TP+:2"
+            },
+            {
+              "Hole": "TP+:20"
+            },
+            {
+              "Hole": "TP+:21"
+            },
+            {
+              "Hole": "TP+:22"
+            },
+            {
+              "Hole": "TP+:23"
+            },
+            {
+              "Hole": "TP+:24"
+            },
+            {
+              "Hole": "TP+:25"
+            },
+            {
+              "Hole": "TP+:26"
+            },
+            {
+              "Hole": "TP+:27"
+            },
+            {
+              "Hole": "TP+:28"
+            },
+            {
+              "Hole": "TP+:29"
+            },
+            {
+              "Hole": "TP+:3"
+            },
+            {
+              "Hole": "TP+:30"
+            },
+            {
+              "Hole": "TP+:4"
+            },
+            {
+              "Hole": "TP+:5"
+            },
+            {
+              "Hole": "TP+:6"
+            },
+            {
+              "Hole": "TP+:7"
+            },
+            {
+              "Hole": "TP+:8"
+            },
+            {
+              "Hole": "TP+:9"
+            },
+            {
+              "ComponentPin": [
+                "R1",
+                "a"
+              ]
+            },
+            {
+              "ComponentPin": [
+                "V1",
+                "positive"
+              ]
+            }
+          ],
+          "voltage": 5.0
+        },
+        {
+          "contacts": [
+            {
+              "Hole": "TP-:1"
+            },
+            {
+              "Hole": "TP-:10"
+            },
+            {
+              "Hole": "TP-:11"
+            },
+            {
+              "Hole": "TP-:12"
+            },
+            {
+              "Hole": "TP-:13"
+            },
+            {
+              "Hole": "TP-:14"
+            },
+            {
+              "Hole": "TP-:15"
+            },
+            {
+              "Hole": "TP-:16"
+            },
+            {
+              "Hole": "TP-:17"
+            },
+            {
+              "Hole": "TP-:18"
+            },
+            {
+              "Hole": "TP-:19"
+            },
+            {
+              "Hole": "TP-:2"
+            },
+            {
+              "Hole": "TP-:20"
+            },
+            {
+              "Hole": "TP-:21"
+            },
+            {
+              "Hole": "TP-:22"
+            },
+            {
+              "Hole": "TP-:23"
+            },
+            {
+              "Hole": "TP-:24"
+            },
+            {
+              "Hole": "TP-:25"
+            },
+            {
+              "Hole": "TP-:26"
+            },
+            {
+              "Hole": "TP-:27"
+            },
+            {
+              "Hole": "TP-:28"
+            },
+            {
+              "Hole": "TP-:29"
+            },
+            {
+              "Hole": "TP-:3"
+            },
+            {
+              "Hole": "TP-:30"
+            },
+            {
+              "Hole": "TP-:4"
+            },
+            {
+              "Hole": "TP-:5"
+            },
+            {
+              "Hole": "TP-:6"
+            },
+            {
+              "Hole": "TP-:7"
+            },
+            {
+              "Hole": "TP-:8"
+            },
+            {
+              "Hole": "TP-:9"
+            },
+            {
+              "ComponentPin": [
+                "C1",
+                "negative"
+              ]
+            },
+            {
+              "ComponentPin": [
+                "V1",
+                "negative"
+              ]
+            }
+          ],
+          "voltage": 0.0
+        }
+      ],
+      "resistor_currents": {
+        "R1": 0.0018403165214437704
+      },
+      "source_currents": {
+        "V1": -0.0018403165214437704
+      },
+      "switch_currents": {},
+      "capacitor_voltages": {
+        "C1": 3.1596834785562296
+      },
+      "capacitor_currents": {
+        "C1": 0.0018403165214442296
+      }
+    },
+    "stale": false,
+    "diagnostics": []
+  }
+}
