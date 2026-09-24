@@ -1,17 +1,19 @@
-# T01 dependency and asset record
+# Dependency and asset record
 
 The workspace pins Rust 1.95.0 in `rust-toolchain.toml`, pins Bevy 0.19.1 in
 `crates/app/Cargo.toml`, and retains exact resolved crate versions and checksums
 in `Cargo.lock`. The only external direct application dependency is
 [Bevy 0.19.1](https://crates.io/crates/bevy/0.19.1), from crates.io, licensed
-MIT OR Apache-2.0. The core has no external dependencies. The tools crate uses
-the local core crate only.
+MIT OR Apache-2.0. The core uses Serde for project serialization and Schemars
+for schema generation; Proptest and jsonschema are test-only dependencies. The
+tools crate uses Schemars, serde_json, and jsonschema for schema generation and
+validation.
 
 [The dependency inventory](dependency-licenses.csv) lists the origin and
-declared license expression for all 510 registry packages in Cargo's locked
-cross-platform resolution, including packages for targets not used by T01.
-It was generated with `cargo metadata --locked --offline --format-version 1`
-using Rust 1.95.0. All 510 packages resolve through the crates.io registry;
+declared license expression for all 576 registry packages in Cargo's locked
+cross-platform resolution, including packages for targets not used by T01/T02.
+It was generated with `cargo metadata --locked --format-version 1` using Rust
+1.95.0. All 576 packages resolve through the crates.io registry;
 none have a missing license expression. Rebuild the inventory when the lockfile
 changes and review the packages included in each distributed target.
 

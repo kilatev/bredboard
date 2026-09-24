@@ -1,6 +1,6 @@
 # T02 — Project JSON and breadboard connectivity
 
-Status: pending
+Status: ready_for_fukit
 
 ## Dependencies
 
@@ -57,4 +57,16 @@ An existing jj repository and an unambiguous authorized remote/bookmark are requ
 
 ## Evidence
 
-Not run yet. Record exact commands or manual procedures, results, environment/browser versions when relevant, and limitations here before marking the task ready.
+Environment: Rust 1.95.0; no browser/UI behavior is in scope for this core/CLI task.
+
+- `cargo fmt --all --check` — passed.
+- `cargo clippy --workspace --all-targets --locked -- -D warnings` — passed.
+- `cargo test --workspace --locked` — passed; eight core tests including deterministic Proptest cases, schema fixture validation, ordering, ID-renaming, round-trip, contacts, diagnostics, malformed Unicode IDs, limits, and rail continuity.
+- `cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked` — passed.
+- `cargo build -p bredboard-app --target wasm32-unknown-unknown --locked` — passed.
+- `cargo run -p bredboard-tools --locked -- schema` — passed; generated Draft 2020-12 schema (redirected to `/tmp/bredboard-project-schema.json`).
+- `cargo run -p bredboard-tools --locked -- validate fixtures/projects/valid-resistor.json` — accepted, 1 component, 2 wires, 2 derived nodes.
+- `cargo run -p bredboard-tools --locked -- validate fixtures/projects/invalid-version.json` — rejected with `unsupported_version`.
+- `cargo run -p bredboard-tools --locked -- validate fixtures/projects/invalid-reference.json` — rejected with `invalid_hole`.
+- Core unit tests additionally check schema rejection of a malformed object, duplicate IDs, component scope overflow, nonfinite parameters, strip separation, wire endpoint connectivity, and JSON-array order invariance. Proptest uses fixed seed `0xB8ED_B04D` and 64 cases; no minimized failures were produced.
+- `cargo metadata --locked --format-version 1` — passed; regenerated `docs/dependency-licenses.csv` (576 registry packages, all with license expressions).

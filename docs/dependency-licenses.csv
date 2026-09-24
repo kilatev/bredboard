@@ -32,6 +32,7 @@ async-task,4.7.1,crates.io,Apache-2.0 OR MIT
 atomic-waker,1.1.2,crates.io,Apache-2.0 OR MIT
 atomicow,1.2.0,crates.io,MIT OR Apache-2.0
 autocfg,1.5.1,crates.io,Apache-2.0 OR MIT
+base64,0.22.1,crates.io,MIT OR Apache-2.0
 bevy,0.19.1,crates.io,MIT OR Apache-2.0
 bevy_a11y,0.19.1,crates.io,MIT OR Apache-2.0
 bevy_android,0.19.1,crates.io,MIT OR Apache-2.0
@@ -96,7 +97,9 @@ bevy_utils,0.19.1,crates.io,MIT OR Apache-2.0
 bevy_window,0.19.1,crates.io,MIT OR Apache-2.0
 bevy_winit,0.19.1,crates.io,MIT OR Apache-2.0
 bevy_world_serialization,0.19.1,crates.io,MIT OR Apache-2.0
+bit-set,0.8.0,crates.io,Apache-2.0 OR MIT
 bit-set,0.9.1,crates.io,Apache-2.0 OR MIT
+bit-vec,0.8.0,crates.io,Apache-2.0 OR MIT
 bit-vec,0.9.1,crates.io,Apache-2.0 OR MIT
 bitflags,1.3.2,crates.io,MIT/Apache-2.0
 bitflags,2.13.2,crates.io,MIT OR Apache-2.0
@@ -104,7 +107,9 @@ blake3,1.8.7,crates.io,CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception
 block2,0.5.1,crates.io,MIT
 block2,0.6.2,crates.io,MIT
 blocking,1.7.0,crates.io,Apache-2.0 OR MIT
+borrow-or-share,0.2.4,crates.io,MIT-0
 bumpalo,3.20.3,crates.io,MIT OR Apache-2.0
+bytecount,0.6.9,crates.io,Apache-2.0/MIT
 bytemuck,1.25.2,crates.io,Zlib OR Apache-2.0 OR MIT
 bytemuck_derive,1.12.1,crates.io,Zlib OR Apache-2.0 OR MIT
 byteorder,1.5.0,crates.io,Unlicense OR MIT
@@ -153,7 +158,9 @@ document-features,0.2.12,crates.io,MIT OR Apache-2.0
 downcast-rs,1.2.1,crates.io,MIT/Apache-2.0
 downcast-rs,2.0.2,crates.io,MIT OR Apache-2.0
 dpi,0.1.2,crates.io,Apache-2.0 AND MIT
+dyn-clone,1.0.20,crates.io,MIT OR Apache-2.0
 either,1.18.0,crates.io,MIT OR Apache-2.0
+email_address,0.2.9,crates.io,MIT
 encase,0.12.1,crates.io,MIT-0
 encase_derive,0.12.1,crates.io,MIT-0
 encase_derive_impl,0.12.1,crates.io,MIT-0
@@ -164,11 +171,13 @@ error-code,3.4.0,crates.io,BSL-1.0
 euclid,0.22.14,crates.io,MIT OR Apache-2.0
 event-listener,5.4.2,crates.io,Apache-2.0 OR MIT
 event-listener-strategy,0.5.4,crates.io,Apache-2.0 OR MIT
+fancy-regex,0.16.2,crates.io,MIT
 fastrand,2.5.0,crates.io,Apache-2.0 OR MIT
 fdeflate,0.3.7,crates.io,MIT OR Apache-2.0
 find-msvc-tools,0.1.13,crates.io,MIT OR Apache-2.0
 fixedbitset,0.5.7,crates.io,MIT OR Apache-2.0
 flate2,1.1.10,crates.io,MIT OR Apache-2.0
+fluent-uri,0.3.2,crates.io,MIT
 fnv,1.0.7,crates.io,Apache-2.0 / MIT
 foldhash,0.1.5,crates.io,Zlib
 foldhash,0.2.0,crates.io,Zlib
@@ -178,11 +187,14 @@ fontique,0.9.0,crates.io,Apache-2.0 OR MIT
 foreign-types,0.5.0,crates.io,MIT/Apache-2.0
 foreign-types-macros,0.2.4,crates.io,MIT/Apache-2.0
 foreign-types-shared,0.3.1,crates.io,MIT/Apache-2.0
+form_urlencoded,1.2.2,crates.io,MIT OR Apache-2.0
+fraction,0.15.4,crates.io,MIT OR Apache-2.0
 futures-channel,0.3.34,crates.io,MIT OR Apache-2.0
 futures-core,0.3.34,crates.io,MIT OR Apache-2.0
 futures-io,0.3.34,crates.io,MIT OR Apache-2.0
 futures-lite,2.6.1,crates.io,Apache-2.0 OR MIT
 futures-macro,0.3.34,crates.io,MIT OR Apache-2.0
+futures-sink,0.3.34,crates.io,MIT OR Apache-2.0
 futures-task,0.3.34,crates.io,MIT OR Apache-2.0
 futures-util,0.3.34,crates.io,MIT OR Apache-2.0
 gethostname,1.1.0,crates.io,Apache-2.0
@@ -209,6 +221,12 @@ heapless,0.9.3,crates.io,MIT OR Apache-2.0
 hermit-abi,0.5.3,crates.io,MIT OR Apache-2.0
 hexasphere,18.0.0,crates.io,MIT OR Apache-2.0
 hexf-parse,0.2.1,crates.io,CC0-1.0
+http,1.5.0,crates.io,MIT OR Apache-2.0
+http-body,1.1.0,crates.io,MIT
+http-body-util,0.1.5,crates.io,MIT
+httparse,1.10.1,crates.io,MIT OR Apache-2.0
+hyper,1.11.1,crates.io,MIT
+hyper-util,0.1.20,crates.io,MIT
 icu_collections,2.3.0,crates.io,Unicode-3.0
 icu_locale_core,2.3.0,crates.io,Unicode-3.0
 icu_locale_fallback,2.3.0,crates.io,Unicode-3.0
@@ -220,12 +238,16 @@ icu_properties_data,2.3.0,crates.io,Unicode-3.0
 icu_provider,2.3.1,crates.io,Unicode-3.0
 icu_segmenter,2.3.0,crates.io,Unicode-3.0
 icu_segmenter_data,2.3.0,crates.io,Unicode-3.0
+idna,1.1.0,crates.io,MIT OR Apache-2.0
+idna_adapter,1.2.2,crates.io,Apache-2.0 OR MIT
 image,0.25.10,crates.io,MIT OR Apache-2.0
 indexmap,2.14.2,crates.io,Apache-2.0 OR MIT
 inotify,0.11.5,crates.io,ISC
 inotify-sys,0.1.8,crates.io,ISC
 inventory,0.3.24,crates.io,MIT OR Apache-2.0
+ipnet,2.12.2,crates.io,MIT OR Apache-2.0
 itertools,0.14.0,crates.io,MIT OR Apache-2.0
+itoa,1.0.18,crates.io,MIT OR Apache-2.0
 jni,0.22.4,crates.io,MIT OR Apache-2.0
 jni-macros,0.22.4,crates.io,MIT OR Apache-2.0
 jni-sys,0.3.1,crates.io,MIT OR Apache-2.0
@@ -233,6 +255,7 @@ jni-sys,0.4.1,crates.io,MIT OR Apache-2.0
 jni-sys-macros,0.4.1,crates.io,MIT OR Apache-2.0
 jobserver,0.1.35,crates.io,MIT OR Apache-2.0
 js-sys,0.3.105,crates.io,MIT OR Apache-2.0
+jsonschema,0.33.0,crates.io,MIT
 khronos-egl,6.0.0,crates.io,MIT/Apache-2.0
 khronos_api,3.1.0,crates.io,Apache-2.0
 lazy_static,1.5.0,crates.io,MIT OR Apache-2.0
@@ -253,6 +276,7 @@ memchr,2.8.3,crates.io,Unlicense OR MIT
 memmap2,0.9.11,crates.io,MIT OR Apache-2.0
 miniz_oxide,0.8.9,crates.io,MIT OR Zlib OR Apache-2.0
 miniz_oxide,0.9.1,crates.io,MIT OR Zlib OR Apache-2.0
+mio,1.2.3,crates.io,MIT
 moxcms,0.8.1,crates.io,BSD-3-Clause OR Apache-2.0
 naga,29.0.4,crates.io,MIT OR Apache-2.0
 naga_oil,0.22.0,crates.io,MIT OR Apache-2.0
@@ -264,6 +288,13 @@ nom,8.0.0,crates.io,MIT
 nonmax,0.5.5,crates.io,MIT OR Apache-2.0
 ntapi,0.4.3,crates.io,Apache-2.0 OR MIT
 nu-ansi-term,0.50.3,crates.io,MIT
+num,0.4.3,crates.io,MIT OR Apache-2.0
+num-bigint,0.4.8,crates.io,MIT OR Apache-2.0
+num-cmp,0.1.0,crates.io,MIT/Apache-2.0
+num-complex,0.4.6,crates.io,MIT OR Apache-2.0
+num-integer,0.1.47,crates.io,MIT OR Apache-2.0
+num-iter,0.1.46,crates.io,MIT OR Apache-2.0
+num-rational,0.4.2,crates.io,MIT OR Apache-2.0
 num-traits,0.2.19,crates.io,MIT OR Apache-2.0
 num_enum,0.7.6,crates.io,BSD-3-Clause OR MIT OR Apache-2.0
 num_enum_derive,0.7.6,crates.io,BSD-3-Clause OR MIT OR Apache-2.0
@@ -298,6 +329,7 @@ once_cell,1.21.4,crates.io,MIT OR Apache-2.0
 orbclient,0.3.55,crates.io,MIT
 ordered-float,5.5.0,crates.io,MIT
 os_pipe,1.2.3,crates.io,MIT
+outref,0.5.2,crates.io,MIT
 owned_ttf_parser,0.25.1,crates.io,Apache-2.0
 parking,2.2.1,crates.io,Apache-2.0 OR MIT
 parking_lot,0.12.5,crates.io,MIT OR Apache-2.0
@@ -319,19 +351,26 @@ portable-atomic,1.15.0,crates.io,Apache-2.0 OR MIT
 portable-atomic-util,0.2.8,crates.io,Apache-2.0 OR MIT
 potential_utf,0.1.6,crates.io,Unicode-3.0
 pp-rs,0.2.1,crates.io,BSD-3-Clause
+ppv-lite86,0.2.21,crates.io,MIT OR Apache-2.0
 presser,0.3.1,crates.io,MIT OR Apache-2.0
 proc-macro-crate,3.5.0,crates.io,MIT OR Apache-2.0
 proc-macro2,1.0.107,crates.io,MIT OR Apache-2.0
 profiling,1.0.18,crates.io,MIT OR Apache-2.0
+proptest,1.11.0,crates.io,MIT OR Apache-2.0
 pxfm,0.1.30,crates.io,BSD-3-Clause OR Apache-2.0
+quick-error,1.2.3,crates.io,MIT/Apache-2.0
 quick-xml,0.41.0,crates.io,MIT
 quote,1.0.47,crates.io,MIT OR Apache-2.0
 r-efi,5.3.0,crates.io,MIT OR Apache-2.0 OR LGPL-2.1-or-later
 r-efi,6.0.0,crates.io,MIT OR Apache-2.0 OR LGPL-2.1-or-later
 radsort,0.1.1,crates.io,MIT OR Apache-2.0
 rand,0.10.3,crates.io,MIT OR Apache-2.0
+rand,0.9.5,crates.io,MIT OR Apache-2.0
+rand_chacha,0.9.0,crates.io,MIT OR Apache-2.0
 rand_core,0.10.1,crates.io,MIT OR Apache-2.0
+rand_core,0.9.5,crates.io,MIT OR Apache-2.0
 rand_distr,0.6.0,crates.io,MIT OR Apache-2.0
+rand_xorshift,0.4.0,crates.io,MIT OR Apache-2.0
 range-alloc,0.1.5,crates.io,MIT OR Apache-2.0
 raw-window-handle,0.6.2,crates.io,MIT OR Apache-2.0 OR Zlib
 raw-window-metal,1.1.0,crates.io,MIT OR Apache-2.0
@@ -341,17 +380,25 @@ rectangle-pack,0.4.2,crates.io,MIT/Apache-2.0
 redox_syscall,0.4.1,crates.io,MIT
 redox_syscall,0.5.18,crates.io,MIT
 redox_syscall,0.9.4,crates.io,MIT
+ref-cast,1.0.27,crates.io,MIT OR Apache-2.0
+ref-cast-impl,1.0.27,crates.io,MIT OR Apache-2.0
+referencing,0.33.0,crates.io,MIT
 regex,1.13.1,crates.io,MIT OR Apache-2.0
 regex-automata,0.4.18,crates.io,MIT OR Apache-2.0
 regex-syntax,0.8.11,crates.io,MIT OR Apache-2.0
 renderdoc-sys,1.1.0,crates.io,MIT OR Apache-2.0
+reqwest,0.12.28,crates.io,MIT OR Apache-2.0
 ron,0.12.2,crates.io,MIT OR Apache-2.0
 rustc-hash,1.1.0,crates.io,Apache-2.0/MIT
 rustc_version,0.4.1,crates.io,MIT OR Apache-2.0
 rustix,0.38.44,crates.io,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
 rustix,1.1.5,crates.io,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
 rustversion,1.0.23,crates.io,MIT OR Apache-2.0
+rusty-fork,0.3.1,crates.io,MIT/Apache-2.0
+ryu,1.0.23,crates.io,Apache-2.0 OR BSL-1.0
 same-file,1.0.6,crates.io,Unlicense/MIT
+schemars,1.2.2,crates.io,MIT
+schemars_derive,1.2.2,crates.io,MIT
 scoped-tls,1.0.1,crates.io,MIT/Apache-2.0
 scopeguard,1.2.0,crates.io,MIT OR Apache-2.0
 sctk-adwaita,0.10.1,crates.io,MIT
@@ -360,6 +407,9 @@ send_wrapper,0.6.0,crates.io,MIT/Apache-2.0
 serde,1.0.229,crates.io,MIT OR Apache-2.0
 serde_core,1.0.229,crates.io,MIT OR Apache-2.0
 serde_derive,1.0.229,crates.io,MIT OR Apache-2.0
+serde_derive_internals,0.30.0,crates.io,MIT OR Apache-2.0
+serde_json,1.0.145,crates.io,MIT OR Apache-2.0
+serde_urlencoded,0.7.1,crates.io,MIT/Apache-2.0
 sharded-slab,0.1.7,crates.io,MIT
 shlex,2.0.1,crates.io,MIT OR Apache-2.0
 simd-adler32,0.3.10,crates.io,MIT
@@ -372,6 +422,7 @@ slotmap,1.1.1,crates.io,Zlib
 smallvec,1.16.1,crates.io,MIT OR Apache-2.0
 smithay-client-toolkit,0.19.2,crates.io,MIT
 smol_str,0.2.2,crates.io,MIT OR Apache-2.0
+socket2,0.6.5,crates.io,MIT OR Apache-2.0
 spin,0.10.1,crates.io,MIT
 spirv,0.4.0+sdk-1.4.341.0,crates.io,Apache-2.0
 stable_deref_trait,1.2.1,crates.io,MIT OR Apache-2.0
@@ -382,10 +433,12 @@ svg_fmt,0.4.5,crates.io,MIT/Apache-2.0
 swash,0.2.10,crates.io,Apache-2.0 OR MIT
 syn,2.0.119,crates.io,MIT OR Apache-2.0
 syn,3.0.6,crates.io,MIT OR Apache-2.0
+sync_wrapper,1.0.2,crates.io,Apache-2.0
 synstructure,0.14.0,crates.io,MIT
 sys-locale,0.3.2,crates.io,MIT OR Apache-2.0
 sysinfo,0.38.4,crates.io,MIT
 taffy,0.10.1,crates.io,MIT
+tempfile,3.27.0,crates.io,MIT OR Apache-2.0
 termcolor,1.4.1,crates.io,Unlicense OR MIT
 thiserror,1.0.69,crates.io,MIT OR Apache-2.0
 thiserror,2.0.21,crates.io,MIT OR Apache-2.0
@@ -396,9 +449,14 @@ tiny-skia,0.11.4,crates.io,BSD-3-Clause
 tiny-skia-path,0.11.4,crates.io,BSD-3-Clause
 tinystr,0.8.4,crates.io,Unicode-3.0
 tinyvec,1.13.3,crates.io,Zlib OR Apache-2.0 OR MIT
+tokio,1.53.1,crates.io,MIT
 toml_datetime,1.1.1+spec-1.1.0,crates.io,MIT OR Apache-2.0
 toml_edit,0.25.15+spec-1.1.0,crates.io,MIT OR Apache-2.0
 toml_parser,1.1.3+spec-1.1.0,crates.io,MIT OR Apache-2.0
+tower,0.5.3,crates.io,MIT
+tower-http,0.6.11,crates.io,MIT
+tower-layer,0.3.3,crates.io,MIT
+tower-service,0.3.3,crates.io,MIT
 tracing,0.1.44,crates.io,MIT
 tracing-attributes,0.1.31,crates.io,MIT
 tracing-core,0.1.36,crates.io,MIT
@@ -407,20 +465,28 @@ tracing-oslog,0.3.0,crates.io,Zlib
 tracing-subscriber,0.3.23,crates.io,MIT
 tracing-wasm,0.2.1,crates.io,MIT OR Apache-2.0
 tree_magic_mini,3.2.2,crates.io,MIT
+try-lock,0.2.5,crates.io,MIT
 ttf-parser,0.25.1,crates.io,MIT OR Apache-2.0
 typeid,1.0.3,crates.io,MIT OR Apache-2.0
 typewit,1.15.2,crates.io,Zlib
+unarray,0.1.4,crates.io,MIT OR Apache-2.0
 unicode-ident,1.0.26,crates.io,(MIT OR Apache-2.0) AND Unicode-3.0
 unicode-segmentation,1.13.3,crates.io,MIT OR Apache-2.0
 unicode-width,0.2.2,crates.io,MIT OR Apache-2.0
 unicode-xid,0.2.6,crates.io,MIT OR Apache-2.0
+url,2.5.8,crates.io,MIT OR Apache-2.0
 utf8_iter,1.0.4,crates.io,Apache-2.0 OR MIT
 uuid,1.26.1,crates.io,Apache-2.0 OR MIT
+uuid-simd,0.8.0,crates.io,MIT
 valuable,0.1.1,crates.io,MIT
 variadics_please,1.1.0,crates.io,MIT OR Apache-2.0
 vec_map,0.8.2,crates.io,MIT/Apache-2.0
 version_check,0.9.5,crates.io,MIT/Apache-2.0
+vsimd,0.8.0,crates.io,MIT
+wait-timeout,0.2.1,crates.io,MIT/Apache-2.0
 walkdir,2.5.0,crates.io,Unlicense/MIT
+want,0.3.1,crates.io,MIT
+wasi,0.11.1+wasi-snapshot-preview1,crates.io,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
 wasip2,1.0.4+wasi-0.2.12,crates.io,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
 wasm-bindgen,0.2.128,crates.io,MIT OR Apache-2.0
 wasm-bindgen-futures,0.4.78,crates.io,MIT OR Apache-2.0

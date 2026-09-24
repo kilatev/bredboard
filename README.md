@@ -30,6 +30,8 @@ cargo build -p bredboard-app --target wasm32-unknown-unknown --locked
 
 Run the Linux app with `cargo run -p bredboard-app --locked`. The core can be checked alone with `cargo test -p bredboard-core --locked`; inspect its dependencies with `cargo tree -p bredboard-core --locked`.
 
+Generate the Project JSON Schema with `cargo run -p bredboard-tools --locked -- schema`; validate a project with `cargo run -p bredboard-tools --locked -- validate path/to/project.json`. See [the project format guide](docs/PROJECT-FORMAT.md) for the board contact model and authoring example.
+
 The web build uses the version of `wasm-bindgen` pinned by `Cargo.lock`. Install its matching CLI and package the compiled WASM:
 
 ```sh
