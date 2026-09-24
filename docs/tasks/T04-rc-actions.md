@@ -1,6 +1,6 @@
 # T04 — RC simulation and deterministic actions
 
-Status: pending
+Status: ready_for_fukit
 
 ## Dependencies
 
@@ -56,4 +56,15 @@ An existing jj repository and an unambiguous authorized remote/bookmark are requ
 
 ## Evidence
 
-Not run yet. Record exact commands or manual procedures, results, environment/browser versions when relevant, and limitations here before marking the task ready.
+Environment: Rust 1.95.0. The local mise shim had no version in the active worktree, so checks used the installed toolchain via `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin`.
+
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo fmt --all --check` — passed.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo clippy --workspace --all-targets --locked -- -D warnings` — passed.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo test --workspace --locked` — passed; 19 core tests including deterministic RC/action properties.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked` — passed.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo build -p bredboard-app --target wasm32-unknown-unknown --locked` — passed.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo run -p bredboard-tools --locked -- simulate fixtures/projects/rc-charging.json 1000` — passed; step 1000 at exactly 0.100000 s, capacitor 3.159683479 V. Analytical value at one time constant is 3.160602794 V; error is under 1% of the 5 V source.
+- RC tests also discharge from a 5 V initial condition to within 1% of the 5 V source around one time constant, and check nonzero initial-condition reset.
+- Equivalent schedules across different call batch sizes produce identical full state. A fixed-seed 48-case Proptest checks deterministic generated action sequences; reset/control/parameter order is also tested directly.
+- Failed transient calculations stop the run, retain prior valid readings and capacitor state, and mark readings stale with the floating-network diagnostic.
+- No browser/UI behavior is in scope for this core/CLI task.

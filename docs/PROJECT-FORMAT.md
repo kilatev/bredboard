@@ -35,6 +35,13 @@ The catalog is metadata only at this milestone; catalog presence does not imply
 that a model can be simulated. Button and switch initial states and solver
 models are introduced by later tasks.
 
+Projects may include `initial_conditions`. `capacitor_voltages` maps capacitor
+IDs to initial volts and defaults to 0 V when an entry is absent. `controls`
+maps button IDs to `button_pressed`/`button_released` and changeover switch IDs
+to `switch_normally_closed`/`switch_normally_open`; omitted controls default to
+released and normally-closed respectively. References and finite capacitor
+voltages are validated before simulation.
+
 Example authoring input (also stored as `fixtures/projects/valid-resistor.json`):
 
 ```json

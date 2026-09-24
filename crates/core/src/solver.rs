@@ -1,16 +1,8 @@
 use crate::{
-    Component, ComponentId, ComponentKind, Contact, Diagnostic, Node, Project, compile_topology,
+    Component, ComponentId, ComponentKind, Contact, ControlState, Diagnostic, Node, Project,
+    compile_topology,
 };
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
-
-/// Explicit interactive state supplied by the caller; buttons default open and switches NC.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ControlState {
-    ButtonPressed,
-    ButtonReleased,
-    SwitchNormallyClosed,
-    SwitchNormallyOpen,
-}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ElectricalDiagnostic {
@@ -34,6 +26,8 @@ pub struct SolveResult {
     pub source_currents: BTreeMap<ComponentId, f64>,
     /// Current through a closed ideal switch, positive from first to second pin.
     pub switch_currents: BTreeMap<ComponentId, f64>,
+    pub capacitor_voltages: BTreeMap<ComponentId, f64>,
+    pub capacitor_currents: BTreeMap<ComponentId, f64>,
 }
 
 #[derive(Clone)]
@@ -43,13 +37,17 @@ struct Branch {
     a: usize,
     b: usize,
     value: f64,
+    previous_voltage: f64,
 }
 #[derive(Clone, Copy)]
 enum BranchKind {
     Resistor,
     VoltageSource,
     Switch,
+    Capacitor,
 }
+
+pub const FIXED_STEP_SECONDS: f64 = 100e-6;
 
 /// Solve a linear DC project using MNA and deterministic partial pivoting.
 /// A floating connected network, ideal-source short, contradictory source loop,
@@ -58,14 +56,44 @@ pub fn solve_dc(
     project: &Project,
     states: &BTreeMap<ComponentId, ControlState>,
 ) -> Result<SolveResult, ElectricalError> {
+    solve_internal(project, states, &BTreeMap::new(), None)
+}
+
+/// Solve one 100 microsecond Backward Euler step from the supplied capacitor state.
+pub fn solve_transient(
+    project: &Project,
+    states: &BTreeMap<ComponentId, ControlState>,
+    capacitor_voltages: &BTreeMap<ComponentId, f64>,
+) -> Result<SolveResult, ElectricalError> {
+    solve_internal(
+        project,
+        states,
+        capacitor_voltages,
+        Some(FIXED_STEP_SECONDS),
+    )
+}
+
+fn solve_internal(
+    project: &Project,
+    states: &BTreeMap<ComponentId, ControlState>,
+    capacitor_voltages: &BTreeMap<ComponentId, f64>,
+    dt: Option<f64>,
+) -> Result<SolveResult, ElectricalError> {
     let topology = compile_topology(project).map_err(ElectricalError::Structure)?;
-    let (mut branches, node_contacts, active_nodes) = make_branches(project, &topology, states)?;
+    let mut control_state = project.initial_conditions.controls.clone();
+    control_state.extend(states.clone());
+    let mut cap_state = project.initial_conditions.capacitor_voltages.clone();
+    cap_state.extend(capacitor_voltages.clone());
+    let (mut branches, node_contacts, active_nodes) =
+        make_branches(project, &topology, &control_state, &cap_state, dt)?;
     if branches.is_empty() {
         return Ok(SolveResult {
             node_voltages: BTreeMap::new(),
             resistor_currents: BTreeMap::new(),
             source_currents: BTreeMap::new(),
             switch_currents: BTreeMap::new(),
+            capacitor_voltages: BTreeMap::new(),
+            capacitor_currents: BTreeMap::new(),
         });
     }
 
@@ -147,9 +175,23 @@ pub fn solve_dc(
     let mut rhs = vec![0.0; size];
     for branch in &branches {
         match branch.kind {
-            BranchKind::Resistor => {
+            BranchKind::Resistor | BranchKind::Capacitor => {
                 let g = 1.0 / branch.value;
-                stamp_conductance(&mut matrix, &voltage_vars, branch.a, branch.b, g);
+                let conductance = if matches!(branch.kind, BranchKind::Capacitor) {
+                    branch.value
+                } else {
+                    g
+                };
+                stamp_conductance(&mut matrix, &voltage_vars, branch.a, branch.b, conductance);
+                if matches!(branch.kind, BranchKind::Capacitor) {
+                    stamp_history(
+                        &mut rhs,
+                        &voltage_vars,
+                        branch.a,
+                        branch.b,
+                        conductance * branch.previous_voltage,
+                    );
+                }
             }
             BranchKind::VoltageSource | BranchKind::Switch => {}
         }
@@ -173,12 +215,24 @@ pub fn solve_dc(
     let mut resistor_currents = BTreeMap::new();
     let mut source_currents = BTreeMap::new();
     let mut switch_currents = BTreeMap::new();
+    let mut capacitor_voltages = BTreeMap::new();
+    let mut capacitor_currents = BTreeMap::new();
     for branch in &branches {
         let current = match branch.kind {
             BranchKind::Resistor => {
                 (voltage(&solution, &voltage_vars, branch.a)
                     - voltage(&solution, &voltage_vars, branch.b))
                     / branch.value
+            }
+            BranchKind::Capacitor => {
+                let cap_voltage = voltage(&solution, &voltage_vars, branch.a)
+                    - voltage(&solution, &voltage_vars, branch.b);
+                capacitor_voltages.insert(branch.component.clone(), cap_voltage);
+                capacitor_currents.insert(
+                    branch.component.clone(),
+                    branch.value * (cap_voltage - branch.previous_voltage),
+                );
+                continue;
             }
             BranchKind::VoltageSource | BranchKind::Switch => {
                 let index = voltage_vars.len()
@@ -199,6 +253,7 @@ pub fn solve_dc(
             BranchKind::Switch => {
                 switch_currents.insert(branch.component.clone(), current);
             }
+            BranchKind::Capacitor => unreachable!("capacitor current is handled above"),
         }
     }
     Ok(SolveResult {
@@ -206,6 +261,8 @@ pub fn solve_dc(
         resistor_currents,
         source_currents,
         switch_currents,
+        capacitor_voltages,
+        capacitor_currents,
     })
 }
 
@@ -224,16 +281,21 @@ fn pin_node(topology: &[Node], id: &ComponentId, pin: &str) -> Option<usize> {
     })
 }
 type CompiledBranches = (Vec<Branch>, Vec<Vec<Contact>>, BTreeSet<usize>);
+type ComponentBranch = (&'static str, &'static str, BranchKind, f64, f64);
 fn make_branches(
     project: &Project,
     topology: &[Node],
     states: &BTreeMap<ComponentId, ControlState>,
+    capacitor_voltages: &BTreeMap<ComponentId, f64>,
+    dt: Option<f64>,
 ) -> Result<CompiledBranches, ElectricalError> {
     let node_contacts: Vec<_> = topology.iter().map(|n| n.contacts.clone()).collect();
     let mut branches = Vec::new();
     let mut active = BTreeSet::new();
     for component in &project.components {
-        let Some((a_pin, b_pin, kind, value)) = component_branch(component, states)? else {
+        let Some((a_pin, b_pin, kind, value, previous_voltage)) =
+            component_branch(component, states, capacitor_voltages, dt)?
+        else {
             continue;
         };
         let a = pin_node(topology, &component.id, a_pin).ok_or_else(|| {
@@ -262,6 +324,7 @@ fn make_branches(
             a,
             b,
             value,
+            previous_voltage,
         });
     }
     Ok((branches, node_contacts, active))
@@ -269,7 +332,9 @@ fn make_branches(
 fn component_branch(
     c: &Component,
     states: &BTreeMap<ComponentId, ControlState>,
-) -> Result<Option<(&'static str, &'static str, BranchKind, f64)>, ElectricalError> {
+    capacitor_voltages: &BTreeMap<ComponentId, f64>,
+    dt: Option<f64>,
+) -> Result<Option<ComponentBranch>, ElectricalError> {
     let value = |name: &str| {
         c.parameters.get(name).copied().ok_or_else(|| {
             calc(
@@ -279,19 +344,37 @@ fn component_branch(
         })
     };
     Ok(match c.kind {
-        ComponentKind::Resistor => Some(("a", "b", BranchKind::Resistor, value("resistance")?)),
+        ComponentKind::Resistor => {
+            Some(("a", "b", BranchKind::Resistor, value("resistance")?, 0.0))
+        }
         ComponentKind::DcVoltageSource => Some((
             "positive",
             "negative",
             BranchKind::VoltageSource,
             value("voltage")?,
+            0.0,
         )),
+        ComponentKind::Capacitor => {
+            let dt = dt.ok_or_else(|| {
+                calc(
+                    "unsupported_component",
+                    "capacitors require transient stepping",
+                )
+            })?;
+            Some((
+                "positive",
+                "negative",
+                BranchKind::Capacitor,
+                value("capacitance")? / dt,
+                capacitor_voltages.get(&c.id).copied().unwrap_or(0.0),
+            ))
+        }
         ComponentKind::MomentaryButton => match states
             .get(&c.id)
             .copied()
             .unwrap_or(ControlState::ButtonReleased)
         {
-            ControlState::ButtonPressed => Some(("a", "b", BranchKind::Switch, 0.0)),
+            ControlState::ButtonPressed => Some(("a", "b", BranchKind::Switch, 0.0, 0.0)),
             ControlState::ButtonReleased => None,
             _ => {
                 return Err(calc(
@@ -306,10 +389,10 @@ fn component_branch(
             .unwrap_or(ControlState::SwitchNormallyClosed)
         {
             ControlState::SwitchNormallyClosed => {
-                Some(("common", "normally_closed", BranchKind::Switch, 0.0))
+                Some(("common", "normally_closed", BranchKind::Switch, 0.0, 0.0))
             }
             ControlState::SwitchNormallyOpen => {
-                Some(("common", "normally_open", BranchKind::Switch, 0.0))
+                Some(("common", "normally_open", BranchKind::Switch, 0.0, 0.0))
             }
             _ => {
                 return Err(calc(
@@ -364,6 +447,14 @@ fn stamp_constraint(
     if let Some(&i) = vars.get(&b) {
         m[i][current] -= 1.0;
         m[current][i] -= 1.0;
+    }
+}
+fn stamp_history(rhs: &mut [f64], vars: &BTreeMap<usize, usize>, a: usize, b: usize, current: f64) {
+    if let Some(&i) = vars.get(&a) {
+        rhs[i] += current;
+    }
+    if let Some(&i) = vars.get(&b) {
+        rhs[i] -= current;
     }
 }
 fn gaussian_solve(mut a: Vec<Vec<f64>>, mut b: Vec<f64>) -> Option<Vec<f64>> {

@@ -1,8 +1,12 @@
 //! Platform-independent project model and derived breadboard connectivity.
+mod simulation;
 mod solver;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-pub use solver::{ControlState, ElectricalDiagnostic, ElectricalError, SolveResult, solve_dc};
+pub use simulation::{
+    Action, STEP_SECONDS, SimulationDiagnostic, SimulationState, advance_steps, apply_actions,
+};
+pub use solver::{ElectricalDiagnostic, ElectricalError, SolveResult, solve_dc, solve_transient};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Version of the core crate used by applications and workspace tools.
@@ -33,6 +37,25 @@ pub struct Project {
     pub board: Board,
     pub components: Vec<Component>,
     pub wires: Vec<Wire>,
+    #[serde(default)]
+    pub initial_conditions: InitialConditions,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct InitialConditions {
+    #[serde(default)]
+    pub capacitor_voltages: BTreeMap<ComponentId, f64>,
+    #[serde(default)]
+    pub controls: BTreeMap<ComponentId, ControlState>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ControlState {
+    ButtonPressed,
+    ButtonReleased,
+    SwitchNormallyClosed,
+    SwitchNormallyOpen,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -257,6 +280,41 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
             }
         }
     }
+    for (id, voltage) in &project.initial_conditions.capacitor_voltages {
+        match project.components.iter().find(|c| &c.id == id) {
+            Some(c) if c.kind == ComponentKind::Capacitor && voltage.is_finite() => {}
+            Some(c) if c.kind == ComponentKind::Capacitor => errors.push(Diagnostic::new(
+                "non_finite_initial_condition",
+                format!("initial_conditions.capacitor_voltages.{}", id.0),
+                "initial capacitor voltage must be finite",
+            )),
+            _ => errors.push(Diagnostic::new(
+                "invalid_initial_condition_reference",
+                format!("initial_conditions.capacitor_voltages.{}", id.0),
+                "initial voltage must refer to a capacitor component",
+            )),
+        }
+    }
+    for (id, state) in &project.initial_conditions.controls {
+        let valid = project.components.iter().any(|c| match (c.kind, state) {
+            (
+                ComponentKind::MomentaryButton,
+                ControlState::ButtonPressed | ControlState::ButtonReleased,
+            )
+            | (
+                ComponentKind::ChangeoverSwitch,
+                ControlState::SwitchNormallyClosed | ControlState::SwitchNormallyOpen,
+            ) => &c.id == id,
+            _ => false,
+        });
+        if !valid {
+            errors.push(Diagnostic::new(
+                "invalid_initial_control",
+                format!("initial_conditions.controls.{}", id.0),
+                "control state must match a button or switch component",
+            ));
+        }
+    }
     // All holes in a contact group share a node, including the four continuous rails.
     let holes: Vec<_> = parent.keys().cloned().collect();
     for i in 0..holes.len() {
@@ -394,6 +452,7 @@ mod tests {
                 ]),
                 parameters: BTreeMap::from([("resistance".into(), 1000.0)]),
             }],
+            initial_conditions: InitialConditions::default(),
             wires: vec![Wire {
                 id: WireId("W1".into()),
                 from: HoleId("A2".into()),

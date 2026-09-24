@@ -34,6 +34,8 @@ Generate the Project JSON Schema with `cargo run -p bredboard-tools --locked -- 
 
 Run the resistive DC solver headlessly with `cargo run -p bredboard-tools --locked -- solve path/to/project.json`.
 
+Advance a project by an exact number of 100-microsecond steps with `cargo run -p bredboard-tools --locked -- simulate path/to/project.json 1000`.
+
 The web build uses the version of `wasm-bindgen` pinned by `Cargo.lock`. Install its matching CLI and package the compiled WASM:
 
 ```sh

@@ -1,4 +1,7 @@
-use bredboard_core::{Contact, ControlState, Project, compile_topology, solve_dc};
+use bredboard_core::{
+    Action, Contact, ControlState, Project, SimulationState, advance_steps, apply_actions,
+    compile_topology, solve_dc,
+};
 use schemars::{SchemaGenerator, generate::SchemaSettings};
 use std::{env, fs, process};
 
@@ -95,7 +98,38 @@ fn run() -> Result<(), String> {
                 }
             }
         }
-        _ => return Err("usage: bredboard-tools <schema|validate|solve <project.json>>".into()),
+        Some("simulate") => {
+            let path = args
+                .next()
+                .ok_or("usage: bredboard-tools simulate <project.json> <steps>")?;
+            let steps: u64 = args
+                .next()
+                .ok_or("usage: bredboard-tools simulate <project.json> <steps>")?
+                .parse()
+                .map_err(|_| "steps must be a nonnegative integer")?;
+            let text = fs::read_to_string(&path).map_err(|e| format!("{path}: {e}"))?;
+            let mut project: Project =
+                serde_json::from_str(&text).map_err(|e| format!("invalid project JSON: {e}"))?;
+            let initial = project.clone();
+            let mut state = SimulationState::new(&project);
+            apply_actions(&mut project, &initial, &mut state, &[Action::Run]);
+            advance_steps(&project, &mut state, steps);
+            println!("step {} at {:.6} s", state.step, state.time_seconds());
+            for (id, voltage) in &state.capacitor_voltages {
+                println!("capacitor {}: {voltage:.9} V", id.0);
+            }
+            if state.stale {
+                for d in state.diagnostics {
+                    eprintln!("{} at {}: {}", d.code, d.path, d.message);
+                }
+                return Err("simulation stopped on calculation failure".into());
+            }
+        }
+        _ => {
+            return Err(
+                "usage: bredboard-tools <schema|validate|solve|simulate <project.json> ...>".into(),
+            );
+        }
     }
     Ok(())
 }
