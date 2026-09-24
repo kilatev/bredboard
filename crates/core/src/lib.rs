@@ -1,6 +1,8 @@
 //! Platform-independent project model and derived breadboard connectivity.
+mod solver;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+pub use solver::{ControlState, ElectricalDiagnostic, ElectricalError, SolveResult, solve_dc};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Version of the core crate used by applications and workspace tools.

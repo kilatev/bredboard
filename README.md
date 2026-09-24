@@ -32,6 +32,8 @@ Run the Linux app with `cargo run -p bredboard-app --locked`. The core can be ch
 
 Generate the Project JSON Schema with `cargo run -p bredboard-tools --locked -- schema`; validate a project with `cargo run -p bredboard-tools --locked -- validate path/to/project.json`. See [the project format guide](docs/PROJECT-FORMAT.md) for the board contact model and authoring example.
 
+Run the resistive DC solver headlessly with `cargo run -p bredboard-tools --locked -- solve path/to/project.json`.
+
 The web build uses the version of `wasm-bindgen` pinned by `Cargo.lock`. Install its matching CLI and package the compiled WASM:
 
 ```sh

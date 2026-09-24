@@ -1,0 +1,9 @@
+{
+  "format_version": 1,
+  "title": "Floating resistor",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A1", "b": "F1" }, "parameters": { "resistance": 1000.0 } }
+  ],
+  "wires": []
+}

@@ -53,3 +53,23 @@ Example authoring input (also stored as `fixtures/projects/valid-resistor.json`)
   ]
 }
 ```
+
+## Resistive DC solver (T03)
+
+The headless DC solver supports voltage sources, resistors, momentary buttons,
+and changeover switches. A button is released (open) by default; a changeover
+switch connects common to normally-closed by default. Pass explicit control
+states to `solve_dc` to change them. Other catalog models are rejected as
+unsupported by this solver. Each connected network needs at least one voltage
+source; otherwise it is diagnosed as floating. Nonzero ideal voltage sources
+shorted by board connectivity, contradictory source loops, and singular
+ideal-source arrangements fail explicitly.
+
+The solver uses `f64` MNA, deterministic component/node ordering, and partial
+pivot Gaussian elimination. Ideal-source consistency uses a `1e-9 V` tolerance;
+matrix pivots below `1e-12` are treated as singular. Resistors retain the
+documented 0.001–1e9 ohm range and voltage sources -1000–1000 V. The divider and
+parallel reference circuits are in `fixtures/projects/`. Reported resistor
+current is positive from pin A to pin B; source current is positive from its
+positive pin to negative pin (so a delivering source has negative current).
+Switch current is positive from its first pin to its selected pin.

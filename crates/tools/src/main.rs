@@ -1,4 +1,4 @@
-use bredboard_core::{Project, compile_topology};
+use bredboard_core::{Contact, ControlState, Project, compile_topology, solve_dc};
 use schemars::{SchemaGenerator, generate::SchemaSettings};
 use std::{env, fs, process};
 
@@ -49,7 +49,53 @@ fn run() -> Result<(), String> {
                 }
             }
         }
-        _ => return Err("usage: bredboard-tools <schema|validate <project.json>>".into()),
+        Some("solve") => {
+            let path = args
+                .next()
+                .ok_or("usage: bredboard-tools solve <project.json>")?;
+            let text = fs::read_to_string(&path).map_err(|e| format!("{path}: {e}"))?;
+            let project: Project =
+                serde_json::from_str(&text).map_err(|e| format!("invalid project JSON: {e}"))?;
+            let states =
+                std::collections::BTreeMap::<bredboard_core::ComponentId, ControlState>::new();
+            match solve_dc(&project, &states) {
+                Ok(result) => {
+                    for (node, voltage) in result.node_voltages {
+                        let labels = node
+                            .iter()
+                            .filter_map(|contact| match contact {
+                                Contact::ComponentPin(id, pin) => {
+                                    Some(format!("{}.{}", id.0, pin.0))
+                                }
+                                Contact::Hole(_) => None,
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        println!("node [{labels}]: {voltage:.9} V");
+                    }
+                    for (id, current) in result.resistor_currents {
+                        println!("resistor {}: {current:.9} A", id.0);
+                    }
+                    for (id, current) in result.source_currents {
+                        println!("source {}: {current:.9} A", id.0);
+                    }
+                    for (id, current) in result.switch_currents {
+                        println!("switch {}: {current:.9} A", id.0);
+                    }
+                }
+                Err(bredboard_core::ElectricalError::Structure(errors)) => {
+                    for e in errors {
+                        eprintln!("{} at {}: {}", e.code, e.path, e.message);
+                    }
+                    return Err("project validation failed".into());
+                }
+                Err(bredboard_core::ElectricalError::Calculation(e)) => {
+                    eprintln!("{}: {}", e.code, e.message);
+                    return Err("DC solve failed".into());
+                }
+            }
+        }
+        _ => return Err("usage: bredboard-tools <schema|validate|solve <project.json>>".into()),
     }
     Ok(())
 }

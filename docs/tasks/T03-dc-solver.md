@@ -1,6 +1,6 @@
 # T03 — Resistive DC circuit simulation
 
-Status: pending
+Status: ready_for_fukit
 
 ## Dependencies
 
@@ -57,4 +57,17 @@ An existing jj repository and an unambiguous authorized remote/bookmark are requ
 
 ## Evidence
 
-Not run yet. Record exact commands or manual procedures, results, environment/browser versions when relevant, and limitations here before marking the task ready.
+Environment: Rust 1.95.0. The project-local `mise.toml` was preserved in a separate local working-copy change, so checks used the installed Rust toolchain via `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin` to bypass the mise shim.
+
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo fmt --all --check` — passed.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo clippy --workspace --all-targets --locked -- -D warnings` — passed.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo test --workspace --locked` — passed; 13 core tests, including deterministic 96-case Proptest coverage for divider voltage, current balance, and ordering.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked` — passed.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo build -p bredboard-app --target wasm32-unknown-unknown --locked` — passed.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo run -p bredboard-tools --locked -- solve fixtures/projects/resistor-divider.json` — passed; midpoint 2.5 V and series current 2.5 mA.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo run -p bredboard-tools --locked -- solve fixtures/projects/floating-resistors.json` — rejected with `floating_network`.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo run -p bredboard-tools --locked -- solve fixtures/projects/conflicting-sources.json` — rejected with `conflicting_sources`.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo run -p bredboard-tools --locked -- validate fixtures/projects/at-component-limit.json` — accepted 64 components.
+- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo run -p bredboard-tools --locked -- validate fixtures/projects/over-component-limit.json` — rejected with `component_limit`.
+- Core tests analytically verify parallel branch currents and ideal-source shorts, and verify released/pressed button and NC/NO changeover behavior. One minimized Proptest failure during development (R1=10 ohm, R2=10 ohm) exposed incorrect choice of voltage reference; fixed by grounding the source negative node and retained in `crates/core/proptest-regressions/solver.txt`.
+- No browser/UI behavior is in scope for this core/CLI task.

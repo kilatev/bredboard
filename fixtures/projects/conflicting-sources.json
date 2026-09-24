@@ -1,0 +1,10 @@
+{
+  "format_version": 1,
+  "title": "Conflicting parallel ideal sources",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "negative": "TP-:1", "positive": "TP+:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "V2", "kind": "dc_voltage_source", "pins": { "negative": "TP-:2", "positive": "TP+:2" }, "parameters": { "voltage": 9.0 } }
+  ],
+  "wires": []
+}
