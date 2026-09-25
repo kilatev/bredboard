@@ -42,6 +42,8 @@ Advance a project by an exact number of 100-microsecond steps with `cargo run -p
 
 Save/validate simulation snapshots and replay action logs with the tools described in [the persistence guide](docs/PERSISTENCE.md).
 
+Run the native MVP transcript and diagnostic verification with `cargo run -p bredboard-tools --locked -- verify-native`. It records the target, Rust version, core versions, and fixed property seed/case count; it exits nonzero on any trace or replay mismatch.
+
 The WASM command above is a compile-only compatibility check. The `web/` page is a canvas and startup wrapper for the same Bevy app; it has no separate product controls. Do not use browser interaction as MVP acceptance evidence. Runtime browser verification belongs to a later deployment phase.
 
 ## Licensing

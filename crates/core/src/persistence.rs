@@ -525,5 +525,42 @@ mod tests {
             prop_assert_eq!(&resumed_project,&uninterrupted); prop_assert_eq!(&resumed_reset,&reset); prop_assert_eq!(&resumed,&original);
             prop_assert!((original.time_seconds()-1000.0*STEP_SECONDS).abs()<f64::EPSILON);
         }
+
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 32, rng_seed: proptest::test_runner::RngSeed::Fixed(0xA013_2026), .. ProptestConfig::default() })]
+        #[test]
+        fn generated_action_logs_replay_exactly(
+            operations in prop::collection::vec((0u8..5, 0u16..40), 1..24)
+        ) {
+            let reset = project();
+            let mut current = reset.clone();
+            let mut state = SimulationState::new(&current);
+            let mut log = ActionLog::new(Snapshot::capture(&current, &reset, &state));
+            for (operation, gap) in operations {
+                advance_steps(&current, &mut state, u64::from(gap));
+                let action = match operation {
+                    0 => Action::Run,
+                    1 => Action::Pause,
+                    2 => Action::SingleStep,
+                    3 => Action::Reset,
+                    _ => Action::SetParameter {
+                        component: ComponentId("R1".into()),
+                        name: "resistance".into(),
+                        value: 100.0 + f64::from(gap) * 100.0,
+                    },
+                };
+                log.record(&state, action.clone());
+                apply_actions(&mut current, &reset, &mut state, &[action]);
+            }
+            log.finish(&state);
+            let encoded = serde_json::to_string(&log).unwrap();
+            let decoded: ActionLog = serde_json::from_str(&encoded).unwrap();
+            let (replayed, replayed_reset, replayed_state) = replay_action_log(&decoded).unwrap();
+            prop_assert_eq!(replayed, current);
+            prop_assert_eq!(replayed_reset, reset);
+            prop_assert_eq!(replayed_state, state);
+        }
     }
 }

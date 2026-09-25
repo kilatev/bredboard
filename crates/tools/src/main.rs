@@ -5,6 +5,8 @@ use bredboard_core::{
 use schemars::{JsonSchema, SchemaGenerator, generate::SchemaSettings};
 use std::{env, fs, process};
 
+mod native_verify;
+
 fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     match args.next().as_deref() {
@@ -202,9 +204,10 @@ fn run() -> Result<(), String> {
                 Err(e) => return Err(format!("{}: {}", e.code, e.message)),
             }
         }
+        Some("verify-native") => native_verify::run()?,
         _ => {
             return Err(
-                "usage: bredboard-tools <schema|validate|solve|simulate|snapshot|validate-snapshot|replay ...>".into(),
+                "usage: bredboard-tools <schema|validate|solve|simulate|snapshot|validate-snapshot|replay|verify-native ...>".into(),
             );
         }
     }

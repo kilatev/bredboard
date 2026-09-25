@@ -1,6 +1,6 @@
 # T13 — Integrated Linux and core verification
 
-Status: pending
+Status: ready_for_fukit
 
 ## Dependencies
 
@@ -22,11 +22,11 @@ Follow the shared architecture, language, numerical, and persistence contracts i
 
 ## Acceptance criteria
 
-- [ ] Native replay produces deterministic discrete core states for all three fixed circuits.
-- [ ] Native voltage/current traces meet the documented fixture tolerances.
-- [ ] Generated action/snapshot/replay sequences reproduce from logged seeds and retain minimized regression examples.
-- [ ] Representative malformed, floating, contradictory, and nonconvergent cases terminate with expected diagnostics.
-- [ ] The documented verification command fails when a comparison fails and records platform/tool versions.
+- [x] Native replay produces deterministic discrete core states for all three fixed circuits.
+- [x] Native voltage/current traces meet the documented fixture tolerances.
+- [x] Generated action/snapshot/replay sequences reproduce from logged seeds and retain minimized regression examples.
+- [x] Representative malformed, floating, contradictory, and nonconvergent cases terminate with expected diagnostics.
+- [x] The documented verification command fails when a comparison fails and records platform/tool versions.
 
 ## Required verification
 
@@ -57,4 +57,9 @@ An existing jj repository and an unambiguous authorized remote/bookmark are requ
 
 ## Evidence
 
-Not run yet. Record exact commands or manual procedures, results, environment/browser versions when relevant, and limitations here before marking the task ready.
+Implementation and verification evidence on 2026-09-25:
+
+- Added `cargo run -p bredboard-tools --locked -- verify-native`, which executes deterministic native transcripts for the LED, RC, and transistor fixtures, checks the documented LED/transistor ranges and 1% RC tolerance, replays each action log, and rejects malformed, floating, and contradictory fixtures. It prints OS/architecture, Rust version, core model/solver versions, and seed `0xA013_2026` with 32 property cases.
+- Added `generated_action_logs_replay_exactly` with fixed seed `0xA013_2026` and 32 cases. Existing seeded property tests cover the solver, simulation, snapshots, and malformed/nonconvergent diagnostics; no minimized failures were produced. The intentionally mismatched comparison is covered by `intentionally_mismatched_fixture_is_detected` and is not retained as a defect.
+- Baseline checks passed: `cargo fmt --all --check`; `cargo clippy --workspace --all-targets --locked -- -D warnings`; and `cargo test --workspace --locked` (18 app, 38 core, and 2 tools tests passed).
+- Target builds passed: `cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked` and `cargo build -p bredboard-app --target wasm32-unknown-unknown --locked`. Browser interaction was not run; T13 adds no browser behavior and does not claim Linux UI release acceptance.
