@@ -3,7 +3,7 @@
 
 pub type Rgb = [u8; 3];
 
-const fn hex(value: u32) -> Rgb {
+pub(crate) const fn hex(value: u32) -> Rgb {
     [(value >> 16) as u8, (value >> 8) as u8, value as u8]
 }
 
@@ -29,6 +29,32 @@ pub const METAL_DARK: Rgb = hex(0x78828b);
 pub const CAP: Rgb = hex(0x33343f);
 pub const CAP_LIGHT: Rgb = hex(0x5d6073);
 pub const CAP_SPECULAR: Rgb = hex(0x8a8ea3);
+
+/// Electrolytic capacitor can: blue sleeve, silver top vent, minus stripe.
+pub const ELCAP_BODY: Rgb = hex(0x2e5fa3);
+pub const ELCAP_SHADE: Rgb = hex(0x1c3d70);
+pub const ELCAP_HIGHLIGHT: Rgb = hex(0x5b8fd6);
+pub const ELCAP_TOP: Rgb = hex(0xc7ccd2);
+pub const ELCAP_TOP_SHADE: Rgb = hex(0x8f959c);
+pub const ELCAP_STRIPE: Rgb = hex(0xdfe4ea);
+
+/// TO-92 transistor body: black plastic, D-shaped, flat face toward the viewer.
+pub const TO92_BODY: Rgb = hex(0x24252c);
+pub const TO92_SHADE: Rgb = hex(0x15151a);
+pub const TO92_HIGHLIGHT: Rgb = hex(0x494a55);
+
+/// Slide/changeover switch: black case, light slider knob.
+pub const SWITCH_CASE: Rgb = hex(0x2a2b32);
+pub const SWITCH_CASE_SHADE: Rgb = hex(0x18181d);
+pub const SWITCH_TRACK: Rgb = hex(0x111114);
+pub const SWITCH_SLIDER: Rgb = hex(0xd7dbe0);
+pub const SWITCH_SLIDER_SHADE: Rgb = hex(0x9a9ea5);
+
+/// Off-board 5 V supply block: dark case, red + and blue - terminals.
+pub const SOURCE_CASE: Rgb = hex(0x30363a);
+pub const SOURCE_CASE_LIGHT: Rgb = hex(0x4b5359);
+pub const SOURCE_CASE_SHADE: Rgb = hex(0x1c2124);
+pub const SOURCE_LABEL: Rgb = hex(0xd7dee2);
 
 /// Resistor colour code bands: (light, dark) shades.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -115,6 +141,83 @@ pub const RED_LED_ON: LedShades = LedShades {
     glow: Some((hex(0xff8a6a), hex(0xffc0a8))),
 };
 
+/// Design-only LED colour families for T17 Part B (green, yellow, blue).
+/// Not wired to any `ComponentKind`; used only to render the "lit" state
+/// reference in `docs/design/sprites/future/` via `sprites::future`. Off and
+/// dim states follow the same darkening pattern as the red LED once these
+/// colours become a real part.
+#[cfg(test)]
+pub mod future {
+    use super::{LedShades, Rgb, hex};
+
+    const GREEN_RIM: Rgb = hex(0x1e3a24);
+    const GREEN_MID: Rgb = hex(0x3ad84e);
+    const GREEN_LIGHT: Rgb = hex(0x8af0a0);
+    const GREEN_SPECULAR: Rgb = hex(0xf4fff2);
+    const GREEN_GLOW: Rgb = hex(0x6ae06a);
+    const GREEN_GLOW_LIGHT: Rgb = hex(0xa0ffa0);
+    pub const GREEN_LED_LIT: LedShades = LedShades {
+        rim: GREEN_RIM,
+        dark: GREEN_RIM,
+        mid: GREEN_MID,
+        light: GREEN_LIGHT,
+        specular: GREEN_SPECULAR,
+        glow: Some((GREEN_GLOW, GREEN_GLOW_LIGHT)),
+    };
+
+    const YELLOW_RIM: Rgb = hex(0x554512);
+    const YELLOW_MID: Rgb = hex(0xffe042);
+    const YELLOW_LIGHT: Rgb = hex(0xfff0a0);
+    const YELLOW_SPECULAR: Rgb = hex(0xfffbe6);
+    const YELLOW_GLOW: Rgb = hex(0xffce4a);
+    const YELLOW_GLOW_LIGHT: Rgb = hex(0xffe86a);
+    pub const YELLOW_LED_LIT: LedShades = LedShades {
+        rim: YELLOW_RIM,
+        dark: YELLOW_RIM,
+        mid: YELLOW_MID,
+        light: YELLOW_LIGHT,
+        specular: YELLOW_SPECULAR,
+        glow: Some((YELLOW_GLOW, YELLOW_GLOW_LIGHT)),
+    };
+
+    const BLUE_RIM: Rgb = hex(0x152048);
+    const BLUE_MID: Rgb = hex(0x4268ff);
+    const BLUE_LIGHT: Rgb = hex(0x9ab0ff);
+    const BLUE_SPECULAR: Rgb = hex(0xeef3ff);
+    const BLUE_GLOW: Rgb = hex(0x6a8aff);
+    const BLUE_GLOW_LIGHT: Rgb = hex(0x8aa0ff);
+    pub const BLUE_LED_LIT: LedShades = LedShades {
+        rim: BLUE_RIM,
+        dark: BLUE_RIM,
+        mid: BLUE_MID,
+        light: BLUE_LIGHT,
+        specular: BLUE_SPECULAR,
+        glow: Some((BLUE_GLOW, BLUE_GLOW_LIGHT)),
+    };
+
+    /// Legend entries for the colours above; appended to the main legend.
+    pub(super) const LEGEND: &[(Rgb, char)] = &[
+        (GREEN_RIM, '"'),
+        (GREEN_MID, '+'),
+        (GREEN_LIGHT, ','),
+        (GREEN_SPECULAR, '-'),
+        (GREEN_GLOW, '/'),
+        (GREEN_GLOW_LIGHT, ':'),
+        (YELLOW_RIM, ';'),
+        (YELLOW_MID, '<'),
+        (YELLOW_LIGHT, '='),
+        (YELLOW_SPECULAR, '>'),
+        (YELLOW_GLOW, '['),
+        (YELLOW_GLOW_LIGHT, ']'),
+        (BLUE_RIM, '_'),
+        (BLUE_MID, '`'),
+        (BLUE_LIGHT, '{'),
+        (BLUE_SPECULAR, '|'),
+        (BLUE_GLOW, '}'),
+        (BLUE_GLOW_LIGHT, '~'),
+    ];
+}
+
 /// Legend used by golden ASCII files. Symbols must stay unique.
 #[cfg(test)]
 const LEGEND: &[(Rgb, char)] = &[
@@ -172,11 +275,39 @@ const LEGEND: &[(Rgb, char)] = &[
     (hex(0xffffff), 'W'),
     (hex(0xff8a6a), 'y'),
     (hex(0xffc0a8), 'Y'),
+    (ELCAP_BODY, 'A'),
+    (ELCAP_SHADE, 'a'),
+    (ELCAP_HIGHLIGHT, 'H'),
+    (ELCAP_TOP, 'I'),
+    (ELCAP_TOP_SHADE, 'i'),
+    (ELCAP_STRIPE, 'J'),
+    (TO92_BODY, 'N'),
+    (TO92_SHADE, 'O'),
+    (TO92_HIGHLIGHT, 'j'),
+    (SWITCH_CASE, 'X'),
+    (SWITCH_CASE_SHADE, 'k'),
+    (SWITCH_TRACK, 'Z'),
+    (SWITCH_SLIDER, 'Q'),
+    (SWITCH_SLIDER_SHADE, 'q'),
+    (SOURCE_CASE, 'U'),
+    (SOURCE_CASE_LIGHT, 't'),
+    (SOURCE_CASE_SHADE, 'V'),
+    (SOURCE_LABEL, 'T'),
 ];
+
+/// Full legend: the parts above plus the design-only Part B colours.
+#[cfg(test)]
+pub fn legend() -> Vec<(Rgb, char)> {
+    LEGEND
+        .iter()
+        .copied()
+        .chain(future::LEGEND.iter().copied())
+        .collect()
+}
 
 #[cfg(test)]
 pub fn symbol(color: Rgb) -> char {
-    LEGEND
+    legend()
         .iter()
         .find(|(c, _)| *c == color)
         .map_or('?', |(_, s)| *s)
@@ -189,10 +320,11 @@ mod tests {
 
     #[test]
     fn legend_symbols_and_colours_are_unique() {
-        let symbols: BTreeSet<_> = LEGEND.iter().map(|(_, s)| *s).collect();
-        let colours: BTreeSet<_> = LEGEND.iter().map(|(c, _)| *c).collect();
-        assert_eq!(symbols.len(), LEGEND.len());
-        assert_eq!(colours.len(), LEGEND.len());
+        let legend = legend();
+        let symbols: BTreeSet<_> = legend.iter().map(|(_, s)| *s).collect();
+        let colours: BTreeSet<_> = legend.iter().map(|(c, _)| *c).collect();
+        assert_eq!(symbols.len(), legend.len());
+        assert_eq!(colours.len(), legend.len());
         assert!(!symbols.contains(&'.') && !symbols.contains(&'?'));
     }
 }

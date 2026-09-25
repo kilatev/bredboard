@@ -7,9 +7,15 @@
 
 mod button;
 mod canvas;
+mod capacitor;
+#[cfg(test)]
+mod future;
 mod led;
 pub mod palette;
 mod resistor;
+mod source;
+mod switch;
+mod transistor;
 
 use bevy::math::{IVec2, Vec2};
 use bredboard_core::{Component, ComponentKind, ControlState, PinId};
@@ -53,10 +59,10 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
         ComponentKind::Resistor => Some(&resistor::Resistor),
         ComponentKind::Led => Some(&led::Led),
         ComponentKind::MomentaryButton => Some(&button::Button),
-        ComponentKind::DcVoltageSource
-        | ComponentKind::Capacitor
-        | ComponentKind::NpnTransistor
-        | ComponentKind::ChangeoverSwitch => None,
+        ComponentKind::Capacitor => Some(&capacitor::Capacitor),
+        ComponentKind::NpnTransistor => Some(&transistor::Transistor),
+        ComponentKind::ChangeoverSwitch => Some(&switch::Switch),
+        ComponentKind::DcVoltageSource => Some(&source::Source),
     }
 }
 
@@ -188,17 +194,67 @@ mod tests {
             &[("a", "E1"), ("b", "F1")],
             &[],
         );
+        let capacitor = component(
+            ComponentKind::Capacitor,
+            &[("positive", "A1"), ("negative", "A3")],
+            &[("capacitance", 1e-4)],
+        );
+        let transistor = component(
+            ComponentKind::NpnTransistor,
+            &[("base", "F12"), ("collector", "F13"), ("emitter", "F14")],
+            &[],
+        );
+        let switch = component(
+            ComponentKind::ChangeoverSwitch,
+            &[
+                ("normally_closed", "F8"),
+                ("common", "F9"),
+                ("normally_open", "F10"),
+            ],
+            &[],
+        );
+        let source = component(
+            ComponentKind::DcVoltageSource,
+            &[("positive", "TP+:1"), ("negative", "TP-:1")],
+            &[("voltage", 5.0)],
+        );
         golden("resistor-330", &resistor::Resistor.body(&resistor, 0));
         for (state, name) in ["off", "dim", "on"].iter().enumerate() {
             golden(&format!("led-red-{name}"), &led::Led.body(&led, state));
         }
         golden("button-released", &button::Button.body(&button, 0));
         golden("button-pressed", &button::Button.body(&button, 1));
+        golden("capacitor", &capacitor::Capacitor.body(&capacitor, 0));
+        golden(
+            "npn-transistor",
+            &transistor::Transistor.body(&transistor, 0),
+        );
+        golden("changeover-switch-nc", &switch::Switch.body(&switch, 0));
+        golden("changeover-switch-no", &switch::Switch.body(&switch, 1));
+        golden("dc-voltage-source", &source::Source.body(&source, 0));
+    }
+
+    /// T17 Part B: design-only references for future parts. None of these is
+    /// a `PartArt` or a `ComponentKind`; `future::*` are plain generator
+    /// functions read for review, not simulated.
+    #[test]
+    fn future_part_designs_match_references() {
+        golden("future-rectifier-diode", &future::rectifier_diode());
+        golden("future-signal-diode", &future::signal_diode());
+        golden("future-ceramic-capacitor", &future::ceramic_capacitor());
+        golden(
+            "future-trimmer-potentiometer",
+            &future::trimmer_potentiometer(),
+        );
+        golden("future-photoresistor", &future::photoresistor());
+        golden("future-led-green-lit", &future::green_led_lit());
+        golden("future-led-yellow-lit", &future::yellow_led_lit());
+        golden("future-led-blue-lit", &future::blue_led_lit());
     }
 
     #[test]
     fn every_state_of_a_part_has_the_same_size() {
-        let parts: [(&dyn PartArt, Component); 3] = [
+        let parts: [(&dyn PartArt, Component); 6] = [
             (
                 &resistor::Resistor,
                 component(
@@ -220,6 +276,34 @@ mod tests {
                 component(
                     ComponentKind::MomentaryButton,
                     &[("a", "E1"), ("b", "F1")],
+                    &[],
+                ),
+            ),
+            (
+                &capacitor::Capacitor,
+                component(
+                    ComponentKind::Capacitor,
+                    &[("positive", "A1"), ("negative", "A3")],
+                    &[],
+                ),
+            ),
+            (
+                &transistor::Transistor,
+                component(
+                    ComponentKind::NpnTransistor,
+                    &[("base", "F12"), ("collector", "F13"), ("emitter", "F14")],
+                    &[],
+                ),
+            ),
+            (
+                &switch::Switch,
+                component(
+                    ComponentKind::ChangeoverSwitch,
+                    &[
+                        ("normally_closed", "F8"),
+                        ("common", "F9"),
+                        ("normally_open", "F10"),
+                    ],
                     &[],
                 ),
             ),
@@ -295,6 +379,45 @@ mod tests {
                 _ => (&button::Button, component(ComponentKind::MomentaryButton, &[("a", "E1"), ("b", "F1")], &[])),
             };
             assert_leads_reach_holes(art, &c, &[a, b])?;
+        }
+
+        #[test]
+        fn three_pin_placements_cover_every_pin_hole(
+            ax in -8i32..8, ay in -8i32..8, dx in -6i32..=6, dy in -6i32..=6,
+            mx in -4i32..=4, my in -4i32..=4, kind in 0usize..2,
+        ) {
+            prop_assume!((dx, dy) != (0, 0));
+            let a = Vec2::new(ax as f32, ay as f32) * 16.0;
+            let b = a + Vec2::new(dx as f32, dy as f32) * 16.0;
+            let m = a + Vec2::new(mx as f32, my as f32) * 16.0;
+            prop_assume!(m != a && m != b);
+            let (art, c, pins): (&dyn PartArt, _, [Vec2; 3]) = match kind {
+                0 => (
+                    &transistor::Transistor,
+                    component(
+                        ComponentKind::NpnTransistor,
+                        &[("base", "F12"), ("collector", "F13"), ("emitter", "F14")],
+                        &[],
+                    ),
+                    // BTreeMap key order: base, collector, emitter.
+                    [m, b, a],
+                ),
+                _ => (
+                    &switch::Switch,
+                    component(
+                        ComponentKind::ChangeoverSwitch,
+                        &[
+                            ("normally_closed", "F8"),
+                            ("common", "F9"),
+                            ("normally_open", "F10"),
+                        ],
+                        &[],
+                    ),
+                    // BTreeMap key order: common, normally_closed, normally_open.
+                    [m, a, b],
+                ),
+            };
+            assert_leads_reach_holes(art, &c, &pins)?;
         }
     }
 }

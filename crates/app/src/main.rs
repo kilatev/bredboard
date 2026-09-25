@@ -413,10 +413,12 @@ fn spawn_board(commands: &mut Commands, images: &mut Assets<Image>, bench: &Benc
         }
     }
     for (index, component) in bench.project.components.iter().enumerate() {
-        match sprites::art_for(component.kind) {
-            Some(art) => spawn_part(commands, images, component, art, index),
-            None => spawn_component(commands, component),
+        if component.kind == ComponentKind::DcVoltageSource {
+            spawn_source(commands, images, component);
+            continue;
         }
+        let art = sprites::art_for(component.kind).expect("every component kind has sprite art");
+        spawn_part(commands, images, component, art, index);
     }
 }
 
@@ -468,79 +470,40 @@ fn spawn_part(
     ));
 }
 
-/// Plain fallback for kinds without pixel art yet.
-fn spawn_component(commands: &mut Commands, component: &Component) {
-    if component.kind == ComponentKind::DcVoltageSource {
-        let center = Vec2::new(
-            (column_x("TP+").unwrap() + column_x("TP-").unwrap()) / 2.0,
-            322.0,
-        );
-        for (pin, hole) in &component.pins {
-            let start = center + Vec2::new(if pin.0 == "positive" { -10.0 } else { 10.0 }, -14.0);
-            line(
-                commands,
-                start,
-                hole_position(&hole.0).unwrap(),
-                if pin.0 == "positive" {
-                    Color::srgb(0.9, 0.20, 0.16)
-                } else {
-                    Color::srgb(0.20, 0.35, 0.85)
-                },
-                3.0,
-                1.0,
-            );
-        }
-        rect(
-            commands,
-            center,
-            Vec2::new(70.0, 32.0),
-            Color::srgb(0.21, 0.27, 0.30),
-            1.1,
-        );
-        label(commands, "V1  5 V", center, 13.0, Color::WHITE);
-        return;
-    }
-    let points: Vec<Vec2> = component
-        .pins
-        .values()
-        .map(|hole| hole_position(&hole.0).unwrap())
-        .collect();
-    let center = points.iter().copied().sum::<Vec2>() / points.len() as f32;
-    let color = match component.kind {
-        ComponentKind::Capacitor => Color::srgb(0.35, 0.46, 0.56),
-        ComponentKind::NpnTransistor => Color::srgb(0.11, 0.16, 0.19),
-        ComponentKind::ChangeoverSwitch => Color::srgb(0.35, 0.36, 0.40),
-        _ => Color::srgb(0.36, 0.42, 0.42),
-    };
-    for point in &points {
+/// Off-board 5 V supply: fixed position above the board, colored supply
+/// wires to each pin's hole, and a pixel-art body sprite (see `sprites::source`).
+fn spawn_source(commands: &mut Commands, images: &mut Assets<Image>, component: &Component) {
+    let center = Vec2::new(
+        (column_x("TP+").unwrap() + column_x("TP-").unwrap()) / 2.0,
+        322.0,
+    );
+    for (pin, hole) in &component.pins {
+        let start = center + Vec2::new(if pin.0 == "positive" { -10.0 } else { 10.0 }, -14.0);
         line(
             commands,
-            *point,
-            center,
-            Color::srgb(0.50, 0.54, 0.51),
+            start,
+            hole_position(&hole.0).unwrap(),
+            if pin.0 == "positive" {
+                Color::srgb(0.9, 0.20, 0.16)
+            } else {
+                Color::srgb(0.20, 0.35, 0.85)
+            },
             3.0,
             1.0,
         );
-        rect(
-            commands,
-            *point,
-            Vec2::splat(9.0),
-            Color::srgb(0.85, 0.87, 0.79),
-            1.1,
-        );
     }
-    rect(commands, center, Vec2::splat(27.0), color, 1.2);
-    if component.kind == ComponentKind::Capacitor {
-        for dy in [-6.0, 6.0] {
-            rect(
-                commands,
-                center + Vec2::new(0.0, dy),
-                Vec2::new(27.0, 3.0),
-                Color::srgb(0.78, 0.83, 0.83),
-                1.3,
-            );
-        }
-    }
+    let art = sprites::art_for(component.kind).expect("dc_voltage_source has sprite art");
+    let body = art.body(component, 0);
+    let size = Vec2::new(body.width() as f32, body.height() as f32) * sprites::PIXEL;
+    commands.spawn((
+        Sprite {
+            image: images.add(body.to_image()),
+            custom_size: Some(size),
+            ..default()
+        },
+        Transform::from_translation(center.extend(1.1)),
+        SceneEntity,
+    ));
 }
 
 fn component_summary(component: &Component) -> String {
