@@ -1,6 +1,6 @@
 # Post-MVP roadmap
 
-These phases are not acceptance requirements for any MVP task. Before implementing each phase, prepare a dedicated specification and commit-sized task cards using the same Goal and verification conventions as the MVP.
+The MVP is complete at T14. These phases are post-MVP work and are not acceptance requirements for the released MVP. Before implementing each phase, prepare a dedicated specification and commit-sized task cards using the same Goal and verification conventions as the MVP. Do not reopen MVP scope while executing them.
 
 ## Browser deployment verification
 
@@ -23,5 +23,7 @@ Add signal sources, RC filters, operational amplifiers, and oscilloscope functio
 Support gates, flip-flops, counters, and shift registers without firmware or user programming. Design event scheduling and analog/digital time coordination explicitly. Do not pre-implement a mixed-signal solver in the MVP.
 
 ## Optional presentation work
+
+[T18 — Readable automatic breadboard layout](../tasks/T18-readable-layout.md) adds a deterministic readability-focused placement heuristic for existing projects. It changes placements while preserving the same board topology; it does not add an editor or a schematic view.
 
 Isometric rendering may become another projection of the same board model. Additional localizations may reuse separated English UI and lesson strings. Neither is a prerequisite for the phases above.

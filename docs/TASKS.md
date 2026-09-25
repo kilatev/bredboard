@@ -4,7 +4,11 @@ Each task below is one coherent, independently verifiable change. Execute them i
 
 No Codex Goal is currently active merely because these files exist. Copy a card's Goal only when requesting that task. Do not use a single unbounded Goal to implement the entire roadmap.
 
-## MVP tasks
+## MVP closure
+
+**MVP complete.** The MVP release boundary is T14. Its acceptance criteria and all accepted prerequisite cards are complete. T15–T17 are already accepted follow-up refinements; T18 and every later card are post-MVP work. Do not revisit MVP planning or add MVP requirements while executing post-MVP tasks unless the owner explicitly requests a bug fix.
+
+## Task history through the MVP release
 
 | Task | Outcome | Depends on |
 | --- | --- | --- |
@@ -23,6 +27,12 @@ No Codex Goal is currently active merely because these files exist. Copy a card'
 | [T17](tasks/T17-more-component-sprites.md) | Sprites for remaining kinds and designs for future simple parts | T16 |
 | [T13](tasks/T13-cross-platform-verification.md) | Integrated Linux and core verification | T15 |
 | [T14](tasks/T14-mvp-release.md) | Verified Linux MVP release artifact | T13 |
+
+## Post-MVP presentation tasks
+
+| Task | Outcome | Depends on |
+| --- | --- | --- |
+| [T18](tasks/T18-readable-layout.md) | Deterministic automatic breadboard layout optimized for readability | T14, T17 |
 
 The former [T10 file workflow](tasks/T10-file-workflow.md), [T11 LED lesson](tasks/T11-led-lesson.md), and [T12 remaining lessons](tasks/T12-remaining-lessons.md) are deferred to the [post-MVP roadmap](roadmap/POST-MVP.md). Their IDs remain reserved to keep historical references unambiguous.
 

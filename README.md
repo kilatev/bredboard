@@ -2,9 +2,9 @@
 
 An educational 2D breadboard simulator in Rust and Bevy, with a standalone electrical simulation core.
 
-**Status: three-circuit Linux app implemented; integrated verification and release tasks remain.** The shared Bevy app offers LED, RC, and transistor benches. The owner has checked their menu and controls in Linux.
+**Status: MVP complete.** T00–T14 and their accepted dependencies are complete, including the three-circuit Linux app, integrated verification, and the verified Linux release artifact. Work after this boundary is post-MVP and must not reopen MVP scope.
 
-One Bevy app contains the menu, board, controls, and readouts for Linux and WASM. Linux is the MVP interaction target. The same app compiles to WASM, but browser runtime testing is deferred. The MVP has three fixed circuits and no user-facing file workflow or assembly editor.
+One Bevy app contains the menu, board, controls, and readouts for Linux and WASM. Linux is the MVP interaction target. The same app compiles to WASM, but browser runtime testing is deferred. The MVP has three fixed circuits and no user-facing file workflow or assembly editor. The board remains fixed in the MVP; readable automatic placement is tracked as post-MVP T18.
 
 ## Project documents
 

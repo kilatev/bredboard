@@ -81,6 +81,10 @@ The project uses the owner-selected [MIT License](../LICENSE) from the initial G
 
 Execute [the task sequence](TASKS.md), one bounded Goal and coherent change at a time. The current preparation task only creates these documents. Repository initialization, remote selection, implementation, commit, and publication are separate actions.
 
+### MVP closure
+
+The MVP boundary is closed at T14. T00–T14 and the accepted prerequisite cards have satisfied their documented acceptance criteria; no post-MVP task is required to complete or redefine the MVP. Future work starts from the [post-MVP roadmap](roadmap/POST-MVP.md) and must not reopen MVP scope unless the owner explicitly requests an MVP bug fix.
+
 See [the post-MVP roadmap](roadmap/POST-MVP.md) for free assembly, AI-authored lessons, expanded analog simulation, and a separate digital-logic plan.
 
 ## Design references
