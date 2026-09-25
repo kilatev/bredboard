@@ -1,6 +1,6 @@
 # T14 — Verified MVP release artifacts
 
-Status: pending
+Status: ready_for_fukit
 
 ## Dependencies
 
@@ -58,4 +58,4 @@ An existing jj repository and an unambiguous authorized remote/bookmark are requ
 
 ## Evidence
 
-Not run yet. Record exact commands or manual procedures, results, environment/browser versions when relevant, and limitations here before marking the task ready.
+Owner-reported verification on 2026-09-25: the T14 release and Linux acceptance checks were tested manually and accepted. Detailed command, artifact, and environment evidence was not recorded in this card.
