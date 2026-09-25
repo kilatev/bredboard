@@ -5,7 +5,8 @@ The workspace pins Rust 1.95.0 in `rust-toolchain.toml`, pins Bevy 0.19.1 in
 in `Cargo.lock`. The only external direct application dependency is
 [Bevy 0.19.1](https://crates.io/crates/bevy/0.19.1), from crates.io, licensed
 MIT OR Apache-2.0. The core uses Serde for project serialization and Schemars
-for schema generation; Proptest and jsonschema are test-only dependencies. The
+for schema generation; Proptest and jsonschema are test-only dependencies.
+The app also uses Proptest as a test-only dependency for sprite property tests. The
 tools crate uses Schemars, serde_json, and jsonschema for schema generation and
 validation.
 
@@ -32,3 +33,8 @@ are original project files under the repository MIT License. The web packaging
 uses [wasm-bindgen CLI 0.2.128](https://crates.io/crates/wasm-bindgen-cli/0.2.128)
 as a development tool, matching the `wasm-bindgen` library in Cargo.lock;
 the CLI is MIT OR Apache-2.0 licensed.
+
+The component pixel art (`crates/app/src/sprites/`) is drawn in code and was
+created for this project; it is covered by the repository MIT License. No
+image files, fonts, or other third-party assets were added for it. The golden
+references in `docs/design/sprites/` are generated from that code.

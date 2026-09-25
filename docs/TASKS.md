@@ -19,6 +19,7 @@ No Codex Goal is currently active merely because these files exist. Copy a card'
 | [T08](tasks/T08-npn-model.md) | Calculated transistor switch circuit | T07 |
 | [T09](tasks/T09-board-instruments.md) | Three-circuit menu and hole-accurate board | T08 |
 | [T15](tasks/T15-capacitor-npn-ranges.md) | Breadboard-scale capacitor and transistor ranges | T09 |
+| [T16](tasks/T16-component-sprites.md) | 8-bit resistor, LED, and button sprites | T15 |
 | [T13](tasks/T13-cross-platform-verification.md) | Integrated Linux and core verification | T15 |
 | [T14](tasks/T14-mvp-release.md) | Verified Linux MVP release artifact | T13 |
 

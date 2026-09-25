@@ -1,3 +1,4 @@
+mod sprites;
 mod text;
 
 use bevy::camera::ScalingMode;
@@ -119,8 +120,14 @@ enum Readout {
     Control,
     Hover,
 }
+/// A component drawn with pixel art; `states` holds one image per visual state.
 #[derive(Component)]
-struct LedVisual(ComponentId);
+struct PartVisual {
+    id: ComponentId,
+    kind: ComponentKind,
+    states: Vec<Handle<Image>>,
+    shown: usize,
+}
 
 fn main() {
     let mut app = App::new();
@@ -254,67 +261,92 @@ fn line(commands: &mut Commands, from: Vec2, to: Vec2, color: Color, width: f32,
     });
 }
 
-fn hole_position(id: &str) -> Option<Vec2> {
-    if let Some((rail, row)) = id.split_once(':') {
-        let row: u32 = row.parse().ok()?;
-        if !(1..=30).contains(&row) {
-            return None;
+/// Square 16-unit hole pitch (8 art pixels at 2 units each) keeps sprites pixel-exact.
+const PITCH: f32 = 16.0;
+const BOARD_CENTER_X: f32 = -385.0;
+const TOP_ROW_Y: f32 = 255.0;
+
+/// Horizontal position of a board column (A–J) or rail (TP+/TP-/BP+/BP-).
+/// Strips and rails are separated by two-pitch gaps, as on a real breadboard.
+fn column_x(column: &str) -> Option<f32> {
+    let pitches = match column {
+        "TP+" => -8.0,
+        "TP-" => -7.0,
+        "BP+" => 7.0,
+        "BP-" => 8.0,
+        _ => {
+            let mut chars = column.chars();
+            let letter = chars.next()?;
+            if chars.next().is_some() {
+                return None;
+            }
+            match letter {
+                'A'..='E' => -5.0 + (letter as u8 - b'A') as f32,
+                'F'..='J' => 1.0 + (letter as u8 - b'F') as f32,
+                _ => return None,
+            }
         }
-        let x = match rail {
-            "TP+" => -545.0,
-            "TP-" => -525.0,
-            "BP+" => -245.0,
-            "BP-" => -225.0,
-            _ => return None,
-        };
-        return Some(Vec2::new(x, 255.0 - (row - 1) as f32 * 16.0));
-    }
-    let mut chars = id.chars();
-    let col = chars.next()?;
-    let row: u32 = chars.as_str().parse().ok()?;
-    if !(1..=30).contains(&row) {
-        return None;
-    }
-    let x = match col {
-        'A'..='E' => -485.0 + (col as u8 - b'A') as f32 * 20.0,
-        'F'..='J' => -365.0 + (col as u8 - b'F') as f32 * 20.0,
-        _ => return None,
     };
-    Some(Vec2::new(x, 255.0 - (row - 1) as f32 * 16.0))
+    Some(BOARD_CENTER_X + pitches * PITCH)
 }
 
-fn spawn_board(commands: &mut Commands, bench: &Bench) {
+fn row_y(row: u32) -> f32 {
+    TOP_ROW_Y - (row - 1) as f32 * PITCH
+}
+
+fn hole_position(id: &str) -> Option<Vec2> {
+    let (column, row) = match id.split_once(':') {
+        Some((rail, row)) => (rail, row),
+        None => id.split_at_checked(1)?,
+    };
+    let row: u32 = row.parse().ok()?;
+    if !(1..=30).contains(&row) || id.contains(':') != (column.len() == 3) {
+        return None;
+    }
+    Some(Vec2::new(column_x(column)?, row_y(row)))
+}
+
+fn srgb(color: sprites::palette::Rgb) -> Color {
+    Color::srgb_u8(color[0], color[1], color[2])
+}
+
+fn spawn_board(commands: &mut Commands, images: &mut Assets<Image>, bench: &Bench) {
+    use sprites::palette;
+    let width = 17.0 * PITCH + 34.0;
     rect(
         commands,
-        Vec2::new(-385.0, 20.0),
-        Vec2::new(370.0, 525.0),
+        Vec2::new(BOARD_CENTER_X, 20.0),
+        Vec2::new(width + 18.0, 525.0),
         Color::srgb(0.16, 0.31, 0.28),
         0.0,
     );
     rect(
         commands,
-        Vec2::new(-385.0, 20.0),
-        Vec2::new(352.0, 509.0),
-        Color::srgb(0.88, 0.82, 0.66),
+        Vec2::new(BOARD_CENTER_X, 20.0),
+        Vec2::new(width, 509.0),
+        srgb(palette::BOARD),
         0.1,
     );
     rect(
         commands,
-        Vec2::new(-385.0, 20.0),
-        Vec2::new(20.0, 480.0),
-        Color::srgb(0.66, 0.61, 0.50),
+        Vec2::new(BOARD_CENTER_X, 20.0),
+        Vec2::new(12.0, 480.0),
+        srgb(palette::BOARD_GROOVE),
         0.2,
     );
-    for (rail, x, color) in [
-        ("TP+", -545.0, Color::srgb(0.83, 0.24, 0.20)),
-        ("TP-", -525.0, Color::srgb(0.20, 0.35, 0.78)),
-        ("BP+", -245.0, Color::srgb(0.83, 0.24, 0.20)),
-        ("BP-", -225.0, Color::srgb(0.20, 0.35, 0.78)),
-    ] {
+    for rail in ["TP+", "TP-", "BP+", "BP-"] {
+        let x = column_x(rail).unwrap();
+        let color = srgb(if rail.ends_with('+') {
+            palette::RAIL_RED
+        } else {
+            palette::RAIL_BLUE
+        });
+        // Marking line on the far side of each rail from its partner rail.
+        let side = if rail.ends_with('+') { -1.0 } else { 1.0 };
         rect(
             commands,
-            Vec2::new(x, 20.0),
-            Vec2::new(13.0, 480.0),
+            Vec2::new(x + side * 7.0, 20.0),
+            Vec2::new(2.0, 480.0),
             color,
             0.22,
         );
@@ -326,48 +358,34 @@ fn spawn_board(commands: &mut Commands, bench: &Bench) {
             color,
         );
     }
-    for (index, col) in ('A'..='J').enumerate() {
-        let x = if index < 5 {
-            -485.0 + index as f32 * 20.0
-        } else {
-            -365.0 + (index - 5) as f32 * 20.0
-        };
+    for col in 'A'..='J' {
         label(
             commands,
             col.to_string(),
-            Vec2::new(x, 278.0),
+            Vec2::new(column_x(&col.to_string()).unwrap(), 278.0),
             12.0,
-            Color::srgb(0.82, 0.89, 0.84),
+            Color::srgb(0.25, 0.26, 0.22),
         );
     }
     for row in 1..=30 {
-        let y = 255.0 - (row - 1) as f32 * 16.0;
         if row == 1 || row % 5 == 0 {
             label(
                 commands,
                 row.to_string(),
-                Vec2::new(-388.0, y),
+                Vec2::new(BOARD_CENTER_X - 1.0, row_y(row)),
                 11.0,
                 Color::srgb(0.25, 0.26, 0.22),
             );
         }
-        for col in 'A'..='J' {
-            let id = format!("{col}{row}");
+        let holes = ('A'..='J')
+            .map(|col| format!("{col}{row}"))
+            .chain(["TP+", "TP-", "BP+", "BP-"].map(|rail| format!("{rail}:{row}")));
+        for id in holes {
             rect(
                 commands,
                 hole_position(&id).unwrap(),
-                Vec2::splat(5.0),
-                Color::srgb(0.22, 0.25, 0.23),
-                0.4,
-            );
-        }
-        for rail in ["TP+", "TP-", "BP+", "BP-"] {
-            let id = format!("{rail}:{row}");
-            rect(
-                commands,
-                hole_position(&id).unwrap(),
-                Vec2::splat(5.0),
-                Color::srgb(0.13, 0.18, 0.19),
+                Vec2::splat(sprites::PIXEL * 2.0),
+                srgb(palette::HOLE),
                 0.4,
             );
         }
@@ -375,25 +393,88 @@ fn spawn_board(commands: &mut Commands, bench: &Bench) {
     for wire in &bench.project.wires {
         let a = hole_position(&wire.from.0).unwrap();
         let b = hole_position(&wire.to.0).unwrap();
-        line(commands, a, b, Color::srgb(0.13, 0.52, 0.57), 4.0, 0.7);
+        line(commands, a, b, srgb(palette::OUTLINE), 8.0, 0.7);
+        line(commands, a, b, srgb(palette::WIRE), 4.0, 0.75);
         for point in [a, b] {
             rect(
                 commands,
                 point,
                 Vec2::splat(8.0),
-                Color::srgb(0.07, 0.36, 0.42),
+                srgb(palette::OUTLINE),
                 0.9,
+            );
+            rect(
+                commands,
+                point,
+                Vec2::splat(4.0),
+                srgb(palette::WIRE_SHADE),
+                0.95,
             );
         }
     }
-    for component in &bench.project.components {
-        spawn_component(commands, component);
+    for (index, component) in bench.project.components.iter().enumerate() {
+        match sprites::art_for(component.kind) {
+            Some(art) => spawn_part(commands, images, component, art, index),
+            None => spawn_component(commands, component),
+        }
     }
 }
 
+/// Spawns a pixel-art part with one pre-rendered image per visual state.
+fn spawn_part(
+    commands: &mut Commands,
+    images: &mut Assets<Image>,
+    component: &Component,
+    art: &dyn sprites::PartArt,
+    index: usize,
+) {
+    let pins: Vec<Vec2> = component
+        .pins
+        .values()
+        .map(|hole| hole_position(&hole.0).unwrap())
+        .collect();
+    let placed: Vec<_> = (0..art.state_count())
+        .map(|state| sprites::place(art, component, &pins, state))
+        .collect();
+    let size = Vec2::new(
+        placed[0].canvas.width() as f32,
+        placed[0].canvas.height() as f32,
+    ) * sprites::PIXEL;
+    let center = pins[0] + placed[0].center_offset;
+    let states: Vec<_> = placed
+        .iter()
+        .map(|p| images.add(p.canvas.to_image()))
+        .collect();
+    // LEDs sit on top so their halo is never hidden; the index keeps order stable.
+    let layer = if component.kind == ComponentKind::Led {
+        1.4
+    } else {
+        1.2
+    };
+    commands.spawn((
+        Sprite {
+            image: states[0].clone(),
+            custom_size: Some(size),
+            ..default()
+        },
+        Transform::from_translation(center.extend(layer + index as f32 * 0.001)),
+        SceneEntity,
+        PartVisual {
+            id: component.id.clone(),
+            kind: component.kind,
+            states,
+            shown: 0,
+        },
+    ));
+}
+
+/// Plain fallback for kinds without pixel art yet.
 fn spawn_component(commands: &mut Commands, component: &Component) {
     if component.kind == ComponentKind::DcVoltageSource {
-        let center = Vec2::new(-535.0, 322.0);
+        let center = Vec2::new(
+            (column_x("TP+").unwrap() + column_x("TP-").unwrap()) / 2.0,
+            322.0,
+        );
         for (pin, hole) in &component.pins {
             let start = center + Vec2::new(if pin.0 == "positive" { -10.0 } else { 10.0 }, -14.0);
             line(
@@ -426,13 +507,10 @@ fn spawn_component(commands: &mut Commands, component: &Component) {
         .collect();
     let center = points.iter().copied().sum::<Vec2>() / points.len() as f32;
     let color = match component.kind {
-        ComponentKind::Resistor => Color::srgb(0.66, 0.38, 0.14),
-        ComponentKind::Led => Color::srgb(0.38, 0.10, 0.11),
         ComponentKind::Capacitor => Color::srgb(0.35, 0.46, 0.56),
         ComponentKind::NpnTransistor => Color::srgb(0.11, 0.16, 0.19),
-        ComponentKind::MomentaryButton => Color::srgb(0.36, 0.42, 0.42),
         ComponentKind::ChangeoverSwitch => Color::srgb(0.35, 0.36, 0.40),
-        ComponentKind::DcVoltageSource => unreachable!(),
+        _ => Color::srgb(0.36, 0.42, 0.42),
     };
     for point in &points {
         line(
@@ -451,40 +529,7 @@ fn spawn_component(commands: &mut Commands, component: &Component) {
             1.1,
         );
     }
-    let size = match component.kind {
-        ComponentKind::Resistor => Vec2::new(22.0, 38.0),
-        ComponentKind::Led => Vec2::new(30.0, 18.0),
-        _ => Vec2::splat(27.0),
-    };
-    let body = rect(commands, center, size, color, 1.2);
-    if component.kind == ComponentKind::Led {
-        commands
-            .entity(body)
-            .insert(LedVisual(component.id.clone()));
-        for dy in [-10.0, 10.0] {
-            let edge = rect(
-                commands,
-                center + Vec2::new(0.0, dy),
-                Vec2::new(22.0, 8.0),
-                color,
-                1.2,
-            );
-            commands
-                .entity(edge)
-                .insert(LedVisual(component.id.clone()));
-        }
-    }
-    if component.kind == ComponentKind::Resistor {
-        for dy in [-10.0, 9.0] {
-            rect(
-                commands,
-                center + Vec2::new(0.0, dy),
-                Vec2::new(22.0, 4.0),
-                Color::srgb(0.30, 0.16, 0.07),
-                1.3,
-            );
-        }
-    }
+    rect(commands, center, Vec2::splat(27.0), color, 1.2);
     if component.kind == ComponentKind::Capacitor {
         for dy in [-6.0, 6.0] {
             rect(
@@ -539,7 +584,7 @@ fn component_summary(component: &Component) -> String {
     }
 }
 
-fn spawn_bench(commands: &mut Commands, bench: &Bench) {
+fn spawn_bench(commands: &mut Commands, images: &mut Assets<Image>, bench: &Bench) {
     rect(
         commands,
         Vec2::ZERO,
@@ -547,7 +592,7 @@ fn spawn_bench(commands: &mut Commands, bench: &Bench) {
         Color::srgb(0.10, 0.14, 0.16),
         -1.0,
     );
-    spawn_board(commands, bench);
+    spawn_board(commands, images, bench);
     label(
         commands,
         bench.circuit.label(),
@@ -665,6 +710,7 @@ fn handle_mouse(
     scene: Query<Entity, With<SceneEntity>>,
     mut commands: Commands,
     mut session: ResMut<Session>,
+    mut images: ResMut<Assets<Image>>,
 ) {
     if !mouse.just_pressed(MouseButton::Left) {
         return;
@@ -686,7 +732,7 @@ fn handle_mouse(
         Some(Control::Select(circuit)) => {
             clear_scene(&mut commands, &scene);
             let bench = Bench::new(circuit);
-            spawn_bench(&mut commands, &bench);
+            spawn_bench(&mut commands, &mut images, &bench);
             session.bench = Some(bench);
         }
         Some(Control::Back) => {
@@ -748,7 +794,7 @@ fn update_view(
     session: Res<Session>,
     windows: Query<&Window>,
     mut labels: Query<(&Readout, &mut Text2d, &mut TextColor)>,
-    mut leds: Query<(&LedVisual, &mut Sprite)>,
+    mut parts: Query<(&mut PartVisual, &mut Sprite)>,
 ) {
     let Some(bench) = &session.bench else {
         return;
@@ -847,17 +893,27 @@ fn update_view(
             Readout::Hover => hover.clone(),
         };
     }
-    for (led, mut sprite) in &mut leds {
-        let current = bench
-            .simulation
-            .last_valid
-            .as_ref()
-            .filter(|_| !bench.simulation.stale)
-            .and_then(|r| r.led_currents.get(&led.0))
-            .copied()
-            .unwrap_or(0.0);
-        let glow = (current / 0.01).clamp(0.0, 1.0) as f32;
-        sprite.color = Color::srgb(0.35 + 0.65 * glow, 0.08 + 0.45 * glow, 0.07 + 0.10 * glow);
+    let readings = bench
+        .simulation
+        .last_valid
+        .as_ref()
+        .filter(|_| !bench.simulation.stale);
+    for (mut part, mut sprite) in &mut parts {
+        let Some(art) = sprites::art_for(part.kind) else {
+            continue;
+        };
+        let context = sprites::PartContext {
+            led_current: readings
+                .and_then(|r| r.led_currents.get(&part.id))
+                .copied()
+                .unwrap_or(0.0),
+            control: bench.simulation.controls.get(&part.id).copied(),
+        };
+        let state = art.state(&context).min(part.states.len() - 1);
+        if state != part.shown {
+            sprite.image = part.states[state].clone();
+            part.shown = state;
+        }
     }
 }
 
@@ -968,6 +1024,7 @@ mod tests {
         let mut app = App::new();
         app.insert_resource(Session::default())
             .insert_resource(ButtonInput::<MouseButton>::default())
+            .init_resource::<Assets<Image>>()
             .add_systems(Startup, setup)
             .add_systems(Update, handle_mouse);
         let window = app
@@ -1073,6 +1130,61 @@ mod tests {
             values
                 .iter()
                 .any(|(_, value)| value.contains("CALCULATION FAILED"))
+        );
+    }
+
+    #[test]
+    fn part_sprites_follow_core_led_current_and_button_state() {
+        let mut app = App::new();
+        app.insert_resource(Session {
+            bench: Some(Bench::new(Circuit::Led)),
+        })
+        .init_resource::<Assets<Image>>()
+        .add_systems(Update, update_view);
+        app.world_mut().spawn(Window::default());
+        app.world_mut()
+            .resource_scope(|world, mut images: Mut<Assets<Image>>| {
+                let session = world.resource::<Session>();
+                let bench = session.bench.as_ref().unwrap();
+                let mut queue = bevy::ecs::world::CommandQueue::default();
+                let mut commands = Commands::new(&mut queue, world);
+                spawn_bench(&mut commands, &mut images, bench);
+                queue.apply(world);
+            });
+        let shown = |app: &mut App, id: &str| {
+            let mut parts = app.world_mut().query::<&PartVisual>();
+            parts
+                .iter(app.world())
+                .find(|p| p.id.0 == id)
+                .map(|p| (p.shown, p.states.len()))
+                .unwrap()
+        };
+        app.update();
+        assert_eq!(shown(&mut app, "D1"), (0, 3));
+        assert_eq!(shown(&mut app, "B1"), (0, 2));
+        assert_eq!(shown(&mut app, "R1"), (0, 1));
+        {
+            let mut session = app.world_mut().resource_mut::<Session>();
+            let bench = session.bench.as_mut().unwrap();
+            bench.toggle_control();
+            bench.act(Action::Run);
+            advance_steps(&bench.project, &mut bench.simulation, 10);
+        }
+        app.update();
+        assert_eq!(shown(&mut app, "D1").0, 2, "8.6 mA lights the LED");
+        assert_eq!(shown(&mut app, "B1").0, 1);
+        app.world_mut()
+            .resource_mut::<Session>()
+            .bench
+            .as_mut()
+            .unwrap()
+            .simulation
+            .stale = true;
+        app.update();
+        assert_eq!(
+            shown(&mut app, "D1").0,
+            0,
+            "stale readings do not light the LED"
         );
     }
 
