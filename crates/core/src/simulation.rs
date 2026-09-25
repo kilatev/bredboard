@@ -478,5 +478,54 @@ mod tests {
             let mut p2=base.clone();let mut s2=SimulationState::new(&p2);apply_actions(&mut p2,&base,&mut s2,&schedule);
             prop_assert_eq!(p1,p2);prop_assert_eq!(s1,s2);
         }
+
+        #[test]
+        fn breadboard_rc_ranges_solve_each_step(
+            voltage_centi in 0u32..=1200,
+            initial_centi in 0u32..=1200,
+            resistor_bucket in 0u32..=1000,
+            capacitor_bucket in 0u32..=1000,
+        ) {
+            let source_voltage = f64::from(voltage_centi) / 100.0;
+            let initial_voltage = f64::from(initial_centi) / 100.0;
+            let resistor = 10f64.powf(7.0 * f64::from(resistor_bucket) / 1000.0);
+            let capacitance = 10f64.powf(-10.0 + 8.0 * f64::from(capacitor_bucket) / 1000.0);
+            let mut project = rc();
+            project
+                .components
+                .iter_mut()
+                .for_each(|component| match component.id.0.as_str() {
+                    "V1" => {
+                        component.parameters.insert("voltage".into(), source_voltage);
+                    }
+                    "R1" => {
+                        component.parameters.insert("resistance".into(), resistor);
+                    }
+                    "C1" => {
+                        component.parameters.insert("capacitance".into(), capacitance);
+                    }
+                    _ => {}
+                });
+            project.initial_conditions.capacitor_voltages.insert(
+                ComponentId("C1".into()),
+                initial_voltage,
+            );
+            let low = source_voltage.min(initial_voltage);
+            let high = source_voltage.max(initial_voltage);
+            let baseline = project.clone();
+            let mut state = SimulationState::new(&project);
+            apply_actions(&mut project, &baseline, &mut state, &[Action::Run]);
+            for expected_step in 1..=16 {
+                advance_steps(&project, &mut state, 1);
+                prop_assert_eq!(state.step, expected_step);
+                prop_assert!(!state.stale);
+                prop_assert!(state.diagnostics.is_empty());
+                let voltage = capacitor_voltage(&state);
+                prop_assert!(
+                    voltage >= low - 1e-9 && voltage <= high + 1e-9,
+                    "capacitor voltage {voltage} escaped {low}..={high}"
+                );
+            }
+        }
     }
 }

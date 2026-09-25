@@ -414,9 +414,9 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         (ComponentKind::Resistor, "resistance") => Some((1.0, 1e7)),
         (ComponentKind::Led, "forward_voltage") => Some((0.0, 10.0)),
         (ComponentKind::Led, "series_resistance") => Some((1.0, 1e7)),
-        (ComponentKind::Capacitor, "capacitance") => Some((1e-12, 1e3)),
-        (ComponentKind::NpnTransistor, "beta") => Some((1.0, 1000.0)),
-        (ComponentKind::NpnTransistor, "saturation_current") => Some((1e-18, 1.0)),
+        (ComponentKind::Capacitor, "capacitance") => Some((1e-10, 1e-2)),
+        (ComponentKind::NpnTransistor, "beta") => Some((10.0, 1000.0)),
+        (ComponentKind::NpnTransistor, "saturation_current") => Some((1e-16, 1e-12)),
         _ => None,
     }
 }
@@ -585,6 +585,74 @@ mod tests {
             }));
             p = serde_json::from_str(include_str!("../../../fixtures/projects/led-bench.json"))
                 .unwrap();
+        }
+    }
+
+    #[test]
+    fn enforces_breadboard_scale_capacitor_and_npn_ranges() {
+        let mut rc: Project =
+            serde_json::from_str(include_str!("../../../fixtures/projects/rc-charging.json"))
+                .unwrap();
+        for value in [1e-10, 1e-2] {
+            rc.components
+                .iter_mut()
+                .find(|component| component.id.0 == "C1")
+                .unwrap()
+                .parameters
+                .insert("capacitance".into(), value);
+            assert!(compile_topology(&rc).is_ok());
+        }
+        for value in [0.999e-10, 1.001e-2] {
+            rc.components
+                .iter_mut()
+                .find(|component| component.id.0 == "C1")
+                .unwrap()
+                .parameters
+                .insert("capacitance".into(), value);
+            let diagnostics = compile_topology(&rc).unwrap_err();
+            assert!(diagnostics.iter().any(|diagnostic| {
+                diagnostic.code == "parameter_out_of_range"
+                    && diagnostic.path == "components.C1.parameters.capacitance"
+            }));
+        }
+
+        let mut transistor: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/transistor-bench.json"
+        ))
+        .unwrap();
+        for (name, values) in [
+            ("beta", [10.0, 1000.0]),
+            ("saturation_current", [1e-16, 1e-12]),
+        ] {
+            for value in values {
+                transistor
+                    .components
+                    .iter_mut()
+                    .find(|component| component.id.0 == "Q1")
+                    .unwrap()
+                    .parameters
+                    .insert(name.into(), value);
+                assert!(compile_topology(&transistor).is_ok());
+            }
+        }
+        for (name, values) in [
+            ("beta", [9.999, 1000.001]),
+            ("saturation_current", [0.999e-16, 1.001e-12]),
+        ] {
+            for value in values {
+                transistor
+                    .components
+                    .iter_mut()
+                    .find(|component| component.id.0 == "Q1")
+                    .unwrap()
+                    .parameters
+                    .insert(name.into(), value);
+                let diagnostics = compile_topology(&transistor).unwrap_err();
+                assert!(diagnostics.iter().any(|diagnostic| {
+                    diagnostic.code == "parameter_out_of_range"
+                        && diagnostic.path == format!("components.Q1.parameters.{name}")
+                }));
+            }
         }
     }
     #[test]

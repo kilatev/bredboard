@@ -1126,5 +1126,42 @@ mod tests {
             prop_assert!((second.transistor_collector_currents[&ComponentId("Q1".into())] - higher_current).abs() < 1e-9);
             prop_assert!((second.source_currents[&ComponentId("V1".into())] + higher_current + second.resistor_currents[&ComponentId("R2".into())]).abs() < 1e-9);
         }
+
+        #[test]
+        fn breadboard_transistor_ranges_converge_and_switch(
+            beta in 10u32..=1000,
+            saturation_bucket in 0u32..=1000,
+        ) {
+            let saturation = 10f64.powf(-16.0 + 4.0 * f64::from(saturation_bucket) / 1000.0);
+            let mut project: Project = serde_json::from_str(include_str!(
+                "../../../fixtures/projects/transistor-bench.json"
+            )).unwrap();
+            let transistor = project
+                .components
+                .iter_mut()
+                .find(|component| component.id.0 == "Q1")
+                .unwrap();
+            transistor.parameters.insert("beta".into(), f64::from(beta));
+            transistor
+                .parameters
+                .insert("saturation_current".into(), saturation);
+            let released = solve_transient(&project, &BTreeMap::new(), &BTreeMap::new())
+                .expect("released breadboard-range transistor must converge within 80 iterations");
+            let pressed = solve_transient(
+                &project,
+                &BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]),
+                &BTreeMap::new(),
+            )
+            .expect("pressed breadboard-range transistor must converge within 80 iterations");
+            let released_base = released.resistor_currents[&ComponentId("R2".into())].abs();
+            let released_load = released.led_currents[&ComponentId("D1".into())];
+            let pressed_load = pressed.led_currents[&ComponentId("D1".into())];
+            prop_assert!(released_base < 1e-6, "released base current: {released_base}");
+            prop_assert!(pressed_load > released_load, "released={released_load}, pressed={pressed_load}");
+            prop_assert!(
+                pressed.transistor_collector_currents[&ComponentId("Q1".into())]
+                    > released.transistor_collector_currents[&ComponentId("Q1".into())]
+            );
+        }
     }
 }

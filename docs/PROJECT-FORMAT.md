@@ -29,9 +29,9 @@ momentary button (`a`, `b`); changeover switch (`common`, `normally_closed`,
 | `resistor` | `resistance` | ohm | 1 to 10,000,000 |
 | `led` | `forward_voltage` | V | 0 to 10 |
 | `led` | `series_resistance` | ohm | 1 to 10,000,000 |
-| `capacitor` | `capacitance` | F | 1e-12 to 1000 |
-| `npn_transistor` | `beta` | dimensionless | 1 to 1000 |
-| `npn_transistor` | `saturation_current` | A | 1e-18 to 1 |
+| `capacitor` | `capacitance` | F | 1e-10 to 1e-2 |
+| `npn_transistor` | `beta` | dimensionless | 10 to 1000 |
+| `npn_transistor` | `saturation_current` | A | 1e-16 to 1e-12 |
 
 The current solver supports every listed catalog kind. It uses calculated
 electrical models with the documented limits below; the presence of a model
@@ -93,4 +93,6 @@ The LED uses a smooth forward curve with voltage `V` from anode to cathode, conf
 
 `I = 0.05/Rs * ln(1 + exp((V - Vf)/0.05)) + 1e-9*V` amperes. The implementation evaluates the exponential safely and includes a 1 nS leakage path so open and reverse-biased circuits remain solvable. This is a teaching approximation, not a fitted part datasheet. The UI maps 0–10 mA monotonically to LED brightness. The `led-bench.json` fixture gives 8.576 mA with B1 pressed, close to the simple `(5-2)/(330+20) = 8.57 mA` estimate; released current rounds to 0 mA.
 
-The NPN uses a calculated base-emitter junction with effective threshold `0.026*ln(0.001/saturation_current)` volts and the same smooth diode form with 100 ohm slope. Collector-emitter conductance is `clamp(beta*max(base_current, 0)/0.2, 1 nS, 1 S)`; collector current is conductance times collector-emitter voltage. It is a base-controlled switching approximation, not Ebers–Moll or a prediction of exact transistor curves. In `transistor-bench.json`, pressing B1 gives 0.427 mA through the base-feed resistor, 8.461 mA through the LED and collector, and about 0.040 V collector-emitter. Released LED current is under 1 µA. Nonlinear solves are bounded to 80 iterations and report `nonconvergence` without advancing time if they fail.
+The NPN uses a calculated base-emitter junction with effective threshold `0.026*ln(0.001/saturation_current)` volts. The supported `saturation_current` range gives thresholds of about 0.78 V at `1e-16 A` down to 0.54 V at `1e-12 A`. Collector-emitter conductance is `clamp(beta*max(base_current, 0)/0.2, 1 nS, 1 S)`; collector current is conductance times collector-emitter voltage. It is a base-controlled switching approximation, not Ebers–Moll or a prediction of exact transistor curves. In `transistor-bench.json`, pressing B1 gives 0.427 mA through the base-feed resistor, 8.461 mA through the LED and collector, and about 0.040 V collector-emitter. Released LED current is under 1 µA. Nonlinear solves are bounded to 80 iterations and report `nonconvergence` without advancing time if they fail.
+
+The capacitor range above is 100 pF to 10 mF, and the NPN ranges are limited to parts commonly found in hobby breadboard kits. The project format remains version 1: the format is unpublished, and the range restriction preserves all committed fixtures and snapshots without a migration.
