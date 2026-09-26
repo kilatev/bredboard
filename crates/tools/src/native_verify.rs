@@ -187,7 +187,12 @@ fn verify_diagnostics() -> Result<(), String> {
     .map_err(|error| error.to_string())?;
     expect_diagnostic(
         "floating",
-        solve_transient(&floating, &BTreeMap::new(), &BTreeMap::new()),
+        solve_transient(
+            &floating,
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+        ),
         "floating_network",
     )?;
 
@@ -197,7 +202,12 @@ fn verify_diagnostics() -> Result<(), String> {
     .map_err(|error| error.to_string())?;
     expect_diagnostic(
         "contradictory sources",
-        solve_transient(&conflicting, &BTreeMap::new(), &BTreeMap::new()),
+        solve_transient(
+            &conflicting,
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+        ),
         "conflicting_sources",
     )?;
 

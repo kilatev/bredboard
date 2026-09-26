@@ -14,6 +14,8 @@ Add placement of supported components, wire creation, deletion, undo/redo, and u
 
 Add guided built-in lessons if teaching needs more than the three fixed experiments. Extend project sharing with declarative lesson steps, hints, and measurable completion conditions when imported lessons are requested. Validate references and conditions before use; imported content must not execute arbitrary code. Provide English schemas and complete AI-authoring examples.
 
+[docs/roadmap/LESSONS.md](LESSONS.md) specifies a smaller, concrete first slice of this phase: ten new fixed exercises added to the menu (still fixed fixtures, not a lesson-scripting engine), plus the potentiometer, photoresistor, and buzzer component kinds they need, decomposed into [T19–T23](../TASKS.md#post-mvp-presentation-tasks). The declarative lesson-step/hint/completion-condition engine described above remains unimplemented after T19–T23.
+
 ## 3. Analog expansion
 
 Add signal sources, RC filters, operational amplifiers, and oscilloscope functionality, then oscillators. Re-evaluate numerical integration, time-step requirements, and model accuracy using frequency and transient reference cases before implementing broader claims of analog accuracy.

@@ -1,0 +1,15 @@
+{
+  "format_version": 1,
+  "title": "E2: Push-Button Switch",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "S1", "kind": "momentary_button", "pins": { "a": "A5", "b": "A8" }, "parameters": {} },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "B8", "b": "A11" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "B11", "cathode": "A14" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "B5", "to": "TP+:5" },
+    { "id": "W2", "from": "B14", "to": "TP-:14" }
+  ]
+}

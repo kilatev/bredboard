@@ -6,12 +6,15 @@
 //! Design reference: `docs/design/sprites/README.md`.
 
 mod button;
+mod buzzer;
 mod canvas;
 mod capacitor;
 #[cfg(test)]
 mod future;
 mod led;
 pub mod palette;
+mod photoresistor;
+mod potentiometer;
 mod resistor;
 mod source;
 mod switch;
@@ -30,6 +33,8 @@ pub const PIXEL: f32 = 2.0;
 pub struct PartContext {
     /// Calculated LED current in amperes; 0 when readings are stale.
     pub led_current: f64,
+    /// Calculated buzzer current in amperes; 0 when readings are stale.
+    pub buzzer_current: f64,
     pub control: Option<ControlState>,
 }
 
@@ -63,6 +68,9 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
         ComponentKind::NpnTransistor => Some(&transistor::Transistor),
         ComponentKind::ChangeoverSwitch => Some(&switch::Switch),
         ComponentKind::DcVoltageSource => Some(&source::Source),
+        ComponentKind::Potentiometer => Some(&potentiometer::Potentiometer),
+        ComponentKind::Photoresistor => Some(&photoresistor::Photoresistor),
+        ComponentKind::Buzzer => Some(&buzzer::Buzzer),
     }
 }
 
@@ -232,6 +240,12 @@ mod tests {
         golden("changeover-switch-nc", &switch::Switch.body(&switch, 0));
         golden("changeover-switch-no", &switch::Switch.body(&switch, 1));
         golden("dc-voltage-source", &source::Source.body(&source, 0));
+        golden("buzzer-silent", &buzzer::body(false));
+        golden("buzzer-sounding", &buzzer::body(true));
+        // T19 promotes these two designs from the T17 Part B future references;
+        // the golden files are unchanged and now describe a real component.
+        golden("future-trimmer-potentiometer", &potentiometer::body());
+        golden("future-photoresistor", &photoresistor::body());
     }
 
     /// T17 Part B: design-only references for future parts. None of these is
@@ -242,11 +256,6 @@ mod tests {
         golden("future-rectifier-diode", &future::rectifier_diode());
         golden("future-signal-diode", &future::signal_diode());
         golden("future-ceramic-capacitor", &future::ceramic_capacitor());
-        golden(
-            "future-trimmer-potentiometer",
-            &future::trimmer_potentiometer(),
-        );
-        golden("future-photoresistor", &future::photoresistor());
         golden("future-led-green-lit", &future::green_led_lit());
         golden("future-led-yellow-lit", &future::yellow_led_lit());
         golden("future-led-blue-lit", &future::blue_led_lit());
@@ -254,7 +263,7 @@ mod tests {
 
     #[test]
     fn every_state_of_a_part_has_the_same_size() {
-        let parts: [(&dyn PartArt, Component); 6] = [
+        let parts: [(&dyn PartArt, Component); 9] = [
             (
                 &resistor::Resistor,
                 component(
@@ -305,6 +314,30 @@ mod tests {
                         ("normally_open", "F10"),
                     ],
                     &[],
+                ),
+            ),
+            (
+                &potentiometer::Potentiometer,
+                component(
+                    ComponentKind::Potentiometer,
+                    &[("a", "A1"), ("b", "A4")],
+                    &[("min_resistance", 1.0), ("max_resistance", 10_000.0)],
+                ),
+            ),
+            (
+                &photoresistor::Photoresistor,
+                component(
+                    ComponentKind::Photoresistor,
+                    &[("a", "A1"), ("b", "A4")],
+                    &[("min_resistance", 100.0), ("max_resistance", 1_000_000.0)],
+                ),
+            ),
+            (
+                &buzzer::Buzzer,
+                component(
+                    ComponentKind::Buzzer,
+                    &[("positive", "A1"), ("negative", "A4")],
+                    &[("resistance", 32.0)],
                 ),
             ),
         ];
@@ -368,7 +401,7 @@ mod tests {
 
         #[test]
         fn placements_cover_every_pin_hole(
-            ax in -8i32..8, ay in -8i32..8, dx in -6i32..=6, dy in -6i32..=6, kind in 0usize..3,
+            ax in -8i32..8, ay in -8i32..8, dx in -6i32..=6, dy in -6i32..=6, kind in 0usize..6,
         ) {
             prop_assume!((dx, dy) != (0, 0));
             let a = Vec2::new(ax as f32, ay as f32) * 16.0;
@@ -376,7 +409,10 @@ mod tests {
             let (art, c): (&dyn PartArt, _) = match kind {
                 0 => (&resistor::Resistor, component(ComponentKind::Resistor, &[("a", "A1"), ("b", "A4")], &[("resistance", 4700.0)])),
                 1 => (&led::Led, component(ComponentKind::Led, &[("anode", "A1"), ("cathode", "A2")], &[])),
-                _ => (&button::Button, component(ComponentKind::MomentaryButton, &[("a", "E1"), ("b", "F1")], &[])),
+                2 => (&button::Button, component(ComponentKind::MomentaryButton, &[("a", "E1"), ("b", "F1")], &[])),
+                3 => (&potentiometer::Potentiometer, component(ComponentKind::Potentiometer, &[("a", "A1"), ("b", "A4")], &[("min_resistance", 1.0), ("max_resistance", 10_000.0)])),
+                4 => (&photoresistor::Photoresistor, component(ComponentKind::Photoresistor, &[("a", "A1"), ("b", "A4")], &[("min_resistance", 100.0), ("max_resistance", 1_000_000.0)])),
+                _ => (&buzzer::Buzzer, component(ComponentKind::Buzzer, &[("positive", "A1"), ("negative", "A4")], &[("resistance", 32.0)])),
             };
             assert_leads_reach_holes(art, &c, &[a, b])?;
         }

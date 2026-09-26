@@ -2,6 +2,7 @@ mod sprites;
 mod text;
 
 use bevy::camera::ScalingMode;
+use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bredboard_core::{
     Action, Component, ComponentId, ComponentKind, ControlState, Project, SimulationState,
@@ -11,23 +12,80 @@ use bredboard_core::{
 const LED_JSON: &str = include_str!("../../../fixtures/projects/led-bench.json");
 const RC_JSON: &str = include_str!("../../../fixtures/projects/rc-bench.json");
 const TRANSISTOR_JSON: &str = include_str!("../../../fixtures/projects/transistor-bench.json");
+const E1_JSON: &str = include_str!("../../../fixtures/projects/e1-first-light.json");
+const E2_JSON: &str = include_str!("../../../fixtures/projects/e2-push-button-switch.json");
+const E3_JSON: &str = include_str!("../../../fixtures/projects/e3-two-leds-in-series.json");
+const E4_JSON: &str = include_str!("../../../fixtures/projects/e4-two-leds-in-parallel.json");
+const E7_JSON: &str = include_str!("../../../fixtures/projects/e7-buzzer-doorbell.json");
+const E8_JSON: &str = include_str!("../../../fixtures/projects/e8-transistor-switch.json");
+const E9_JSON: &str = include_str!("../../../fixtures/projects/e9-logical-and.json");
+const E10_JSON: &str = include_str!("../../../fixtures/projects/e10-smooth-fade.json");
+const E5_JSON: &str = include_str!("../../../fixtures/projects/e5-brightness-dial.json");
+const E6_JSON: &str = include_str!("../../../fixtures/projects/e6-light-reactive-led.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
     Led,
     Rc,
     Transistor,
+    E1,
+    E2,
+    E3,
+    E4,
+    E7,
+    E8,
+    E9,
+    E10,
+    E5,
+    E6,
 }
 
+/// One bench control button: its label, the component it drives, and
+/// whether that component is a changeover switch (vs. a momentary button).
+struct ControlSpec {
+    label: &'static str,
+    component: &'static str,
+    is_switch: bool,
+}
+/// A continuous dial/slider control: its label and the potentiometer or
+/// photoresistor component it drives.
+struct DialSpec {
+    label: &'static str,
+    component: &'static str,
+}
 impl Circuit {
-    fn all() -> [Self; 3] {
-        [Self::Led, Self::Rc, Self::Transistor]
+    fn all() -> [Self; 13] {
+        [
+            Self::Led,
+            Self::Rc,
+            Self::Transistor,
+            Self::E1,
+            Self::E2,
+            Self::E3,
+            Self::E4,
+            Self::E7,
+            Self::E8,
+            Self::E9,
+            Self::E10,
+            Self::E5,
+            Self::E6,
+        ]
     }
     fn json(self) -> &'static str {
         match self {
             Self::Led => LED_JSON,
             Self::Rc => RC_JSON,
             Self::Transistor => TRANSISTOR_JSON,
+            Self::E1 => E1_JSON,
+            Self::E2 => E2_JSON,
+            Self::E3 => E3_JSON,
+            Self::E4 => E4_JSON,
+            Self::E7 => E7_JSON,
+            Self::E8 => E8_JSON,
+            Self::E9 => E9_JSON,
+            Self::E10 => E10_JSON,
+            Self::E5 => E5_JSON,
+            Self::E6 => E6_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -35,12 +93,124 @@ impl Circuit {
             Self::Led => "LED + RESISTOR",
             Self::Rc => "CAPACITOR CHARGE / DISCHARGE",
             Self::Transistor => "TRANSISTOR SWITCH",
+            Self::E1 => "E1: FIRST LIGHT",
+            Self::E2 => "E2: PUSH-BUTTON SWITCH",
+            Self::E3 => "E3: TWO LEDS IN SERIES",
+            Self::E4 => "E4: TWO LEDS IN PARALLEL",
+            Self::E7 => "E7: BUZZER DOORBELL",
+            Self::E8 => "E8: TRANSISTOR SWITCH",
+            Self::E9 => "E9: LOGICAL AND",
+            Self::E10 => "E10: SMOOTH FADE",
+            Self::E5 => "E5: BRIGHTNESS DIAL",
+            Self::E6 => "E6: LIGHT-REACTIVE LED",
         }
     }
-    fn control(self) -> &'static str {
+    /// One-paragraph explanation and a short player task, shown together in
+    /// the bench's secondary text slot. Empty for the three MVP benches,
+    /// which keep their original generic hover hint instead (see
+    /// `spawn_bench`); this task does not change their behavior or layout.
+    fn explanation_and_task(self) -> (&'static str, &'static str) {
         match self {
-            Self::Rc => "S1: CHANGE PATH",
-            _ => "B1: PRESS / RELEASE",
+            Self::Led | Self::Rc | Self::Transistor => ("", ""),
+            Self::E1 => (
+                "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
+                "Task: run the circuit and confirm the LED lights immediately, with no switch needed.",
+            ),
+            Self::E2 => (
+                "The same LED and resistor, now gated by a momentary button: current only flows, and the LED lights, while the button is held.",
+                "Task: press and hold the button, then release it and confirm the LED goes dark.",
+            ),
+            Self::E3 => (
+                "Two LEDs share one resistor and one current path, so the same current lights both LEDs together.",
+                "Task: run the circuit and confirm both LEDs light at once.",
+            ),
+            Self::E4 => (
+                "Two independent resistor-and-LED branches share the same 5 V supply, so each LED gets its own steady current regardless of the other.",
+                "Task: run the circuit and confirm both LEDs light independently of each other.",
+            ),
+            Self::E7 => (
+                "A momentary button connects the buzzer directly to the 5 V supply, so it draws current, and its sprite shows sounding, only while the button is held.",
+                "Task: press and hold the button and confirm the buzzer's sound-wave marks appear, then disappear on release.",
+            ),
+            Self::E8 => (
+                "A small button current through a base resistor turns the transistor on, which then switches a much larger LED current between its collector and emitter.",
+                "Task: press and hold the button and confirm the LED lights, then goes dark on release.",
+            ),
+            Self::E9 => (
+                "Two momentary buttons wired in series both need to be pressed to complete the path to the resistor and LED, the same as a logical AND gate.",
+                "Task: confirm the LED lights only when both buttons are held at once, not when either is held alone.",
+            ),
+            Self::E10 => (
+                "Holding the button charges a capacitor through a resistor; the LED, wired to the same charging node, brightens smoothly as the capacitor's voltage rises instead of snapping on.",
+                "Task: press and hold the button and watch the LED brighten gradually rather than instantly.",
+            ),
+            Self::E5 => (
+                "A potentiometer's resistance is set by the dial ratio instead of a fixed value, so it shares the current-limiting job with a resistor and changes the LED's brightness continuously.",
+                "Task: drag the dial across its full range and confirm the LED's brightness changes continuously and monotonically.",
+            ),
+            Self::E6 => (
+                "A photoresistor's resistance falls as its ambient-light control rises, so more simulated light means less resistance and a brighter LED.",
+                "Task: drag the ambient-light slider across its full range and confirm the LED dims continuously toward off at the darkest setting.",
+            ),
+        }
+    }
+    /// Control buttons for this bench, in display order. Empty for exercises
+    /// with no live control (E1, E3, E4: always-on circuits).
+    fn controls(self) -> &'static [ControlSpec] {
+        const RC: &[ControlSpec] = &[ControlSpec {
+            label: "S1: CHANGE PATH",
+            component: "S1",
+            is_switch: true,
+        }];
+        const B1_BUTTON: &[ControlSpec] = &[ControlSpec {
+            label: "B1: PRESS / RELEASE",
+            component: "B1",
+            is_switch: false,
+        }];
+        const S1_BUTTON: &[ControlSpec] = &[ControlSpec {
+            label: "S1: PRESS / RELEASE",
+            component: "S1",
+            is_switch: false,
+        }];
+        const E9_BUTTONS: &[ControlSpec] = &[
+            ControlSpec {
+                label: "S1: PRESS / RELEASE",
+                component: "S1",
+                is_switch: false,
+            },
+            ControlSpec {
+                label: "S2: PRESS / RELEASE",
+                component: "S2",
+                is_switch: false,
+            },
+        ];
+        match self {
+            Self::Rc => RC,
+            Self::Led | Self::Transistor | Self::E2 | Self::E7 | Self::E8 | Self::E10 => {
+                if matches!(self, Self::Led | Self::Transistor) {
+                    B1_BUTTON
+                } else {
+                    S1_BUTTON
+                }
+            }
+            Self::E9 => E9_BUTTONS,
+            Self::E1 | Self::E3 | Self::E4 | Self::E5 | Self::E6 => &[],
+        }
+    }
+    /// The continuous dial/slider control for E5/E6's potentiometer or
+    /// photoresistor, shown instead of a button row. `None` for every other
+    /// bench.
+    fn dial(self) -> Option<DialSpec> {
+        match self {
+            Self::E5 => Some(DialSpec {
+                label: "RV1: BRIGHTNESS DIAL - drag left/right",
+                component: "RV1",
+            }),
+            Self::E6 => Some(DialSpec {
+                label: "RV1: AMBIENT LIGHT - drag left/right",
+                component: "RV1",
+            }),
+            _ => None,
         }
     }
 }
@@ -71,23 +241,23 @@ impl Bench {
             &[action],
         );
     }
-    fn toggle_control(&mut self) {
-        let (id, state) = if self.circuit == Circuit::Rc {
-            let id = ComponentId("S1".into());
-            let state = if self.simulation.controls[&id] == ControlState::SwitchNormallyClosed {
+    /// Toggles the `index`-th control button for this bench (see
+    /// `Circuit::controls`); out-of-range indices are ignored.
+    fn toggle(&mut self, index: usize) {
+        let Some(spec) = self.circuit.controls().get(index) else {
+            return;
+        };
+        let id = ComponentId(spec.component.into());
+        let state = if spec.is_switch {
+            if self.simulation.controls[&id] == ControlState::SwitchNormallyClosed {
                 ControlState::SwitchNormallyOpen
             } else {
                 ControlState::SwitchNormallyClosed
-            };
-            (id, state)
+            }
+        } else if self.simulation.controls[&id] == ControlState::ButtonReleased {
+            ControlState::ButtonPressed
         } else {
-            let id = ComponentId("B1".into());
-            let state = if self.simulation.controls[&id] == ControlState::ButtonReleased {
-                ControlState::ButtonPressed
-            } else {
-                ControlState::ButtonReleased
-            };
-            (id, state)
+            ControlState::ButtonReleased
         };
         self.act(Action::SetControl {
             component: id,
@@ -101,17 +271,70 @@ struct Session {
     bench: Option<Bench>,
 }
 
+/// Vertical scroll offset for the menu list, in world units. Positive values
+/// reveal later entries by shifting the list up. Presentation-only; never
+/// read by `bredboard-core` or routed through an `Action`.
+#[derive(Resource, Default)]
+struct MenuScroll {
+    offset: f32,
+}
+
+/// Top/bottom of the menu's scrollable viewport in world space, and the
+/// vertical spacing between entries. The header (title/subtitle) sits above
+/// `MENU_TOP`; the footer hint sits below `MENU_BOTTOM`.
+const MENU_TOP: f32 = 155.0;
+const MENU_BOTTOM: f32 = -220.0;
+const MENU_ENTRY_HEIGHT: f32 = 105.0;
+const MENU_ENTRY_SIZE: Vec2 = Vec2::new(520.0, 74.0);
+
+/// World-space Y of a menu entry at rest (scroll offset zero). Index 0 is the
+/// first entry; matches the original fixed 3-entry layout exactly.
+fn menu_entry_base_y(index: usize) -> f32 {
+    100.0 - index as f32 * MENU_ENTRY_HEIGHT
+}
+
+/// Largest scroll offset that still keeps the last entry's bottom edge at or
+/// above `MENU_BOTTOM`; zero when every entry already fits in the viewport.
+fn menu_max_scroll(entry_count: usize) -> f32 {
+    if entry_count == 0 {
+        return 0.0;
+    }
+    let content_top = menu_entry_base_y(0) + MENU_ENTRY_SIZE.y * 0.5;
+    let content_bottom = menu_entry_base_y(entry_count - 1) - MENU_ENTRY_SIZE.y * 0.5;
+    let content_height = content_top - content_bottom;
+    (content_height - (MENU_TOP - MENU_BOTTOM)).max(0.0)
+}
+
 #[derive(Component)]
 struct SceneEntity;
+/// Marks an entity as one of the N scrollable menu entries, keyed by its
+/// index in `Circuit::all()`. A single index is shared by an entry's button
+/// rect and its label so both move and hide together.
+#[derive(Component, Clone, Copy)]
+struct MenuEntry(usize);
 #[derive(Component, Clone, Copy)]
 struct ClickTarget(Control, Vec2);
+/// The draggable track for E5/E6's continuous dial/slider control.
+#[derive(Component)]
+struct DialTrack {
+    component: ComponentId,
+}
+/// The handle sprite that shows a dial's current ratio; repositioned every
+/// frame from `SimulationState.control_ratios`.
+#[derive(Component)]
+struct DialHandle {
+    component: ComponentId,
+}
+const DIAL_TRACK_CENTER: Vec2 = Vec2::new(205.0, -245.0);
+const DIAL_TRACK_SIZE: Vec2 = Vec2::new(400.0, 53.0);
+const DIAL_HANDLE_SIZE: Vec2 = Vec2::new(14.0, 53.0);
 #[derive(Clone, Copy)]
 enum Control {
     Select(Circuit),
     Back,
     RunPause,
     Reset,
-    Circuit,
+    Toggle(usize),
 }
 #[derive(Component)]
 enum Readout {
@@ -151,9 +374,22 @@ fn main() {
             }),
             ..default()
         }))
+        .insert_resource(MenuScroll::default())
         .add_systems(Startup, setup)
         .add_systems(FixedUpdate, fixed_step)
-        .add_systems(Update, (handle_mouse, handle_keyboard, update_view).chain())
+        .add_systems(
+            Update,
+            (
+                handle_scroll,
+                scroll_menu,
+                handle_mouse,
+                handle_keyboard,
+                handle_dial,
+                update_dial_handle,
+                update_view,
+            )
+                .chain(),
+        )
         .run();
 }
 
@@ -205,6 +441,24 @@ fn button(commands: &mut Commands, value: &str, point: Vec2, size: Vec2, control
     label(commands, value, point, 21.0, Color::srgb(0.94, 0.97, 0.96));
 }
 
+/// A scrollable menu entry: a selectable button tagged with `MenuEntry(index)`
+/// on both its rect and label so `scroll_menu` can move and hide them together.
+fn menu_entry_button(commands: &mut Commands, value: &str, index: usize, control: Control) {
+    let point = Vec2::new(0.0, menu_entry_base_y(index));
+    let rect_entity = rect(
+        commands,
+        point,
+        MENU_ENTRY_SIZE,
+        Color::srgb(0.13, 0.30, 0.35),
+        1.0,
+    );
+    commands
+        .entity(rect_entity)
+        .insert((ClickTarget(control, MENU_ENTRY_SIZE), MenuEntry(index)));
+    let label_entity = label(commands, value, point, 21.0, Color::srgb(0.94, 0.97, 0.96));
+    commands.entity(label_entity).insert(MenuEntry(index));
+}
+
 fn spawn_menu(commands: &mut Commands) {
     rect(
         commands,
@@ -228,13 +482,7 @@ fn spawn_menu(commands: &mut Commands) {
         Color::srgb(0.77, 0.84, 0.83),
     );
     for (index, circuit) in Circuit::all().into_iter().enumerate() {
-        button(
-            commands,
-            circuit.label(),
-            Vec2::new(0.0, 100.0 - index as f32 * 105.0),
-            Vec2::new(520.0, 74.0),
-            Control::Select(circuit),
-        );
+        menu_entry_button(commands, circuit.label(), index, Control::Select(circuit));
     }
     label(
         commands,
@@ -544,6 +792,26 @@ fn component_summary(component: &Component) -> String {
             component.pins[&bredboard_core::PinId("collector".into())].0,
             component.pins[&bredboard_core::PinId("emitter".into())].0
         ),
+        ComponentKind::Potentiometer => format!(
+            "{id}  potentiometer {:.0}-{:.0} ohm  {} / {}",
+            component.parameters["min_resistance"],
+            component.parameters["max_resistance"],
+            component.pins[&bredboard_core::PinId("a".into())].0,
+            component.pins[&bredboard_core::PinId("b".into())].0
+        ),
+        ComponentKind::Photoresistor => format!(
+            "{id}  photoresistor {:.0}-{:.0} ohm  {} / {}",
+            component.parameters["min_resistance"],
+            component.parameters["max_resistance"],
+            component.pins[&bredboard_core::PinId("a".into())].0,
+            component.pins[&bredboard_core::PinId("b".into())].0
+        ),
+        ComponentKind::Buzzer => format!(
+            "{id}  buzzer {:.0} ohm  + {} / - {}",
+            component.parameters["resistance"],
+            component.pins[&bredboard_core::PinId("positive".into())].0,
+            component.pins[&bredboard_core::PinId("negative".into())].0
+        ),
     }
 }
 
@@ -563,11 +831,17 @@ fn spawn_bench(commands: &mut Commands, images: &mut Assets<Image>, bench: &Benc
         28.0,
         Color::srgb(0.84, 0.94, 0.93),
     );
+    let (explanation, task) = bench.circuit.explanation_and_task();
+    let secondary = if explanation.is_empty() {
+        "Hover a hole to inspect a wire or pin".to_string()
+    } else {
+        format!("{explanation}\n{task}")
+    };
     label(
         commands,
-        "Hover a hole to inspect a wire or pin",
+        secondary,
         Vec2::new(185.0, 264.0),
-        16.0,
+        14.0,
         Color::srgb(0.58, 0.76, 0.76),
     );
     label(
@@ -632,13 +906,67 @@ fn spawn_bench(commands: &mut Commands, images: &mut Assets<Image>, bench: &Benc
         Vec2::new(150.0, 53.0),
         Control::Reset,
     );
-    button(
-        commands,
-        bench.circuit.control(),
-        Vec2::new(205.0, -245.0),
-        Vec2::new(400.0, 53.0),
-        Control::Circuit,
-    );
+    // Control buttons share one row so the window layout never depends on
+    // how many controls a bench has (at most 2, for E9's two buttons); RESET
+    // and CIRCUITS always stay at their original fixed positions.
+    let controls = bench.circuit.controls();
+    if controls.len() == 1 {
+        button(
+            commands,
+            controls[0].label,
+            Vec2::new(205.0, -245.0),
+            Vec2::new(400.0, 53.0),
+            Control::Toggle(0),
+        );
+    } else {
+        let width = 400.0 / controls.len().max(1) as f32 - 10.0;
+        for (index, spec) in controls.iter().enumerate() {
+            let x = 5.0 + (width + 10.0) * (index as f32 + 0.5);
+            button(
+                commands,
+                spec.label,
+                Vec2::new(x, -245.0),
+                Vec2::new(width, 53.0),
+                Control::Toggle(index),
+            );
+        }
+    }
+    if let Some(spec) = bench.circuit.dial() {
+        let component = ComponentId(spec.component.into());
+        let track = rect(
+            commands,
+            DIAL_TRACK_CENTER,
+            DIAL_TRACK_SIZE,
+            Color::srgb(0.10, 0.22, 0.25),
+            1.0,
+        );
+        commands.entity(track).insert(DialTrack {
+            component: component.clone(),
+        });
+        label(
+            commands,
+            spec.label,
+            DIAL_TRACK_CENTER + Vec2::new(0.0, 20.0),
+            13.0,
+            Color::srgb(0.75, 0.88, 0.89),
+        );
+        let ratio = bench
+            .simulation
+            .control_ratios
+            .get(&component)
+            .copied()
+            .unwrap_or(0.5);
+        let handle_x =
+            DIAL_TRACK_CENTER.x - DIAL_TRACK_SIZE.x / 2.0 + ratio as f32 * DIAL_TRACK_SIZE.x;
+        let handle = rect(
+            commands,
+            Vec2::new(handle_x, DIAL_TRACK_CENTER.y),
+            DIAL_HANDLE_SIZE,
+            Color::srgb(0.42, 0.90, 0.76),
+            1.1,
+        );
+        commands.entity(handle).insert(DialHandle { component });
+    }
     button(
         commands,
         "CIRCUITS",
@@ -666,13 +994,114 @@ fn cursor_world(window: &Window) -> Option<Vec2> {
     ))
 }
 
+/// Mouse-wheel-driven vertical scroll of the menu list, clamped so it cannot
+/// scroll past the first or last entry. Presentation input only.
+fn handle_scroll(
+    mut wheel: MessageReader<MouseWheel>,
+    mut scroll: ResMut<MenuScroll>,
+    entries: Query<&MenuEntry>,
+) {
+    let entry_count = entries.iter().map(|entry| entry.0 + 1).max().unwrap_or(0);
+    if entry_count == 0 {
+        wheel.clear();
+        return;
+    }
+    let max_scroll = menu_max_scroll(entry_count);
+    for event in wheel.read() {
+        let delta = match event.unit {
+            MouseScrollUnit::Line => event.y * 40.0,
+            MouseScrollUnit::Pixel => event.y,
+        };
+        scroll.offset = (scroll.offset - delta).clamp(0.0, max_scroll);
+    }
+}
+
+/// Moves each menu entry to its scrolled position and hides entries that
+/// fall outside the menu's visible viewport so they cannot overlap the
+/// header or footer, and are not clickable while off-screen.
+fn scroll_menu(
+    scroll: Res<MenuScroll>,
+    mut entries: Query<(&MenuEntry, &mut Transform, &mut Visibility)>,
+) {
+    let half_height = MENU_ENTRY_SIZE.y * 0.5;
+    for (entry, mut transform, mut visibility) in &mut entries {
+        let y = menu_entry_base_y(entry.0) + scroll.offset;
+        transform.translation.y = y;
+        *visibility = if y + half_height < MENU_BOTTOM || y - half_height > MENU_TOP {
+            Visibility::Hidden
+        } else {
+            Visibility::Visible
+        };
+    }
+}
+
+/// Bundles the two menu/bench presentation resources so `handle_mouse` stays
+/// under Clippy's argument-count limit.
+#[derive(bevy::ecs::system::SystemParam)]
+struct MenuState<'w> {
+    session: ResMut<'w, Session>,
+    scroll: ResMut<'w, MenuScroll>,
+}
+
+/// Drag-driven continuous control: while the left mouse button is held over
+/// a dial's track, sets the driven component's control ratio from the
+/// cursor's horizontal position. Presentation input, routed through the same
+/// `Action::SetControlRatio` path as any other caller.
+fn handle_dial(
+    mouse: Res<ButtonInput<MouseButton>>,
+    windows: Query<&Window>,
+    tracks: Query<&DialTrack>,
+    mut session: ResMut<Session>,
+) {
+    if !mouse.pressed(MouseButton::Left) {
+        return;
+    }
+    let Ok(window) = windows.single() else {
+        return;
+    };
+    let Some(point) = cursor_world(window) else {
+        return;
+    };
+    let Some(track) = tracks.iter().next() else {
+        return;
+    };
+    let half = DIAL_TRACK_SIZE * 0.5;
+    if (point - DIAL_TRACK_CENTER).abs().cmpgt(half).any() {
+        return;
+    }
+    let ratio = ((point.x - (DIAL_TRACK_CENTER.x - half.x)) / DIAL_TRACK_SIZE.x) as f64;
+    if let Some(bench) = &mut session.bench {
+        bench.act(Action::SetControlRatio {
+            component: track.component.clone(),
+            ratio: ratio.clamp(0.0, 1.0),
+        });
+    }
+}
+
+/// Repositions a dial's handle sprite from the live control ratio each frame.
+fn update_dial_handle(session: Res<Session>, mut handles: Query<(&DialHandle, &mut Transform)>) {
+    let Some(bench) = &session.bench else {
+        return;
+    };
+    for (handle, mut transform) in &mut handles {
+        let ratio = bench
+            .simulation
+            .control_ratios
+            .get(&handle.component)
+            .copied()
+            .unwrap_or(0.5);
+        transform.translation.x =
+            DIAL_TRACK_CENTER.x - DIAL_TRACK_SIZE.x / 2.0 + ratio as f32 * DIAL_TRACK_SIZE.x;
+    }
+}
+
 fn handle_mouse(
     mouse: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window>,
-    targets: Query<(&Transform, &ClickTarget)>,
+    targets: Query<(&Transform, &ClickTarget, Option<&Visibility>)>,
     scene: Query<Entity, With<SceneEntity>>,
     mut commands: Commands,
-    mut session: ResMut<Session>,
+    mut state: MenuState,
     mut images: ResMut<Assets<Image>>,
 ) {
     if !mouse.just_pressed(MouseButton::Left) {
@@ -684,7 +1113,10 @@ fn handle_mouse(
     let Some(point) = cursor_world(window) else {
         return;
     };
-    let selected = targets.iter().find_map(|(transform, target)| {
+    let selected = targets.iter().find_map(|(transform, target, visibility)| {
+        if visibility == Some(&Visibility::Hidden) {
+            return None;
+        }
         ((point - transform.translation.truncate())
             .abs()
             .cmple(target.1 * 0.5)
@@ -696,15 +1128,16 @@ fn handle_mouse(
             clear_scene(&mut commands, &scene);
             let bench = Bench::new(circuit);
             spawn_bench(&mut commands, &mut images, &bench);
-            session.bench = Some(bench);
+            state.session.bench = Some(bench);
         }
         Some(Control::Back) => {
             clear_scene(&mut commands, &scene);
-            session.bench = None;
+            state.session.bench = None;
+            state.scroll.offset = 0.0;
             spawn_menu(&mut commands);
         }
         Some(Control::RunPause) => {
-            if let Some(bench) = &mut session.bench {
+            if let Some(bench) = &mut state.session.bench {
                 bench.act(if bench.simulation.running {
                     Action::Pause
                 } else {
@@ -713,13 +1146,13 @@ fn handle_mouse(
             }
         }
         Some(Control::Reset) => {
-            if let Some(bench) = &mut session.bench {
+            if let Some(bench) = &mut state.session.bench {
                 bench.act(Action::Reset);
             }
         }
-        Some(Control::Circuit) => {
-            if let Some(bench) = &mut session.bench {
-                bench.toggle_control();
+        Some(Control::Toggle(index)) => {
+            if let Some(bench) = &mut state.session.bench {
+                bench.toggle(index);
             }
         }
         None => {}
@@ -741,7 +1174,7 @@ fn handle_keyboard(keys: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>
         bench.act(Action::Reset);
     }
     if keys.just_pressed(KeyCode::KeyC) {
-        bench.toggle_control();
+        bench.toggle(0);
     }
 }
 
@@ -819,40 +1252,68 @@ fn update_view(
             Readout::Value => {
                 if bench.simulation.stale {
                     "Readings stale".into()
+                } else if bench.circuit == Circuit::Rc {
+                    format!(
+                        "C1  {:.3} V",
+                        bench.simulation.capacitor_voltages[&ComponentId("C1".into())]
+                    )
+                } else if bench.circuit == Circuit::E7 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Buzzer current: run to measure".into(),
+                        |result| {
+                            format!(
+                                "BZ1  {:.2} mA",
+                                1000.0
+                                    * result
+                                        .resistor_currents
+                                        .get(&ComponentId("BZ1".into()))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                            )
+                        },
+                    )
                 } else {
-                    match bench.circuit {
-                        Circuit::Rc => format!(
-                            "C1  {:.3} V",
-                            bench.simulation.capacitor_voltages[&ComponentId("C1".into())]
-                        ),
-                        _ => bench.simulation.last_valid.as_ref().map_or(
-                            "LED current: run to measure".into(),
-                            |result| {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "LED current: run to measure".into(),
+                        |result| {
+                            let extra = if bench.circuit == Circuit::E10 {
                                 format!(
-                                    "D1  {:.2} mA",
-                                    1000.0 * result.led_currents[&ComponentId("D1".into())]
+                                    "  C1 {:.3} V",
+                                    bench.simulation.capacitor_voltages[&ComponentId("C1".into())]
                                 )
-                            },
-                        ),
-                    }
+                            } else {
+                                String::new()
+                            };
+                            format!(
+                                "D1  {:.2} mA{extra}",
+                                1000.0
+                                    * result
+                                        .led_currents
+                                        .get(&ComponentId("D1".into()))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                            )
+                        },
+                    )
                 }
             }
-            Readout::Control => {
-                let id = ComponentId(
-                    if bench.circuit == Circuit::Rc {
-                        "S1"
-                    } else {
-                        "B1"
-                    }
-                    .into(),
-                );
-                match bench.simulation.controls[&id] {
-                    ControlState::SwitchNormallyClosed => "S1: charging path".into(),
-                    ControlState::SwitchNormallyOpen => "S1: discharge path".into(),
-                    ControlState::ButtonPressed => "B1: pressed".into(),
-                    ControlState::ButtonReleased => "B1: released".into(),
-                }
-            }
+            Readout::Control => bench
+                .circuit
+                .controls()
+                .iter()
+                .map(|spec| {
+                    let id = ComponentId(spec.component.into());
+                    let state = bench.simulation.controls[&id];
+                    let text = match state {
+                        ControlState::SwitchNormallyClosed => "charging path",
+                        ControlState::SwitchNormallyOpen => "discharge path",
+                        ControlState::ButtonPressed => "pressed",
+                        ControlState::ButtonReleased => "released",
+                    };
+                    format!("{}: {text}", spec.component)
+                })
+                .collect::<Vec<_>>()
+                .join("   "),
             Readout::Hover => hover.clone(),
         };
     }
@@ -868,6 +1329,10 @@ fn update_view(
         let context = sprites::PartContext {
             led_current: readings
                 .and_then(|r| r.led_currents.get(&part.id))
+                .copied()
+                .unwrap_or(0.0),
+            buzzer_current: readings
+                .and_then(|r| r.resistor_currents.get(&part.id))
                 .copied()
                 .unwrap_or(0.0),
             control: bench.simulation.controls.get(&part.id).copied(),
@@ -949,7 +1414,7 @@ mod tests {
     fn each_circuit_uses_core_controls_and_reset() {
         for circuit in Circuit::all() {
             let mut bench = Bench::new(circuit);
-            bench.toggle_control();
+            bench.toggle(0);
             bench.act(Action::Run);
             advance_steps(&bench.project, &mut bench.simulation, 100);
             assert_eq!(bench.simulation.step, 100, "{circuit:?}");
@@ -967,7 +1432,7 @@ mod tests {
         advance_steps(&bench.project, &mut bench.simulation, 1_000);
         let charged = bench.simulation.capacitor_voltages[&ComponentId("C1".into())];
         assert!((charged - 5.0 * (1.0 - (-1.0_f64).exp())).abs() < 0.05);
-        bench.toggle_control();
+        bench.toggle(0);
         advance_steps(&bench.project, &mut bench.simulation, 1_000);
         let discharged = bench.simulation.capacitor_voltages[&ComponentId("C1".into())];
         assert!((discharged - charged * (-1.0_f64).exp()).abs() < 0.05);
@@ -983,13 +1448,188 @@ mod tests {
     }
 
     #[test]
-    fn shared_menu_and_visible_buttons_dispatch_core_actions() {
+    fn all_circuits_are_selectable_via_the_scrolled_menu() {
         let mut app = App::new();
         app.insert_resource(Session::default())
+            .insert_resource(MenuScroll::default())
             .insert_resource(ButtonInput::<MouseButton>::default())
             .init_resource::<Assets<Image>>()
             .add_systems(Startup, setup)
-            .add_systems(Update, handle_mouse);
+            .add_systems(Update, (scroll_menu, handle_mouse).chain());
+        let window = app
+            .world_mut()
+            .spawn(Window {
+                resolution: (1200, 760).into(),
+                ..default()
+            })
+            .id();
+        app.update();
+        let entries = Circuit::all();
+        let max_scroll = menu_max_scroll(entries.len());
+        for (index, circuit) in entries.into_iter().enumerate() {
+            let offset = (menu_entry_base_y(0) - menu_entry_base_y(index)).clamp(0.0, max_scroll);
+            app.world_mut().resource_mut::<MenuScroll>().offset = offset;
+            let y = menu_entry_base_y(index) + offset;
+            click(&mut app, window, Vec2::new(0.0, y));
+            assert_eq!(
+                app.world()
+                    .resource::<Session>()
+                    .bench
+                    .as_ref()
+                    .unwrap()
+                    .circuit,
+                circuit,
+                "index {index}"
+            );
+            // Return to the menu for the next iteration; the Back button
+            // moves down when a bench has more than one control button.
+            // Return to the menu for the next iteration.
+            click(&mut app, window, Vec2::new(185.0, -328.0));
+        }
+    }
+
+    #[test]
+    fn dragging_the_dial_sets_the_control_ratio_and_moves_its_handle() {
+        for circuit in [Circuit::E5, Circuit::E6] {
+            let mut app = App::new();
+            app.insert_resource(Session {
+                bench: Some(Bench::new(circuit)),
+            })
+            .insert_resource(ButtonInput::<MouseButton>::default())
+            .init_resource::<Assets<Image>>()
+            .add_systems(Update, (handle_dial, update_dial_handle).chain());
+            let window = app
+                .world_mut()
+                .spawn(Window {
+                    resolution: (1200, 760).into(),
+                    ..default()
+                })
+                .id();
+            app.world_mut()
+                .resource_scope(|world, mut images: Mut<Assets<Image>>| {
+                    let session = world.resource::<Session>();
+                    let bench = session.bench.as_ref().unwrap();
+                    let mut queue = bevy::ecs::world::CommandQueue::default();
+                    let mut commands = Commands::new(&mut queue, world);
+                    spawn_bench(&mut commands, &mut images, bench);
+                    queue.apply(world);
+                });
+
+            let drag = |window: Entity, point: Vec2, app: &mut App| {
+                let mut w = app.world_mut().get_mut::<Window>(window).unwrap();
+                let width = w.width();
+                let height = w.height();
+                let world_width = 1200.0_f32.max(760.0 * width / height);
+                let world_height = 760.0_f32.max(1200.0 * height / width);
+                w.set_cursor_position(Some(Vec2::new(
+                    width * (0.5 + point.x / world_width),
+                    height * (0.5 - point.y / world_height),
+                )));
+                let mut mouse = ButtonInput::<MouseButton>::default();
+                mouse.press(MouseButton::Left);
+                app.world_mut().insert_resource(mouse);
+                app.update();
+            };
+
+            let id = ComponentId("RV1".into());
+            let left_x = DIAL_TRACK_CENTER.x - DIAL_TRACK_SIZE.x / 2.0 + 2.0;
+            drag(window, Vec2::new(left_x, DIAL_TRACK_CENTER.y), &mut app);
+            let low_ratio = app
+                .world()
+                .resource::<Session>()
+                .bench
+                .as_ref()
+                .unwrap()
+                .simulation
+                .control_ratios[&id];
+            assert!(
+                low_ratio < 0.05,
+                "{circuit:?} ratio should be near 0.0: {low_ratio}"
+            );
+
+            let right_x = DIAL_TRACK_CENTER.x + DIAL_TRACK_SIZE.x / 2.0 - 2.0;
+            drag(window, Vec2::new(right_x, DIAL_TRACK_CENTER.y), &mut app);
+            let high_ratio = app
+                .world()
+                .resource::<Session>()
+                .bench
+                .as_ref()
+                .unwrap()
+                .simulation
+                .control_ratios[&id];
+            assert!(
+                high_ratio > 0.95,
+                "{circuit:?} ratio should be near 1.0: {high_ratio}"
+            );
+
+            let mut handles = app.world_mut().query::<(&DialHandle, &Transform)>();
+            let (_, transform) = handles.iter(app.world()).next().unwrap();
+            let expected_x = DIAL_TRACK_CENTER.x - DIAL_TRACK_SIZE.x / 2.0
+                + high_ratio as f32 * DIAL_TRACK_SIZE.x;
+            assert!(
+                (transform.translation.x - expected_x).abs() < 1.0,
+                "{circuit:?} handle should track the ratio"
+            );
+        }
+    }
+
+    #[test]
+    fn new_exercises_show_title_explanation_and_task_text() {
+        for circuit in [
+            Circuit::E1,
+            Circuit::E2,
+            Circuit::E3,
+            Circuit::E4,
+            Circuit::E7,
+            Circuit::E8,
+            Circuit::E9,
+            Circuit::E10,
+            Circuit::E5,
+            Circuit::E6,
+        ] {
+            let mut app = App::new();
+            app.init_resource::<Assets<Image>>();
+            let bench = Bench::new(circuit);
+            app.world_mut()
+                .resource_scope(|world, mut images: Mut<Assets<Image>>| {
+                    let mut queue = bevy::ecs::world::CommandQueue::default();
+                    let mut commands = Commands::new(&mut queue, world);
+                    spawn_bench(&mut commands, &mut images, &bench);
+                    queue.apply(world);
+                });
+            let mut texts = app.world_mut().query::<&Text2d>();
+            let all_text: String = texts
+                .iter(app.world())
+                .map(|t| t.0.as_str())
+                .collect::<Vec<_>>()
+                .join("\n");
+            assert!(all_text.contains(circuit.label()), "{circuit:?} title");
+            let (explanation, task) = circuit.explanation_and_task();
+            assert!(!explanation.is_empty(), "{circuit:?} explanation");
+            assert!(
+                all_text.contains(explanation),
+                "{circuit:?} explanation shown"
+            );
+            assert!(all_text.contains(task), "{circuit:?} task shown");
+            for component in &bench.project.components {
+                assert!(
+                    all_text.contains(&component.id.0),
+                    "{circuit:?} parts list missing {}",
+                    component.id.0
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn shared_menu_and_visible_buttons_dispatch_core_actions() {
+        let mut app = App::new();
+        app.insert_resource(Session::default())
+            .insert_resource(MenuScroll::default())
+            .insert_resource(ButtonInput::<MouseButton>::default())
+            .init_resource::<Assets<Image>>()
+            .add_systems(Startup, setup)
+            .add_systems(Update, (scroll_menu, handle_mouse).chain());
         let window = app
             .world_mut()
             .spawn(Window {
@@ -1129,7 +1769,7 @@ mod tests {
         {
             let mut session = app.world_mut().resource_mut::<Session>();
             let bench = session.bench.as_mut().unwrap();
-            bench.toggle_control();
+            bench.toggle(0);
             bench.act(Action::Run);
             advance_steps(&bench.project, &mut bench.simulation, 10);
         }
@@ -1182,5 +1822,118 @@ mod tests {
         let split = run_frames(&[100, 400, 500]);
         assert_eq!(single.step, 1_000);
         assert_eq!(single, split);
+    }
+
+    /// Debug-only stand-in for the eventual 13-entry list (T22/T23): spawns
+    /// `count` menu entries so scrolling can be exercised without depending
+    /// on real fixed circuits.
+    fn spawn_stub_menu(commands: &mut Commands, count: usize) {
+        for index in 0..count {
+            menu_entry_button(
+                commands,
+                &format!("STUB {index}"),
+                index,
+                Control::Select(Circuit::Led),
+            );
+        }
+    }
+
+    fn visible_entries(app: &mut App) -> BTreeSet<usize> {
+        let mut query = app
+            .world_mut()
+            .query_filtered::<(&MenuEntry, &Visibility), With<ClickTarget>>();
+        query
+            .iter(app.world())
+            .filter(|(_, visibility)| **visibility != Visibility::Hidden)
+            .map(|(entry, _)| entry.0)
+            .collect()
+    }
+
+    #[test]
+    fn thirteen_stub_entries_are_all_reachable_by_scrolling_without_overlap() {
+        let mut app = App::new();
+        app.insert_resource(MenuScroll::default())
+            .init_resource::<Assets<Image>>()
+            .add_systems(Update, scroll_menu);
+        app.world_mut()
+            .resource_scope(|world, mut _images: Mut<Assets<Image>>| {
+                let mut queue = bevy::ecs::world::CommandQueue::default();
+                let mut commands = Commands::new(&mut queue, world);
+                spawn_stub_menu(&mut commands, 13);
+                queue.apply(world);
+            });
+        app.update();
+        let mut seen = BTreeSet::new();
+        seen.extend(visible_entries(&mut app));
+        let max_scroll = menu_max_scroll(13);
+        assert!(max_scroll > 0.0, "13 entries must overflow the viewport");
+        let steps = 20;
+        for step in 0..=steps {
+            app.world_mut().resource_mut::<MenuScroll>().offset =
+                max_scroll * step as f32 / steps as f32;
+            app.update();
+            seen.extend(visible_entries(&mut app));
+        }
+        assert_eq!(seen, (0..13).collect::<BTreeSet<_>>());
+
+        // No two visible entries may overlap: their base Y spacing already
+        // exceeds their height, so overlap-freedom reduces to checking every
+        // visible entry sits within the declared viewport band.
+        let half_height = MENU_ENTRY_SIZE.y * 0.5;
+        let mut transforms = app
+            .world_mut()
+            .query::<(&MenuEntry, &Transform, &Visibility)>();
+        for (_, transform, visibility) in transforms.iter(app.world()) {
+            if *visibility == Visibility::Hidden {
+                continue;
+            }
+            let y = transform.translation.y;
+            assert!(y + half_height >= MENU_BOTTOM && y - half_height <= MENU_TOP);
+        }
+    }
+
+    #[test]
+    fn scroll_offset_is_clamped_to_first_and_last_entry() {
+        let mut app = App::new();
+        app.insert_resource(MenuScroll::default())
+            .init_resource::<Assets<Image>>()
+            .add_message::<MouseWheel>()
+            .add_systems(Update, handle_scroll);
+        app.world_mut()
+            .resource_scope(|world, mut _images: Mut<Assets<Image>>| {
+                let mut queue = bevy::ecs::world::CommandQueue::default();
+                let mut commands = Commands::new(&mut queue, world);
+                spawn_stub_menu(&mut commands, 13);
+                queue.apply(world);
+            });
+        let max_scroll = menu_max_scroll(13);
+        // A huge downward scroll must clamp at the last entry, not overshoot.
+        app.world_mut().write_message(MouseWheel {
+            unit: MouseScrollUnit::Pixel,
+            x: 0.0,
+            y: -10_000.0,
+            window: Entity::PLACEHOLDER,
+            phase: bevy::input::touch::TouchPhase::Moved,
+        });
+        app.update();
+        assert_eq!(app.world().resource::<MenuScroll>().offset, max_scroll);
+        // A huge upward scroll must clamp back at the first entry.
+        app.world_mut().write_message(MouseWheel {
+            unit: MouseScrollUnit::Pixel,
+            x: 0.0,
+            y: 10_000.0,
+            window: Entity::PLACEHOLDER,
+            phase: bevy::input::touch::TouchPhase::Moved,
+        });
+        app.update();
+        assert_eq!(app.world().resource::<MenuScroll>().offset, 0.0);
+    }
+
+    #[test]
+    fn existing_three_entry_menu_layout_is_unchanged() {
+        assert_eq!(menu_max_scroll(3), 0.0);
+        assert_eq!(menu_entry_base_y(0), 100.0);
+        assert_eq!(menu_entry_base_y(1), -5.0);
+        assert_eq!(menu_entry_base_y(2), -110.0);
     }
 }

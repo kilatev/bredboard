@@ -50,6 +50,9 @@ pub const SWITCH_TRACK: Rgb = hex(0x111114);
 pub const SWITCH_SLIDER: Rgb = hex(0xd7dbe0);
 pub const SWITCH_SLIDER_SHADE: Rgb = hex(0x9a9ea5);
 
+/// Buzzer sound-wave marks, drawn only in the current-driven "sounding" state.
+pub const SOUND_WAVE: Rgb = hex(0xa8e8ef);
+
 /// Off-board 5 V supply block: dark case, red + and blue - terminals.
 pub const SOURCE_CASE: Rgb = hex(0x30363a);
 pub const SOURCE_CASE_LIGHT: Rgb = hex(0x4b5359);
@@ -293,6 +296,7 @@ const LEGEND: &[(Rgb, char)] = &[
     (SOURCE_CASE_LIGHT, 't'),
     (SOURCE_CASE_SHADE, 'V'),
     (SOURCE_LABEL, 'T'),
+    (SOUND_WAVE, '\''),
 ];
 
 /// Full legend: the parts above plus the design-only Part B colours.

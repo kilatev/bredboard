@@ -173,6 +173,30 @@ pub fn restore_snapshot(
             ));
         }
     }
+    let ratio_ids: BTreeSet<_> = snapshot
+        .project
+        .components
+        .iter()
+        .filter(|c| {
+            matches!(
+                c.kind,
+                ComponentKind::Potentiometer | ComponentKind::Photoresistor
+            )
+        })
+        .map(|c| c.id.clone())
+        .collect();
+    if ratio_ids != snapshot.state.control_ratios.keys().cloned().collect()
+        || snapshot
+            .state
+            .control_ratios
+            .values()
+            .any(|ratio| !ratio.is_finite() || !(0.0..=1.0).contains(ratio))
+    {
+        return Err(persistence_error(
+            "invalid_control_ratio_state",
+            "snapshot control ratio state is incomplete or out of range",
+        ));
+    }
     if snapshot.state.stale && snapshot.state.running {
         return Err(persistence_error(
             "invalid_run_state",
@@ -368,6 +392,68 @@ mod tests {
         serde_json::from_str(include_str!("../../../fixtures/projects/rc-charging.json")).unwrap()
     }
 
+    fn variable_resistor_project() -> Project {
+        let mut p = project();
+        p.components[1].kind = ComponentKind::Potentiometer;
+        p.components[1].parameters = std::collections::BTreeMap::from([
+            ("min_resistance".into(), 100.0),
+            ("max_resistance".into(), 10_000.0),
+        ]);
+        p.components.push(crate::Component {
+            id: ComponentId("R2".into()),
+            kind: ComponentKind::Photoresistor,
+            pins: std::collections::BTreeMap::from([
+                (crate::PinId("a".into()), crate::HoleId("A5".into())),
+                (crate::PinId("b".into()), crate::HoleId("A6".into())),
+            ]),
+            parameters: std::collections::BTreeMap::from([
+                ("min_resistance".into(), 200.0),
+                ("max_resistance".into(), 20_000.0),
+            ]),
+        });
+        p.wires.push(crate::Wire {
+            id: crate::WireId("W2".into()),
+            from: crate::HoleId("A5".into()),
+            to: crate::HoleId("A7".into()),
+        });
+        p
+    }
+
+    #[test]
+    fn snapshot_round_trip_preserves_control_ratios_for_variable_resistors() {
+        let reset = variable_resistor_project();
+        let mut current = reset.clone();
+        let mut state = SimulationState::new(&current);
+        assert_eq!(
+            state.control_ratios[&ComponentId("R1".into())],
+            0.5,
+            "default ratio"
+        );
+        apply_actions(
+            &mut current,
+            &reset,
+            &mut state,
+            &[
+                Action::SetControlRatio {
+                    component: ComponentId("R1".into()),
+                    ratio: 0.25,
+                },
+                Action::SetControlRatio {
+                    component: ComponentId("R2".into()),
+                    ratio: 0.75,
+                },
+            ],
+        );
+        let encoded = serde_json::to_string(&Snapshot::capture(&current, &reset, &state)).unwrap();
+        let decoded: Snapshot = serde_json::from_str(&encoded).unwrap();
+        let (restored, restored_reset, resumed) = restore_snapshot(&decoded).unwrap();
+        assert_eq!(restored, current);
+        assert_eq!(restored_reset, reset);
+        assert_eq!(resumed, state);
+        assert_eq!(resumed.control_ratios[&ComponentId("R1".into())], 0.25);
+        assert_eq!(resumed.control_ratios[&ComponentId("R2".into())], 0.75);
+    }
+
     #[test]
     fn snapshot_round_trip_continues_identically() {
         let reset = project();
@@ -435,8 +521,13 @@ mod tests {
         );
         assert_eq!(state, original);
         let mut snapshot = Snapshot::capture(&project, &project, &state);
-        let mut readings =
-            crate::solve_transient(&project, &state.controls, &state.capacitor_voltages).unwrap();
+        let mut readings = crate::solve_transient(
+            &project,
+            &state.controls,
+            &state.capacitor_voltages,
+            &state.control_ratios,
+        )
+        .unwrap();
         readings
             .resistor_currents
             .insert(ComponentId("unknown".into()), 0.0);

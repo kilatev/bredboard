@@ -47,6 +47,9 @@ references are authoritative; the mockups are not needed to implement or review.
 | `npn_transistor` | 14 x 8 TO-92 | 1 | Black D-shaped body seen from above: a flat face on the left, rounded back on the right. The middle (base) lead is drawn by the shared three-pin placement. |
 | `changeover_switch` | 14 x 8 slide switch | 2: toward NC, toward NO | Black case with a light slider that shifts end to end with the core control state; the middle (common) lead uses the same shared three-pin placement. |
 | `dc_voltage_source` | 22 x 14 off-board block | 1 | Dark case with a red + and blue - terminal mark and a pixel "5V" label. Position and colored supply wires are unchanged; only the flat rectangle became a sprite. |
+| `potentiometer` | 12 x 12 top-down body | 1 | Promoted unchanged from the T17 Part B "Trimmer potentiometer" design below (same golden file). Blue case, white cross-slot knob. The control ratio is an electrical signal, not a visual state; the body never changes. |
+| `photoresistor` | 12 x 12 top-down body | 1 | Promoted unchanged from the T17 Part B "Photoresistor (LDR)" design below (same golden file). Orange-red disc with a zigzag track. The ambient-light control ratio is an electrical signal, not a visual state. |
+| `buzzer` | 12 x 16 top-down body (12 x 12 case plus 4 px of headroom for sound-wave marks) | silent, sounding | Round dark plastic case (reusing `changeover_switch`'s case colours) with a silver metal grille (reusing the capacitor's vent colours) and a polarity stripe on the positive side (reusing the capacitor's minus-stripe colour). Sounding adds `SOUND_WAVE` arcs above the case; state comes from calculated current against `buzzer::SOUNDING_CURRENT` (1 mA), the same pattern as the LED's thresholds. No audio; sounding is visual only. |
 
 Every existing catalog kind now has an 8-bit sprite; the plain fallback
 drawing in `crates/app/src/main.rs` is no longer reachable and has been
@@ -74,13 +77,18 @@ card before the app can simulate or draw it. Palette colours for these are
 also `#[cfg(test)]`-only, under `palette::future`, so they add no runtime
 weight until a kind exists.
 
+T19 promoted the trimmer potentiometer and photoresistor designs to real
+`potentiometer`/`photoresistor` kinds (see "Current parts" above); their
+drawing code moved to `crates/app/src/sprites/potentiometer.rs` and
+`photoresistor.rs`, but the golden files `future-trimmer-potentiometer.txt`
+and `future-photoresistor.txt` keep their original names and pixels
+unchanged (now checked from `body_sprites_match_design_references`).
+
 | Part | Pins (axis first) | Body idea | States | Palette |
 | --- | --- | --- | --- | --- |
 | Rectifier diode (1N4007) | anode → cathode | Black cylinder, 14 x 8 (same span as the resistor), with a silver cathode band near the cathode end. | 1 | Reuses `TO92_BODY`/`TO92_SHADE`/`TO92_HIGHLIGHT` and `METAL`/`METAL_LIGHT`. |
 | Signal diode (1N4148) | anode → cathode | Orange glass body, 14 x 6, with a black cathode band. | 1 | Reuses `Band::Orange` shades and `OUTLINE`. |
 | Ceramic capacitor | a → b | Small ochre disc, 10 x 10, on two leg stubs. | 1 | Reuses `Band::Brown` shades and `LEAD`/`LEAD_SHADE`. |
-| Trimmer potentiometer | end a → end b, wiper in the middle | Blue square, 12 x 12, with a white cross-slot knob. | 1 (knob angle may come later from a parameter) | Reuses `Band::Blue` and `Band::White` shades. |
-| Photoresistor (LDR) | a → b | Round orange-red disc, 12 x 12, with a zigzag track. | 1 | Reuses `Band::Orange`/`Band::Red` shades. |
 | PNP transistor | emitter → collector, base in the middle | The same TO-92 body as the NPN transistor (`npn-transistor.txt`); told apart by label and hover text, not shape. | 1 | No new colours; reuses `npn_transistor`'s body. |
 | Slide switch (SPDT), toggle switch | as the changeover switch | The same slide switch body as `changeover_switch` (`changeover-switch-nc.txt` / `-no.txt`); told apart by label and hover text, not shape. | 2 | No new colours. |
 | Green LED | anode → cathode | The existing LED dome, recoloured green. Only the "lit" state is drawn here (`future-led-green-lit.txt`); off and dim would follow the red LED's three-tier shading once implemented. | 3 (off, dim, lit; only lit is drawn) | `palette::future::GREEN_LED_LIT`. |

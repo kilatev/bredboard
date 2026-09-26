@@ -87,11 +87,13 @@ pub const MAX_NONLINEAR_ITERATIONS: usize = 80;
 pub fn solve_dc(
     project: &Project,
     states: &BTreeMap<ComponentId, ControlState>,
+    ratios: &BTreeMap<ComponentId, f64>,
 ) -> Result<SolveResult, ElectricalError> {
     solve_internal(
         project,
         states,
         &BTreeMap::new(),
+        ratios,
         None,
         MAX_NONLINEAR_ITERATIONS,
     )
@@ -102,11 +104,13 @@ pub fn solve_transient(
     project: &Project,
     states: &BTreeMap<ComponentId, ControlState>,
     capacitor_voltages: &BTreeMap<ComponentId, f64>,
+    ratios: &BTreeMap<ComponentId, f64>,
 ) -> Result<SolveResult, ElectricalError> {
     solve_transient_with_iteration_limit(
         project,
         states,
         capacitor_voltages,
+        ratios,
         MAX_NONLINEAR_ITERATIONS,
     )
 }
@@ -115,12 +119,14 @@ pub(crate) fn solve_transient_with_iteration_limit(
     project: &Project,
     states: &BTreeMap<ComponentId, ControlState>,
     capacitor_voltages: &BTreeMap<ComponentId, f64>,
+    ratios: &BTreeMap<ComponentId, f64>,
     max_iterations: usize,
 ) -> Result<SolveResult, ElectricalError> {
     solve_internal(
         project,
         states,
         capacitor_voltages,
+        ratios,
         Some(FIXED_STEP_SECONDS),
         max_iterations,
     )
@@ -130,6 +136,7 @@ fn solve_internal(
     project: &Project,
     states: &BTreeMap<ComponentId, ControlState>,
     capacitor_voltages: &BTreeMap<ComponentId, f64>,
+    ratios: &BTreeMap<ComponentId, f64>,
     dt: Option<f64>,
     max_iterations: usize,
 ) -> Result<SolveResult, ElectricalError> {
@@ -138,8 +145,16 @@ fn solve_internal(
     control_state.extend(states.clone());
     let mut cap_state = project.initial_conditions.capacitor_voltages.clone();
     cap_state.extend(capacitor_voltages.clone());
-    let (mut branches, nonlinear, node_contacts, active_nodes) =
-        make_branches(project, &topology, &control_state, &cap_state, dt)?;
+    let mut ratio_state = project.initial_conditions.control_ratios.clone();
+    ratio_state.extend(ratios.clone());
+    let (mut branches, nonlinear, node_contacts, active_nodes) = make_branches(
+        project,
+        &topology,
+        &control_state,
+        &cap_state,
+        &ratio_state,
+        dt,
+    )?;
     if branches.is_empty() && nonlinear.is_empty() {
         return Ok(SolveResult {
             node_voltages: Vec::new(),
@@ -426,6 +441,7 @@ fn make_branches(
     topology: &[Node],
     states: &BTreeMap<ComponentId, ControlState>,
     capacitor_voltages: &BTreeMap<ComponentId, f64>,
+    ratios: &BTreeMap<ComponentId, f64>,
     dt: Option<f64>,
 ) -> Result<CompiledBranches, ElectricalError> {
     let node_contacts: Vec<_> = topology.iter().map(|n| n.contacts.clone()).collect();
@@ -476,7 +492,7 @@ fn make_branches(
             _ => {}
         }
         let Some((a_pin, b_pin, kind, value, previous_voltage)) =
-            component_branch(component, states, capacitor_voltages, dt)?
+            component_branch(component, states, capacitor_voltages, ratios, dt)?
         else {
             continue;
         };
@@ -515,6 +531,7 @@ fn component_branch(
     c: &Component,
     states: &BTreeMap<ComponentId, ControlState>,
     capacitor_voltages: &BTreeMap<ComponentId, f64>,
+    ratios: &BTreeMap<ComponentId, f64>,
     dt: Option<f64>,
 ) -> Result<Option<ComponentBranch>, ElectricalError> {
     let value = |name: &str| {
@@ -583,6 +600,38 @@ fn component_branch(
                 ));
             }
         },
+        ComponentKind::Buzzer => Some((
+            "positive",
+            "negative",
+            BranchKind::Resistor,
+            value("resistance")?,
+            0.0,
+        )),
+        ComponentKind::Potentiometer => {
+            let min = value("min_resistance")?;
+            let max = value("max_resistance")?;
+            let ratio = ratios.get(&c.id).copied().unwrap_or(0.5).clamp(0.0, 1.0);
+            Some((
+                "a",
+                "b",
+                BranchKind::Resistor,
+                min + ratio * (max - min),
+                0.0,
+            ))
+        }
+        ComponentKind::Photoresistor => {
+            let min = value("min_resistance")?;
+            let max = value("max_resistance")?;
+            let ratio = ratios.get(&c.id).copied().unwrap_or(0.5).clamp(0.0, 1.0);
+            // ratio is ambient light: 0.0 (darkest) -> max_resistance, 1.0 (brightest) -> min_resistance.
+            Some((
+                "a",
+                "b",
+                BranchKind::Resistor,
+                max - ratio * (max - min),
+                0.0,
+            ))
+        }
         _ => {
             return Err(calc(
                 "unsupported_component",
@@ -831,7 +880,7 @@ mod tests {
         .unwrap()
     }
     fn solve(p: &Project) -> Result<SolveResult, ElectricalError> {
-        solve_dc(p, &BTreeMap::new())
+        solve_dc(p, &BTreeMap::new(), &BTreeMap::new())
     }
     fn pin_voltage(result: &SolveResult, component: &str, pin: &str) -> f64 {
         result
@@ -915,6 +964,7 @@ mod tests {
         let pressed = solve_dc(
             &button,
             &BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]),
+            &BTreeMap::new(),
         )
         .unwrap();
         assert!((pressed.resistor_currents[&ComponentId("R1".into())] - 0.0025).abs() < 1e-10);
@@ -945,6 +995,7 @@ mod tests {
         let no = solve_dc(
             &changeover,
             &BTreeMap::from([(ComponentId("S1".into()), ControlState::SwitchNormallyOpen)]),
+            &BTreeMap::new(),
         )
         .unwrap();
         assert!(
@@ -961,11 +1012,17 @@ mod tests {
             include_str!("../../../fixtures/projects/transistor-bench.json"),
         ] {
             let project: Project = serde_json::from_str(json).unwrap();
-            let off = solve_transient(&project, &BTreeMap::new(), &BTreeMap::new())
-                .unwrap_or_else(|e| panic!("{} off: {e:?}", project.title));
+            let off = solve_transient(
+                &project,
+                &BTreeMap::new(),
+                &BTreeMap::new(),
+                &BTreeMap::new(),
+            )
+            .unwrap_or_else(|e| panic!("{} off: {e:?}", project.title));
             let on = solve_transient(
                 &project,
                 &BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]),
+                &BTreeMap::new(),
                 &BTreeMap::new(),
             )
             .unwrap_or_else(|e| panic!("{} on: {e:?}", project.title));
@@ -1003,7 +1060,8 @@ mod tests {
             serde_json::from_str(include_str!("../../../fixtures/projects/led-bench.json"))
                 .unwrap();
         let states = BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]);
-        let forward = solve_transient(&project, &states, &BTreeMap::new()).unwrap();
+        let forward =
+            solve_transient(&project, &states, &BTreeMap::new(), &BTreeMap::new()).unwrap();
         let led = project
             .components
             .iter_mut()
@@ -1013,7 +1071,8 @@ mod tests {
         let cathode = led.pins[&crate::PinId("cathode".into())].clone();
         led.pins.insert(crate::PinId("anode".into()), cathode);
         led.pins.insert(crate::PinId("cathode".into()), anode);
-        let reversed = solve_transient(&project, &states, &BTreeMap::new()).unwrap();
+        let reversed =
+            solve_transient(&project, &states, &BTreeMap::new(), &BTreeMap::new()).unwrap();
         assert!(forward.led_currents[&ComponentId("D1".into())] > 0.008);
         assert!(reversed.led_currents[&ComponentId("D1".into())].abs() < 1e-6);
     }
@@ -1046,7 +1105,7 @@ mod tests {
     fn led_wired_directly_across_the_12v_source_converges() {
         let mut project = breadboard_led(12.0, 1.0, 1.0);
         let pressed = BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]);
-        assert!(solve_transient(&project, &pressed, &BTreeMap::new()).is_ok());
+        assert!(solve_transient(&project, &pressed, &BTreeMap::new(), &BTreeMap::new()).is_ok());
         let led = project
             .components
             .iter_mut()
@@ -1063,7 +1122,12 @@ mod tests {
             from: crate::HoleId("A8".into()),
             to: crate::HoleId("TP-:8".into()),
         });
-        let result = solve_transient(&project, &BTreeMap::new(), &BTreeMap::new());
+        let result = solve_transient(
+            &project,
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+        );
         assert!(result.is_ok(), "direct LED solve failed: {result:?}");
         assert!(result.unwrap().led_currents[&ComponentId("D1".into())] > 1.0);
     }
@@ -1091,9 +1155,9 @@ mod tests {
             let mut project: Project = serde_json::from_str(include_str!("../../../fixtures/projects/led-bench.json")).unwrap();
             let states = BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]);
             project.components.iter_mut().find(|c| c.id.0 == "R1").unwrap().parameters.insert("resistance".into(), f64::from(low));
-            let first = solve_transient(&project, &states, &BTreeMap::new()).unwrap().led_currents[&ComponentId("D1".into())];
+            let first = solve_transient(&project, &states, &BTreeMap::new(), &BTreeMap::new()).unwrap().led_currents[&ComponentId("D1".into())];
             project.components.iter_mut().find(|c| c.id.0 == "R1").unwrap().parameters.insert("resistance".into(), f64::from(low + extra));
-            let second = solve_transient(&project, &states, &BTreeMap::new()).unwrap().led_currents[&ComponentId("D1".into())];
+            let second = solve_transient(&project, &states, &BTreeMap::new(), &BTreeMap::new()).unwrap().led_currents[&ComponentId("D1".into())];
             prop_assert!(first > second && second > 0.0);
         }
         #[test]
@@ -1109,7 +1173,7 @@ mod tests {
                 log_range(led_bucket),
             );
             let states = BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]);
-            let result = solve_transient(&project, &states, &BTreeMap::new());
+            let result = solve_transient(&project, &states, &BTreeMap::new(), &BTreeMap::new());
             prop_assert!(result.is_ok(), "range case did not converge: {:?}", result.err());
         }
         #[test]
@@ -1117,10 +1181,10 @@ mod tests {
             let mut project: Project = serde_json::from_str(include_str!("../../../fixtures/projects/transistor-bench.json")).unwrap();
             let states = BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]);
             project.components.iter_mut().find(|c| c.id.0 == "Q1").unwrap().parameters.insert("beta".into(), f64::from(low));
-            let first = solve_transient(&project, &states, &BTreeMap::new()).unwrap();
+            let first = solve_transient(&project, &states, &BTreeMap::new(), &BTreeMap::new()).unwrap();
             let lower_current = first.led_currents[&ComponentId("D1".into())];
             project.components.iter_mut().find(|c| c.id.0 == "Q1").unwrap().parameters.insert("beta".into(), f64::from(low + extra));
-            let second = solve_transient(&project, &states, &BTreeMap::new()).unwrap();
+            let second = solve_transient(&project, &states, &BTreeMap::new(), &BTreeMap::new()).unwrap();
             let higher_current = second.led_currents[&ComponentId("D1".into())];
             prop_assert!(higher_current > lower_current);
             prop_assert!((second.transistor_collector_currents[&ComponentId("Q1".into())] - higher_current).abs() < 1e-9);
@@ -1145,11 +1209,12 @@ mod tests {
             transistor
                 .parameters
                 .insert("saturation_current".into(), saturation);
-            let released = solve_transient(&project, &BTreeMap::new(), &BTreeMap::new())
+            let released = solve_transient(&project, &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new())
                 .expect("released breadboard-range transistor must converge within 80 iterations");
             let pressed = solve_transient(
                 &project,
                 &BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]),
+                &BTreeMap::new(),
                 &BTreeMap::new(),
             )
             .expect("pressed breadboard-range transistor must converge within 80 iterations");
@@ -1161,6 +1226,332 @@ mod tests {
             prop_assert!(
                 pressed.transistor_collector_currents[&ComponentId("Q1".into())]
                     > released.transistor_collector_currents[&ComponentId("Q1".into())]
+            );
+        }
+    }
+
+    #[test]
+    fn buzzer_matches_a_plain_resistor_of_the_same_value() {
+        let mut buzzer = divider();
+        buzzer.components[1].kind = ComponentKind::Buzzer;
+        buzzer.components[1].parameters = BTreeMap::from([("resistance".into(), 1000.0)]);
+        buzzer.components[1].pins = BTreeMap::from([
+            (
+                crate::PinId("positive".into()),
+                crate::HoleId("TP+:2".into()),
+            ),
+            (crate::PinId("negative".into()), crate::HoleId("A1".into())),
+        ]);
+        let plain = solve(&divider()).unwrap();
+        let as_buzzer = solve(&buzzer).unwrap();
+        assert_eq!(
+            plain.resistor_currents[&ComponentId("R1".into())],
+            as_buzzer.resistor_currents[&ComponentId("R1".into())]
+        );
+        assert_eq!(
+            pin_voltage(&plain, "R1", "a"),
+            pin_voltage(&as_buzzer, "R1", "positive")
+        );
+        assert_eq!(
+            pin_voltage(&plain, "R1", "b"),
+            pin_voltage(&as_buzzer, "R1", "negative")
+        );
+    }
+
+    fn variable_resistor_divider(kind: ComponentKind, min: f64, max: f64) -> Project {
+        let mut p = divider();
+        p.components[1].kind = kind;
+        p.components[1].parameters = BTreeMap::from([
+            ("min_resistance".into(), min),
+            ("max_resistance".into(), max),
+        ]);
+        p
+    }
+
+    #[test]
+    fn potentiometer_resistance_matches_linear_interpolation_at_the_endpoints() {
+        let project = variable_resistor_divider(ComponentKind::Potentiometer, 100.0, 1100.0);
+        let at = |ratio: f64| {
+            solve_dc(
+                &project,
+                &BTreeMap::new(),
+                &BTreeMap::from([(ComponentId("R1".into()), ratio)]),
+            )
+            .unwrap()
+            .resistor_currents[&ComponentId("R1".into())]
+        };
+        // R1 (100..1100 ohm) in series with R2 (1000 ohm) across 5 V.
+        assert!((at(0.0) - 5.0 / (100.0 + 1000.0)).abs() < 1e-9);
+        assert!((at(1.0) - 5.0 / (1100.0 + 1000.0)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn photoresistor_resistance_is_inverted_relative_to_potentiometer() {
+        let project = variable_resistor_divider(ComponentKind::Photoresistor, 100.0, 1100.0);
+        let at = |ratio: f64| {
+            solve_dc(
+                &project,
+                &BTreeMap::new(),
+                &BTreeMap::from([(ComponentId("R1".into()), ratio)]),
+            )
+            .unwrap()
+            .resistor_currents[&ComponentId("R1".into())]
+        };
+        // Darkest (ratio 0.0) is max_resistance; brightest (ratio 1.0) is min_resistance.
+        assert!((at(0.0) - 5.0 / (1100.0 + 1000.0)).abs() < 1e-9);
+        assert!((at(1.0) - 5.0 / (100.0 + 1000.0)).abs() < 1e-9);
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 96, rng_seed: proptest::test_runner::RngSeed::Fixed(0x7A19_2026), .. ProptestConfig::default() })]
+
+        #[test]
+        fn variable_resistor_current_changes_monotonically_with_ratio(
+            min_bucket in 0u32..=900,
+            span_bucket in 1u32..=900,
+            is_photoresistor in any::<bool>(),
+            ratios in prop::collection::vec(0u32..=1000, 8),
+        ) {
+            let min = 10f64.powf(7.0 * f64::from(min_bucket) / 1000.0).max(1.0);
+            let max = (min + 10f64.powf(7.0 * f64::from(span_bucket) / 1000.0)).min(1e7);
+            prop_assume!(max > min);
+            let kind = if is_photoresistor { ComponentKind::Photoresistor } else { ComponentKind::Potentiometer };
+            let project = variable_resistor_divider(kind, min, max);
+            let mut points: Vec<(f64, f64)> = ratios
+                .iter()
+                .map(|bucket| f64::from(*bucket) / 1000.0)
+                .map(|ratio| {
+                    let current = solve_dc(
+                        &project,
+                        &BTreeMap::new(),
+                        &BTreeMap::from([(ComponentId("R1".into()), ratio)]),
+                    )
+                    .unwrap()
+                    .resistor_currents[&ComponentId("R1".into())];
+                    (ratio, current)
+                })
+                .collect();
+            points.sort_by(|a, b| a.0.total_cmp(&b.0));
+            // Current is a monotonically decreasing function of resistance; whether
+            // it rises or falls with ratio depends on kind, so compare direction
+            // against the endpoints rather than assuming a sign.
+            let increasing = points.last().unwrap().1 >= points.first().unwrap().1;
+            for pair in points.windows(2) {
+                let (_, i1) = pair[0];
+                let (_, i2) = pair[1];
+                if increasing {
+                    prop_assert!(i2 >= i1 - 1e-12, "current decreased: {i1} -> {i2}");
+                } else {
+                    prop_assert!(i2 <= i1 + 1e-12, "current increased: {i1} -> {i2}");
+                }
+            }
+        }
+    }
+
+    /// T22/T23 fixed-exercise fixtures: topology validity for all ten new
+    /// exercises, plus the specific electrical behavior each exercise's
+    /// acceptance criteria calls out.
+    mod exercises {
+        use super::*;
+
+        fn fixture(json: &str) -> Project {
+            serde_json::from_str(json).unwrap()
+        }
+        fn pressed(id: &str) -> BTreeMap<ComponentId, ControlState> {
+            BTreeMap::from([(ComponentId(id.into()), ControlState::ButtonPressed)])
+        }
+        fn led_current(result: &SolveResult, id: &str) -> f64 {
+            result.led_currents[&ComponentId(id.into())]
+        }
+
+        macro_rules! fixture_json {
+            ($name:ident, $path:literal) => {
+                const $name: &str = include_str!(concat!("../../../fixtures/projects/", $path));
+            };
+        }
+        fixture_json!(E1, "e1-first-light.json");
+        fixture_json!(E2, "e2-push-button-switch.json");
+        fixture_json!(E3, "e3-two-leds-in-series.json");
+        fixture_json!(E4, "e4-two-leds-in-parallel.json");
+        fixture_json!(E7, "e7-buzzer-doorbell.json");
+        fixture_json!(E8, "e8-transistor-switch.json");
+        fixture_json!(E9, "e9-logical-and.json");
+        fixture_json!(E10, "e10-smooth-fade.json");
+        fixture_json!(E5, "e5-brightness-dial.json");
+        fixture_json!(E6, "e6-light-reactive-led.json");
+
+        #[test]
+        fn all_ten_exercise_fixtures_have_valid_solvable_topology() {
+            for json in [E1, E2, E3, E4, E7, E8, E9, E5, E6] {
+                let project = fixture(json);
+                compile_topology(&project).unwrap_or_else(|e| panic!("{}: {e:?}", project.title));
+                solve_dc(&project, &BTreeMap::new(), &BTreeMap::new())
+                    .unwrap_or_else(|e| panic!("{}: {e:?}", project.title));
+            }
+            // E10 has a capacitor, which the resistive DC solver does not
+            // support; it requires transient stepping instead.
+            let e10 = fixture(E10);
+            compile_topology(&e10).unwrap_or_else(|e| panic!("{}: {e:?}", e10.title));
+            solve_transient(&e10, &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new())
+                .unwrap_or_else(|e| panic!("{}: {e:?}", e10.title));
+        }
+
+        #[test]
+        fn e1_e3_always_on_exercises_light_without_any_control() {
+            let e1 = solve_dc(&fixture(E1), &BTreeMap::new(), &BTreeMap::new()).unwrap();
+            assert!(led_current(&e1, "D1") > 0.005);
+            let e3 = solve_dc(&fixture(E3), &BTreeMap::new(), &BTreeMap::new()).unwrap();
+            assert!(led_current(&e3, "D1") > 0.005);
+            assert!(led_current(&e3, "D2") > 0.005);
+        }
+
+        #[test]
+        fn e2_led_lights_only_while_its_button_is_pressed() {
+            let project = fixture(E2);
+            let released = solve_dc(&project, &BTreeMap::new(), &BTreeMap::new()).unwrap();
+            assert!(led_current(&released, "D1").abs() < 1e-6);
+            let held = solve_dc(&project, &pressed("S1"), &BTreeMap::new()).unwrap();
+            assert!(led_current(&held, "D1") > 0.005);
+        }
+
+        #[test]
+        fn e4_two_led_branches_are_independently_solvable() {
+            let full = fixture(E4);
+            let baseline = solve_dc(&full, &BTreeMap::new(), &BTreeMap::new()).unwrap();
+            let mut only_branch_a = full.clone();
+            only_branch_a
+                .components
+                .retain(|c| c.id.0 != "R2" && c.id.0 != "D2");
+            only_branch_a
+                .wires
+                .retain(|w| w.id.0 != "W3" && w.id.0 != "W4");
+            let branch_a = solve_dc(&only_branch_a, &BTreeMap::new(), &BTreeMap::new()).unwrap();
+            assert_eq!(
+                led_current(&baseline, "D1"),
+                led_current(&branch_a, "D1"),
+                "removing D2's branch must not change D1's current"
+            );
+
+            let mut only_branch_b = full.clone();
+            only_branch_b
+                .components
+                .retain(|c| c.id.0 != "R1" && c.id.0 != "D1");
+            only_branch_b
+                .wires
+                .retain(|w| w.id.0 != "W1" && w.id.0 != "W2");
+            let branch_b = solve_dc(&only_branch_b, &BTreeMap::new(), &BTreeMap::new()).unwrap();
+            assert_eq!(
+                led_current(&baseline, "D2"),
+                led_current(&branch_b, "D2"),
+                "removing D1's branch must not change D2's current"
+            );
+        }
+
+        #[test]
+        fn e7_buzzer_sounds_only_while_its_button_is_held() {
+            let project = fixture(E7);
+            let released = solve_dc(&project, &BTreeMap::new(), &BTreeMap::new()).unwrap();
+            assert!(released.resistor_currents[&ComponentId("BZ1".into())].abs() < 1e-9);
+            let held = solve_dc(&project, &pressed("S1"), &BTreeMap::new()).unwrap();
+            assert!(held.resistor_currents[&ComponentId("BZ1".into())] > 0.001);
+        }
+
+        #[test]
+        fn e8_led_switches_on_only_while_its_button_is_held() {
+            let project = fixture(E8);
+            let released = solve_dc(&project, &BTreeMap::new(), &BTreeMap::new()).unwrap();
+            assert!(led_current(&released, "D1").abs() < 1e-5);
+            let held = solve_dc(&project, &pressed("S1"), &BTreeMap::new()).unwrap();
+            assert!(led_current(&held, "D1") > 0.005);
+        }
+
+        #[test]
+        fn e9_led_lights_only_when_both_buttons_are_held_together() {
+            let project = fixture(E9);
+            let neither = solve_dc(&project, &BTreeMap::new(), &BTreeMap::new()).unwrap();
+            assert!(led_current(&neither, "D1").abs() < 1e-6);
+            let only_s1 = solve_dc(&project, &pressed("S1"), &BTreeMap::new()).unwrap();
+            assert!(led_current(&only_s1, "D1").abs() < 1e-6);
+            let only_s2 = solve_dc(&project, &pressed("S2"), &BTreeMap::new()).unwrap();
+            assert!(led_current(&only_s2, "D1").abs() < 1e-6);
+            let both = solve_dc(
+                &project,
+                &BTreeMap::from([
+                    (ComponentId("S1".into()), ControlState::ButtonPressed),
+                    (ComponentId("S2".into()), ControlState::ButtonPressed),
+                ]),
+                &BTreeMap::new(),
+            )
+            .unwrap();
+            assert!(led_current(&both, "D1") > 0.005);
+        }
+
+        #[test]
+        fn e10_capacitor_charges_monotonically_and_led_follows() {
+            let project = fixture(E10);
+            let states = pressed("S1");
+            let mut capacitor_voltages = BTreeMap::new();
+            let mut previous_voltage = -1.0;
+            let mut previous_current = -1.0;
+            for _ in 0..2000 {
+                let result =
+                    solve_transient(&project, &states, &capacitor_voltages, &BTreeMap::new())
+                        .unwrap();
+                let voltage = result.capacitor_voltages[&ComponentId("C1".into())];
+                let current = led_current(&result, "D1");
+                assert!(
+                    voltage >= previous_voltage - 1e-9,
+                    "capacitor voltage dropped"
+                );
+                assert!(current >= previous_current - 1e-9, "LED current dropped");
+                previous_voltage = voltage;
+                previous_current = current;
+                capacitor_voltages = result.capacitor_voltages;
+            }
+            assert!(previous_current > 0.001, "LED should be lit once charged");
+        }
+
+        fn ratio_sweep_currents(project: &Project, id: &str, steps: u32) -> Vec<(f64, f64)> {
+            (0..=steps)
+                .map(|step| {
+                    let ratio = f64::from(step) / f64::from(steps);
+                    let result = solve_dc(
+                        project,
+                        &BTreeMap::new(),
+                        &BTreeMap::from([(ComponentId("RV1".into()), ratio)]),
+                    )
+                    .unwrap();
+                    (ratio, led_current(&result, id))
+                })
+                .collect()
+        }
+
+        #[test]
+        fn e5_led_brightness_changes_continuously_and_monotonically_with_the_dial() {
+            let project = fixture(E5);
+            let currents = ratio_sweep_currents(&project, "D1", 40);
+            for pair in currents.windows(2) {
+                assert!(
+                    pair[1].1 <= pair[0].1 + 1e-12,
+                    "current must not rise as the potentiometer ratio rises: {pair:?}"
+                );
+            }
+        }
+
+        #[test]
+        fn e6_led_brightness_changes_continuously_and_monotonically_and_reaches_off() {
+            let project = fixture(E6);
+            let currents = ratio_sweep_currents(&project, "D1", 40);
+            for pair in currents.windows(2) {
+                assert!(
+                    pair[1].1 >= pair[0].1 - 1e-12,
+                    "current must not fall as the ambient-light ratio rises: {pair:?}"
+                );
+            }
+            let darkest = currents.first().unwrap().1;
+            assert!(
+                darkest < 0.0005,
+                "darkest setting must reach the LED's off threshold: {darkest}"
             );
         }
     }

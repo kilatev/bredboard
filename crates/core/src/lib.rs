@@ -58,6 +58,11 @@ pub struct InitialConditions {
     pub capacitor_voltages: BTreeMap<ComponentId, f64>,
     #[serde(default)]
     pub controls: BTreeMap<ComponentId, ControlState>,
+    /// Continuous 0.0..=1.0 control ratio for a `potentiometer` or
+    /// `photoresistor`. Analogous to `controls`, but a continuous ratio
+    /// instead of a discrete `ControlState`.
+    #[serde(default)]
+    pub control_ratios: BTreeMap<ComponentId, f64>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -96,6 +101,21 @@ pub enum ComponentKind {
     NpnTransistor,
     MomentaryButton,
     ChangeoverSwitch,
+    /// Two-terminal variable resistor (rheostat wiring only; the wiper
+    /// terminal is not modeled). Resistance is driven by a continuous
+    /// control ratio (see `InitialConditions::control_ratios`), not by a
+    /// project parameter: `resistance = min_resistance + ratio *
+    /// (max_resistance - min_resistance)`.
+    Potentiometer,
+    /// Two-terminal variable resistor whose resistance is driven by a
+    /// continuous "ambient light" control ratio instead of a project
+    /// parameter: `resistance = max_resistance - ratio * (max_resistance -
+    /// min_resistance)`, so ratio 0.0 (darkest) is `max_resistance` and
+    /// ratio 1.0 (brightest) is `min_resistance`.
+    Photoresistor,
+    /// Fixed-resistance two-terminal load with a current-derived "sounding"
+    /// presentation state; no audio output (the app has no audio system).
+    Buzzer,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Wire {
@@ -290,6 +310,22 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                 ));
             }
         }
+        if matches!(
+            c.kind,
+            ComponentKind::Potentiometer | ComponentKind::Photoresistor
+        ) && let (Some(min), Some(max)) = (
+            c.parameters.get("min_resistance"),
+            c.parameters.get("max_resistance"),
+        ) && min.is_finite()
+            && max.is_finite()
+            && *min >= *max
+        {
+            errors.push(Diagnostic::new(
+                "invalid_parameter_range",
+                format!("components.{}.parameters.max_resistance", c.id.0),
+                "max_resistance must be greater than min_resistance",
+            ));
+        }
     }
     for (id, voltage) in &project.initial_conditions.capacitor_voltages {
         match project.components.iter().find(|c| &c.id == id) {
@@ -324,6 +360,29 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                 format!("initial_conditions.controls.{}", id.0),
                 "control state must match a button or switch component",
             ));
+        }
+    }
+    for (id, ratio) in &project.initial_conditions.control_ratios {
+        match project.components.iter().find(|c| &c.id == id) {
+            Some(c)
+                if matches!(
+                    c.kind,
+                    ComponentKind::Potentiometer | ComponentKind::Photoresistor
+                ) =>
+            {
+                if !ratio.is_finite() || !(0.0..=1.0).contains(ratio) {
+                    errors.push(Diagnostic::new(
+                        "control_ratio_out_of_range",
+                        format!("initial_conditions.control_ratios.{}", id.0),
+                        "control ratio must be finite and in 0.0..=1.0",
+                    ));
+                }
+            }
+            _ => errors.push(Diagnostic::new(
+                "invalid_initial_control_ratio",
+                format!("initial_conditions.control_ratios.{}", id.0),
+                "control ratio must refer to a potentiometer or photoresistor component",
+            )),
         }
     }
     // All holes in a contact group share a node, including the four continuous rails.
@@ -396,6 +455,8 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::NpnTransistor => &["base", "collector", "emitter"],
         ComponentKind::MomentaryButton => &["a", "b"],
         ComponentKind::ChangeoverSwitch => &["common", "normally_closed", "normally_open"],
+        ComponentKind::Potentiometer | ComponentKind::Photoresistor => &["a", "b"],
+        ComponentKind::Buzzer => &["positive", "negative"],
     }
 }
 fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
@@ -406,6 +467,10 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::Capacitor => &["capacitance"],
         ComponentKind::NpnTransistor => &["beta", "saturation_current"],
         ComponentKind::MomentaryButton | ComponentKind::ChangeoverSwitch => &[],
+        ComponentKind::Potentiometer | ComponentKind::Photoresistor => {
+            &["min_resistance", "max_resistance"]
+        }
+        ComponentKind::Buzzer => &["resistance"],
     }
 }
 fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
@@ -417,6 +482,11 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         (ComponentKind::Capacitor, "capacitance") => Some((1e-10, 1e-2)),
         (ComponentKind::NpnTransistor, "beta") => Some((10.0, 1000.0)),
         (ComponentKind::NpnTransistor, "saturation_current") => Some((1e-16, 1e-12)),
+        (
+            ComponentKind::Potentiometer | ComponentKind::Photoresistor,
+            "min_resistance" | "max_resistance",
+        ) => Some((1.0, 1e7)),
+        (ComponentKind::Buzzer, "resistance") => Some((1.0, 1e7)),
         _ => None,
     }
 }
@@ -695,5 +765,172 @@ mod tests {
                 .iter()
                 .any(|d| d.code == "invalid_hole")
         );
+    }
+
+    fn variable_resistor(kind: ComponentKind) -> Component {
+        Component {
+            id: ComponentId("RV1".into()),
+            kind,
+            pins: BTreeMap::from([
+                (PinId("a".into()), HoleId("A1".into())),
+                (PinId("b".into()), HoleId("A2".into())),
+            ]),
+            parameters: BTreeMap::from([
+                ("min_resistance".into(), 100.0),
+                ("max_resistance".into(), 10_000.0),
+            ]),
+        }
+    }
+
+    #[test]
+    fn potentiometer_and_photoresistor_are_valid_kinds_with_documented_ranges() {
+        for kind in [ComponentKind::Potentiometer, ComponentKind::Photoresistor] {
+            let mut p = project();
+            p.components = vec![variable_resistor(kind)];
+            p.wires.clear();
+            assert!(
+                compile_topology(&p).is_ok(),
+                "{kind:?} with valid range should compile"
+            );
+            let schema =
+                schemars::SchemaGenerator::new(schemars::generate::SchemaSettings::draft2020_12())
+                    .into_root_schema_for::<Project>();
+            let schema = serde_json::to_value(schema).unwrap();
+            let text = serde_json::to_string(&schema).unwrap();
+            let expected = match kind {
+                ComponentKind::Potentiometer => "\"potentiometer\"",
+                ComponentKind::Photoresistor => "\"photoresistor\"",
+                _ => unreachable!(),
+            };
+            assert!(text.contains(expected), "schema missing {expected}");
+        }
+    }
+
+    #[test]
+    fn variable_resistor_range_and_reference_diagnostics() {
+        let mut p = project();
+        p.components = vec![variable_resistor(ComponentKind::Potentiometer)];
+        p.wires.clear();
+        for (name, value) in [
+            ("min_resistance", 0.999),
+            ("min_resistance", 10_000_001.0),
+            ("max_resistance", 0.999),
+            ("max_resistance", 10_000_001.0),
+        ] {
+            let mut bad = p.clone();
+            bad.components[0].parameters.insert(name.into(), value);
+            assert!(
+                compile_topology(&bad)
+                    .unwrap_err()
+                    .iter()
+                    .any(|d| d.code == "parameter_out_of_range"
+                        && d.path == format!("components.RV1.parameters.{name}"))
+            );
+        }
+        let mut inverted = p.clone();
+        inverted.components[0]
+            .parameters
+            .insert("min_resistance".into(), 5_000.0);
+        inverted.components[0]
+            .parameters
+            .insert("max_resistance".into(), 100.0);
+        assert!(
+            compile_topology(&inverted)
+                .unwrap_err()
+                .iter()
+                .any(|d| d.code == "invalid_parameter_range")
+        );
+
+        let mut good_ratio = p.clone();
+        good_ratio
+            .initial_conditions
+            .control_ratios
+            .insert(ComponentId("RV1".into()), 0.3);
+        assert!(compile_topology(&good_ratio).is_ok());
+
+        let mut bad_ratio = p.clone();
+        bad_ratio
+            .initial_conditions
+            .control_ratios
+            .insert(ComponentId("RV1".into()), 1.5);
+        assert!(
+            compile_topology(&bad_ratio)
+                .unwrap_err()
+                .iter()
+                .any(|d| d.code == "control_ratio_out_of_range")
+        );
+
+        let mut wrong_ref = p.clone();
+        wrong_ref
+            .initial_conditions
+            .control_ratios
+            .insert(ComponentId("does-not-exist".into()), 0.5);
+        assert!(
+            compile_topology(&wrong_ref)
+                .unwrap_err()
+                .iter()
+                .any(|d| d.code == "invalid_initial_control_ratio")
+        );
+    }
+
+    #[test]
+    fn variable_resistors_round_trip_including_control_ratio() {
+        let mut p = project();
+        p.components = vec![
+            variable_resistor(ComponentKind::Potentiometer),
+            variable_resistor(ComponentKind::Photoresistor),
+        ];
+        p.components[1].id = ComponentId("RV2".into());
+        p.components[1].pins = BTreeMap::from([
+            (PinId("a".into()), HoleId("A3".into())),
+            (PinId("b".into()), HoleId("A4".into())),
+        ]);
+        p.wires.clear();
+        p.initial_conditions
+            .control_ratios
+            .insert(ComponentId("RV1".into()), 0.1);
+        p.initial_conditions
+            .control_ratios
+            .insert(ComponentId("RV2".into()), 0.9);
+        let json = serde_json::to_string(&p).unwrap();
+        let decoded: Project = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, p);
+        assert!(compile_topology(&p).is_ok());
+    }
+
+    #[test]
+    fn buzzer_is_a_valid_kind_with_documented_range_and_round_trips() {
+        let mut p = project();
+        p.components = vec![Component {
+            id: ComponentId("BZ1".into()),
+            kind: ComponentKind::Buzzer,
+            pins: BTreeMap::from([
+                (PinId("positive".into()), HoleId("A1".into())),
+                (PinId("negative".into()), HoleId("A2".into())),
+            ]),
+            parameters: BTreeMap::from([("resistance".into(), 32.0)]),
+        }];
+        p.wires.clear();
+        assert!(compile_topology(&p).is_ok());
+        let schema =
+            schemars::SchemaGenerator::new(schemars::generate::SchemaSettings::draft2020_12())
+                .into_root_schema_for::<Project>();
+        let text = serde_json::to_string(&serde_json::to_value(schema).unwrap()).unwrap();
+        assert!(text.contains("\"buzzer\""));
+        for value in [0.999, 10_000_001.0] {
+            let mut bad = p.clone();
+            bad.components[0]
+                .parameters
+                .insert("resistance".into(), value);
+            assert!(
+                compile_topology(&bad)
+                    .unwrap_err()
+                    .iter()
+                    .any(|d| d.code == "parameter_out_of_range")
+            );
+        }
+        let json = serde_json::to_string(&p).unwrap();
+        let decoded: Project = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, p);
     }
 }

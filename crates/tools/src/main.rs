@@ -67,7 +67,8 @@ fn run() -> Result<(), String> {
                 serde_json::from_str(&text).map_err(|e| format!("invalid project JSON: {e}"))?;
             let states =
                 std::collections::BTreeMap::<bredboard_core::ComponentId, ControlState>::new();
-            match solve_dc(&project, &states) {
+            let ratios = std::collections::BTreeMap::<bredboard_core::ComponentId, f64>::new();
+            match solve_dc(&project, &states, &ratios) {
                 Ok(result) => {
                     for node in result.node_voltages {
                         let labels = node

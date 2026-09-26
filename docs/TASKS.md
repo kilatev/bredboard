@@ -33,6 +33,15 @@ No Codex Goal is currently active merely because these files exist. Copy a card'
 | Task | Outcome | Depends on |
 | --- | --- | --- |
 | [T18](tasks/T18-readable-layout.md) | Deterministic automatic breadboard layout optimized for readability | T14, T17 |
+| [T19](tasks/T19-variable-resistor-components.md) | Potentiometer and photoresistor component kinds | T17 |
+| [T20](tasks/T20-buzzer-component.md) | Buzzer component kind | T17 |
+| [T21](tasks/T21-scrollable-exercise-menu.md) | Scrollable N-entry exercise menu | T09 |
+| [T22](tasks/T22-fixed-exercises-basic.md) | Eight new fixed practice exercises | T20, T21 |
+| [T23](tasks/T23-fixed-exercises-variable.md) | Two potentiometer/photoresistor exercises | T19, T21 |
+
+T19–T23 implement the scoped slice of Phase 2 specified in
+[docs/roadmap/LESSONS.md](roadmap/LESSONS.md): ten new fixed exercises added
+to the menu, not a lesson-scripting engine or free assembly.
 
 The former [T10 file workflow](tasks/T10-file-workflow.md), [T11 LED lesson](tasks/T11-led-lesson.md), and [T12 remaining lessons](tasks/T12-remaining-lessons.md) are deferred to the [post-MVP roadmap](roadmap/POST-MVP.md). Their IDs remain reserved to keep historical references unambiguous.
 

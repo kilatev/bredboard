@@ -121,7 +121,12 @@ mod tests {
         #[test]
         fn brightness_state_never_drops_as_current_rises(a in -0.01f64..0.05, b in -0.01f64..0.05) {
             let (low, high) = if a <= b { (a, b) } else { (b, a) };
-            let state = |current| Led.state(&PartContext { led_current: current, control: None });
+            let state = |current| {
+                Led.state(&PartContext {
+                    led_current: current,
+                    ..Default::default()
+                })
+            };
             prop_assert!(state(low) <= state(high));
         }
     }

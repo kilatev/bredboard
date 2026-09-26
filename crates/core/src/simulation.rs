@@ -25,6 +25,14 @@ pub enum Action {
         component: ComponentId,
         state: ControlState,
     },
+    /// Sets a potentiometer's or photoresistor's continuous control ratio
+    /// (0.0..=1.0). Routed through the same ordered action reduction as
+    /// `SetControl`, so two ratio changes between steps apply in order and
+    /// do not depend on frame rate.
+    SetControlRatio {
+        component: ComponentId,
+        ratio: f64,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -40,6 +48,9 @@ pub struct SimulationState {
     pub running: bool,
     pub capacitor_voltages: BTreeMap<ComponentId, f64>,
     pub controls: BTreeMap<ComponentId, ControlState>,
+    /// Continuous 0.0..=1.0 control ratio per potentiometer/photoresistor.
+    #[serde(default)]
+    pub control_ratios: BTreeMap<ComponentId, f64>,
     pub last_valid: Option<SolveResult>,
     pub stale: bool,
     pub diagnostics: Vec<SimulationDiagnostic>,
@@ -55,6 +66,7 @@ impl SimulationState {
     pub fn new(project: &Project) -> Self {
         let mut capacitor_voltages = BTreeMap::new();
         let mut controls = BTreeMap::new();
+        let mut control_ratios = BTreeMap::new();
         for component in &project.components {
             match component.kind {
                 ComponentKind::Capacitor => {
@@ -90,6 +102,17 @@ impl SimulationState {
                             .unwrap_or(ControlState::SwitchNormallyClosed),
                     );
                 }
+                ComponentKind::Potentiometer | ComponentKind::Photoresistor => {
+                    control_ratios.insert(
+                        component.id.clone(),
+                        project
+                            .initial_conditions
+                            .control_ratios
+                            .get(&component.id)
+                            .copied()
+                            .unwrap_or(0.5),
+                    );
+                }
                 _ => {}
             }
         }
@@ -98,6 +121,7 @@ impl SimulationState {
             running: false,
             capacitor_voltages,
             controls,
+            control_ratios,
             last_valid: None,
             stale: false,
             diagnostics: Vec::new(),
@@ -184,6 +208,28 @@ pub fn apply_actions(
                     }];
                 }
             }
+            Action::SetControlRatio { component, ratio } => {
+                let kind = project
+                    .components
+                    .iter()
+                    .find(|c| &c.id == component)
+                    .map(|c| c.kind);
+                let valid = matches!(
+                    kind,
+                    Some(ComponentKind::Potentiometer | ComponentKind::Photoresistor)
+                ) && ratio.is_finite()
+                    && (0.0..=1.0).contains(ratio);
+                if valid {
+                    state.control_ratios.insert(component.clone(), *ratio);
+                    state.needs_solve = true;
+                } else {
+                    state.diagnostics = vec![SimulationDiagnostic {
+                        code: "invalid_control_ratio".into(),
+                        path: format!("components.{}", component.0),
+                        message: "control ratio must be finite, in 0.0..=1.0, and match a potentiometer or photoresistor component".into(),
+                    }];
+                }
+            }
         }
     }
 }
@@ -214,6 +260,7 @@ fn step_once_with_iteration_limit(
         project,
         &state.controls,
         &state.capacitor_voltages,
+        &state.control_ratios,
         max_iterations,
     ) {
         Ok(result) => {
@@ -405,6 +452,87 @@ mod tests {
             state.controls[&ComponentId("B1".into())],
             ControlState::ButtonReleased
         );
+    }
+
+    fn potentiometer_project() -> Project {
+        let mut project = rc();
+        project.components[1].kind = ComponentKind::Potentiometer;
+        project.components[1].parameters = BTreeMap::from([
+            ("min_resistance".into(), 100.0),
+            ("max_resistance".into(), 10_000.0),
+        ]);
+        project
+    }
+
+    #[test]
+    fn control_ratio_actions_apply_in_order_between_steps_regardless_of_batching() {
+        let baseline = potentiometer_project();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        let id = ComponentId("R1".into());
+        assert_eq!(state.control_ratios[&id], 0.5);
+        // Two ratio changes applied in one ordered batch between steps: only
+        // the last one is visible, matching SetParameter's overwrite semantics.
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControlRatio {
+                    component: id.clone(),
+                    ratio: 0.2,
+                },
+                Action::SetControlRatio {
+                    component: id.clone(),
+                    ratio: 0.8,
+                },
+                Action::SingleStep,
+            ],
+        );
+        assert_eq!(state.control_ratios[&id], 0.8);
+        assert_eq!(state.step, 1);
+        assert!(!state.stale);
+
+        // Rejected: out of range and unknown component leave state untouched.
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[Action::SetControlRatio {
+                component: id.clone(),
+                ratio: 1.5,
+            }],
+        );
+        assert_eq!(state.control_ratios[&id], 0.8);
+        assert_eq!(state.diagnostics[0].code, "invalid_control_ratio");
+
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Reset]);
+        assert_eq!(state.control_ratios[&id], 0.5);
+        assert_eq!(state.step, 0);
+    }
+
+    #[test]
+    fn control_ratio_change_is_visible_in_recalculated_readings() {
+        let baseline = potentiometer_project();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        let id = ComponentId("R1".into());
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Run]);
+        advance_steps(&project, &mut state, 1);
+        let low_ratio_current = state.last_valid.as_ref().unwrap().resistor_currents[&id];
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[Action::SetControlRatio {
+                component: id.clone(),
+                ratio: 1.0,
+            }],
+        );
+        advance_steps(&project, &mut state, 1);
+        let high_ratio_current = state.last_valid.as_ref().unwrap().resistor_currents[&id];
+        // Higher ratio -> higher resistance -> lower current for a potentiometer.
+        assert!(high_ratio_current < low_ratio_current);
     }
 
     #[test]
