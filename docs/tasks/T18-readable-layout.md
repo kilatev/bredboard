@@ -1,6 +1,6 @@
 # T18 — Readable automatic breadboard layout
 
-Status: pending
+Status: deferred_v3
 
 ## Dependencies
 
@@ -71,3 +71,12 @@ An existing jj repository and an unambiguous authorized remote/bookmark are requ
 ## Evidence
 
 Not started.
+
+## Deferred findings from the abandoned first implementation attempt
+
+- Contact-group row swaps optimized topology and generic score fields, but made the rendered circuits less readable.
+- Two-segment L-routing produced long rectangular loops and could still cross unrelated wires.
+- Generic core footprints did not match sprite geometry closely enough to predict visual collisions.
+- Wire thickness, draw order, and endpoint markers materially affected readability but were not represented consistently in the score.
+- External supply leads used a separate visual routing path from internal wires.
+- The next attempt should begin from rendered schematic composition and preserve the existing fixture geometry until a route/placement feedback loop is proven visually.
