@@ -18,6 +18,8 @@ pub const RAIL_RED: Rgb = hex(0xd63c32);
 pub const RAIL_BLUE: Rgb = hex(0x3b5ccc);
 pub const WIRE: Rgb = hex(0x27a3a8);
 pub const WIRE_SHADE: Rgb = hex(0x15666b);
+pub const WIRE_RED_SHADE: Rgb = hex(0x93241d);
+pub const WIRE_BLUE_SHADE: Rgb = hex(0x263d8a);
 
 pub const RESISTOR_BODY: Rgb = hex(0xe8c688);
 pub const RESISTOR_SHADE: Rgb = hex(0xb88b4c);

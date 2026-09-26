@@ -509,6 +509,18 @@ fn line(commands: &mut Commands, from: Vec2, to: Vec2, color: Color, width: f32,
     });
 }
 
+/// Draws a wire the same way everywhere: a dark outline, a colored core, and
+/// rounded end caps where it plugs into a hole.
+fn draw_wire(commands: &mut Commands, from: Vec2, to: Vec2, color: Color, shade: Color) {
+    let outline = srgb(sprites::palette::OUTLINE);
+    line(commands, from, to, outline, 8.0, 0.7);
+    line(commands, from, to, color, 4.0, 0.75);
+    for point in [from, to] {
+        rect(commands, point, Vec2::splat(8.0), outline, 0.9);
+        rect(commands, point, Vec2::splat(4.0), shade, 0.95);
+    }
+}
+
 /// Square 16-unit hole pitch (8 art pixels at 2 units each) keeps sprites pixel-exact.
 const PITCH: f32 = 16.0;
 const BOARD_CENTER_X: f32 = -385.0;
@@ -641,24 +653,13 @@ fn spawn_board(commands: &mut Commands, images: &mut Assets<Image>, bench: &Benc
     for wire in &bench.project.wires {
         let a = hole_position(&wire.from.0).unwrap();
         let b = hole_position(&wire.to.0).unwrap();
-        line(commands, a, b, srgb(palette::OUTLINE), 8.0, 0.7);
-        line(commands, a, b, srgb(palette::WIRE), 4.0, 0.75);
-        for point in [a, b] {
-            rect(
-                commands,
-                point,
-                Vec2::splat(8.0),
-                srgb(palette::OUTLINE),
-                0.9,
-            );
-            rect(
-                commands,
-                point,
-                Vec2::splat(4.0),
-                srgb(palette::WIRE_SHADE),
-                0.95,
-            );
-        }
+        draw_wire(
+            commands,
+            a,
+            b,
+            srgb(palette::WIRE),
+            srgb(palette::WIRE_SHADE),
+        );
     }
     for (index, component) in bench.project.components.iter().enumerate() {
         if component.kind == ComponentKind::DcVoltageSource {
@@ -727,18 +728,18 @@ fn spawn_source(commands: &mut Commands, images: &mut Assets<Image>, component: 
     );
     for (pin, hole) in &component.pins {
         let start = center + Vec2::new(if pin.0 == "positive" { -10.0 } else { 10.0 }, -14.0);
-        line(
-            commands,
-            start,
-            hole_position(&hole.0).unwrap(),
-            if pin.0 == "positive" {
-                Color::srgb(0.9, 0.20, 0.16)
-            } else {
-                Color::srgb(0.20, 0.35, 0.85)
-            },
-            3.0,
-            1.0,
-        );
+        let (color, shade) = if pin.0 == "positive" {
+            (
+                srgb(sprites::palette::RAIL_RED),
+                srgb(sprites::palette::WIRE_RED_SHADE),
+            )
+        } else {
+            (
+                srgb(sprites::palette::RAIL_BLUE),
+                srgb(sprites::palette::WIRE_BLUE_SHADE),
+            )
+        };
+        draw_wire(commands, start, hole_position(&hole.0).unwrap(), color, shade);
     }
     let art = sprites::art_for(component.kind).expect("dc_voltage_source has sprite art");
     let body = art.body(component, 0);
