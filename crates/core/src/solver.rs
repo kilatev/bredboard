@@ -80,6 +80,9 @@ enum NonlinearElement {
 
 pub const FIXED_STEP_SECONDS: f64 = 100e-6;
 pub const MAX_NONLINEAR_ITERATIONS: usize = 80;
+/// Under-relaxation keeps coupled LED/NPN transient solves deterministic while
+/// retaining the bounded iteration and explicit nonconvergence diagnostic.
+const NONLINEAR_RELAXATION: f64 = 0.25;
 
 /// Solve a DC project using MNA, bounded nonlinear iteration, and deterministic partial pivoting.
 /// A floating connected network, ideal-source short, contradictory source loop,
@@ -155,6 +158,18 @@ fn solve_internal(
         &ratio_state,
         dt,
     )?;
+    let coupled_transient = dt.is_some()
+        && branches
+            .iter()
+            .filter(|branch| matches!(branch.kind, BranchKind::Capacitor))
+            .count()
+            >= 2
+        && nonlinear.len() >= 2;
+    let relaxation = if coupled_transient {
+        NONLINEAR_RELAXATION
+    } else {
+        1.0
+    };
     if branches.is_empty() && nonlinear.is_empty() {
         return Ok(SolveResult {
             node_voltages: Vec::new(),
@@ -310,7 +325,7 @@ fn solve_internal(
             break;
         }
         for &i in voltage_vars.values() {
-            guess[i] += (solution[i] - guess[i]).clamp(-5.0, 5.0);
+            guess[i] += ((solution[i] - guess[i]) * relaxation).clamp(-5.0, 5.0);
         }
     }
     let solution = solved.ok_or_else(|| {

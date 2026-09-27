@@ -1,6 +1,6 @@
 # T27 — Fixed exercises E26–E30
 
-Status: pending
+Status: in_progress
 
 ## Dependencies
 
@@ -135,4 +135,35 @@ push result.
 
 ## Evidence
 
-Not started.
+- Added `fixtures/projects/e26-transistor-or.json` through
+  `e30-two-transistor-flasher.json`, with existing catalog kinds and parameter
+  ranges. E28 contains `B1` on `TP+`/`TP-`, `B2` on `BP+`/`BP-`, and an
+  explicit `TP-`–`BP-` tie; the solver reports one shared negative node and no
+  conflicting-source diagnostic.
+- Added E26–E30 to the existing scrollable menu with English title,
+  explanation, parts list, and task text. E26 has two buttons, E27 has the
+  existing potentiometer dial, E28 has the existing changeover switch, and
+  E29 has the existing button control.
+- E30 records a deterministic `C2` initial voltage of `0.5 V` in
+  `initial_conditions`, uses two 10 µF cross-coupling capacitors, and adds
+  high-value base-emitter bleed resistors to keep startup solvable. The core's
+  existing bounded nonlinear solve now uses documented deterministic 25%
+  under-relaxation; the E30 regression observes at least four transitions per
+  LED across 60,000 fixed transient steps.
+- Added regression tests for E26's four button combinations, E27's equal and
+  monotonic LED currents, E28's dual-source/shared-negative behavior, E29's
+  1 MΩ Darlington buzzer threshold, and E30's sustained alternating cycles.
+  The focused T27 checks pass, and the full app suite contains 44 tests.
+- Fixture validation passed for all five with
+  `cargo run -p bredboard-tools --locked -- validate <fixture>`; E26–E30
+  report valid topologies with 6, 7, 6, 6, and 8 derived nodes respectively.
+- Final required baseline checks passed on 2026-09-27:
+  `cargo fmt --all --check`; `cargo clippy --workspace --all-targets --locked
+  -- -D warnings`; `cargo test --workspace --locked` (44 app, 59 core, 2
+  tools tests); `cargo build -p bredboard-app --target
+  x86_64-unknown-linux-gnu --locked`; and `cargo build -p bredboard-app
+  --target wasm32-unknown-unknown --locked`.
+- The Linux executable inspection has the same environment blocker as
+  T25/T26: this session has no compositor
+  (`WaylandError(Connection(NoCompositor))`) and X11 fallback reports
+  `XNotSupported(XOpenDisplayFailed)`. No windowed inspection is claimed.

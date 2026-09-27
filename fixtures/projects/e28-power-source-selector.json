@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "title": "E28: Power Source Selector",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "B1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "B2", "kind": "dc_voltage_source", "pins": { "positive": "BP+:1", "negative": "BP-:1" }, "parameters": { "voltage": 9.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A5", "b": "B8" }, "parameters": { "resistance": 330.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "A17", "b": "B20" }, "parameters": { "resistance": 680.0 } },
+    { "id": "SW1", "kind": "changeover_switch", "pins": { "common": "A23", "normally_closed": "C8", "normally_open": "C20" }, "parameters": {} },
+    { "id": "D1", "kind": "led", "pins": { "anode": "B23", "cathode": "A26" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "D5", "to": "TP+:5" },
+    { "id": "W2", "from": "D17", "to": "BP+:17" },
+    { "id": "W3", "from": "B26", "to": "TP-:26" },
+    { "id": "W4", "from": "C26", "to": "BP-:26" },
+    { "id": "W5", "from": "TP-:29", "to": "BP-:29" }
+  ]
+}

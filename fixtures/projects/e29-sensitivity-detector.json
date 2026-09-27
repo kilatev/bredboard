@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "title": "E29: Sensitivity Detector",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "BZ1", "kind": "buzzer", "pins": { "positive": "A5", "negative": "B8" }, "parameters": { "resistance": 32.0 } },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "collector": "C8", "base": "E29", "emitter": "A11" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "Q2", "kind": "npn_transistor", "pins": { "collector": "A17", "base": "C11", "emitter": "C20" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A23", "b": "B26" }, "parameters": { "resistance": 1000000.0 } },
+    { "id": "S1", "kind": "momentary_button", "pins": { "a": "C26", "b": "D29" }, "parameters": {} }
+  ],
+  "wires": [
+    { "id": "W1", "from": "D5", "to": "TP+:5" },
+    { "id": "W2", "from": "D23", "to": "TP+:23" },
+    { "id": "W3", "from": "B14", "to": "TP-:14" },
+    { "id": "W4", "from": "D20", "to": "TP-:20" },
+    { "id": "W5", "from": "D26", "to": "TP+:26" }
+  ]
+}

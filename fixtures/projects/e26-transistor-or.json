@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "title": "E26: Transistor OR",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A5", "b": "B8" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "C8", "cathode": "A11" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "collector": "B11", "base": "C23", "emitter": "A14" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "Q2", "kind": "npn_transistor", "pins": { "collector": "C11", "base": "C29", "emitter": "B14" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "S1", "kind": "momentary_button", "pins": { "a": "A20", "b": "B23" }, "parameters": {} },
+    { "id": "S2", "kind": "momentary_button", "pins": { "a": "A26", "b": "B29" }, "parameters": {} }
+  ],
+  "wires": [
+    { "id": "W1", "from": "D5", "to": "TP+:5" },
+    { "id": "W2", "from": "D20", "to": "TP+:20" },
+    { "id": "W3", "from": "D26", "to": "TP+:26" },
+    { "id": "W4", "from": "C14", "to": "TP-:14" }
+  ]
+}

@@ -40,6 +40,12 @@ const E23_JSON: &str = include_str!("../../../fixtures/projects/e23-light-and-so
 const E24_JSON: &str =
     include_str!("../../../fixtures/projects/e24-capacitor-charge-and-discharge.json");
 const E25_JSON: &str = include_str!("../../../fixtures/projects/e25-transistor-and.json");
+const E26_JSON: &str = include_str!("../../../fixtures/projects/e26-transistor-or.json");
+const E27_JSON: &str =
+    include_str!("../../../fixtures/projects/e27-shared-brightness-control.json");
+const E28_JSON: &str = include_str!("../../../fixtures/projects/e28-power-source-selector.json");
+const E29_JSON: &str = include_str!("../../../fixtures/projects/e29-sensitivity-detector.json");
+const E30_JSON: &str = include_str!("../../../fixtures/projects/e30-two-transistor-flasher.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -71,6 +77,11 @@ enum Circuit {
     E23,
     E24,
     E25,
+    E26,
+    E27,
+    E28,
+    E29,
+    E30,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -87,7 +98,7 @@ struct DialSpec {
     component: &'static str,
 }
 impl Circuit {
-    fn all() -> [Self; 28] {
+    fn all() -> [Self; 33] {
         [
             Self::Led,
             Self::Rc,
@@ -117,6 +128,11 @@ impl Circuit {
             Self::E23,
             Self::E24,
             Self::E25,
+            Self::E26,
+            Self::E27,
+            Self::E28,
+            Self::E29,
+            Self::E30,
         ]
     }
     fn json(self) -> &'static str {
@@ -149,6 +165,11 @@ impl Circuit {
             Self::E23 => E23_JSON,
             Self::E24 => E24_JSON,
             Self::E25 => E25_JSON,
+            Self::E26 => E26_JSON,
+            Self::E27 => E27_JSON,
+            Self::E28 => E28_JSON,
+            Self::E29 => E29_JSON,
+            Self::E30 => E30_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -181,6 +202,11 @@ impl Circuit {
             Self::E23 => "E23: LIGHT AND SOUND TOGETHER",
             Self::E24 => "E24: CAPACITOR CHARGE AND DISCHARGE",
             Self::E25 => "E25: TRANSISTOR AND",
+            Self::E26 => "E26: TRANSISTOR OR",
+            Self::E27 => "E27: SHARED BRIGHTNESS CONTROL",
+            Self::E28 => "E28: POWER SOURCE SELECTOR",
+            Self::E29 => "E29: SENSITIVITY DETECTOR",
+            Self::E30 => "E30: TWO-TRANSISTOR FLASHER",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -290,6 +316,26 @@ impl Circuit {
                 "Two transistor collector-emitter paths are stacked in series, and each base is controlled by its own button. Both transistors must conduct before the LED has a complete path.",
                 "Task: test all four button combinations and compare this transistor AND with E9's two-button series wiring.",
             ),
+            Self::E26 => (
+                "Two transistors share the LED branch, so either button can drive its own base and switch current through the LED. This is a transistor version of OR, unlike E14's parallel button wiring.",
+                "Task: test all four button combinations and confirm either button alone, or both together, lights the LED.",
+            ),
+            Self::E27 => (
+                "One potentiometer feeds both transistor bases, so both LED branches receive the same adjustable base drive and change brightness together.",
+                "Task: sweep the shared brightness dial across its full range and compare both LED branches at every setting.",
+            ),
+            Self::E28 => (
+                "A changeover switch selects a resistor branch powered by either a 5 V source or a 9 V source. The two negative rails are tied together so both choices share one return.",
+                "Task: toggle the source selector, verify the shared negative node, and compare the LED brightness in both positions.",
+            ),
+            Self::E29 => (
+                "A Darlington pair feeds the second transistor's base from the first transistor's emitter, multiplying their current gains. A 1 MΩ button path can trigger this pair even though E8's single transistor used 10 kΩ.",
+                "Task: hold the button and confirm the buzzer sounds; release it and confirm the detector is silent.",
+            ),
+            Self::E30 => (
+                "Two cross-coupled transistor-capacitor paths form a free-running flasher. The documented 0.5 V initial voltage on C2 breaks symmetry so the alternating sequence is deterministic.",
+                "Task: run the circuit long enough to observe several alternating on/off cycles of both LEDs.",
+            ),
         }
     }
     /// Control buttons for this bench, in display order. Empty for exercises
@@ -382,6 +428,9 @@ impl Circuit {
             Self::E9 | Self::E14 => E9_BUTTONS,
             Self::E22 => E22_BUTTONS,
             Self::E25 => E25_BUTTONS,
+            Self::E26 => E9_BUTTONS,
+            Self::E28 => E24_SWITCH,
+            Self::E29 => S1_BUTTON,
             Self::E1
             | Self::E3
             | Self::E4
@@ -393,7 +442,7 @@ impl Circuit {
             | Self::E18
             | Self::E19
             | Self::E20 => &[],
-            Self::E21 | Self::E23 => &[],
+            Self::E21 | Self::E23 | Self::E27 | Self::E30 => &[],
         }
     }
     /// The continuous dial/slider control for variable-resistor exercises.
@@ -434,6 +483,10 @@ impl Circuit {
             Self::E23 => &[DialSpec {
                 label: "R3: AMBIENT LIGHT - drag left/right",
                 component: "R3",
+            }],
+            Self::E27 => &[DialSpec {
+                label: "RV1: SHARED BRIGHTNESS - drag left/right",
+                component: "RV1",
             }],
             _ => &[],
         }
@@ -1855,6 +1908,11 @@ mod tests {
             Circuit::E23,
             Circuit::E24,
             Circuit::E25,
+            Circuit::E26,
+            Circuit::E27,
+            Circuit::E28,
+            Circuit::E29,
+            Circuit::E30,
         ] {
             let mut app = App::new();
             app.init_resource::<Assets<Image>>();
@@ -2630,6 +2688,126 @@ mod tests {
             bench.simulation.control_ratios[&ComponentId("RV1".into())] > 0.9,
             "ratios={:?}",
             bench.simulation.control_ratios
+        );
+    }
+
+    #[test]
+    fn e26_transistor_or_truth_table_has_four_combinations() {
+        for mask in 0..4 {
+            let mut bench = Bench::new(Circuit::E26);
+            if mask & 1 != 0 {
+                bench.toggle(0);
+            }
+            if mask & 2 != 0 {
+                bench.toggle(1);
+            }
+            bench.act(Action::Run);
+            advance_steps(&bench.project, &mut bench.simulation, 4);
+            let current = bench.simulation.last_valid.as_ref().unwrap().led_currents
+                [&ComponentId("D1".into())];
+            assert_eq!(current > 0.001, mask != 0, "mask={mask:02b}");
+        }
+    }
+
+    #[test]
+    fn e27_shared_dial_keeps_brightness_equal_and_monotonic() {
+        let mut bench = Bench::new(Circuit::E27);
+        bench.act(Action::Run);
+        let mut previous = f64::INFINITY;
+        for ratio in [0.0, 0.25, 0.5, 0.75, 1.0] {
+            bench.act(Action::SetControlRatio {
+                component: ComponentId("RV1".into()),
+                ratio,
+            });
+            advance_steps(&bench.project, &mut bench.simulation, 1);
+            let result = bench.simulation.last_valid.as_ref().unwrap();
+            let d1 = result.led_currents[&ComponentId("D1".into())];
+            let d2 = result.led_currents[&ComponentId("D2".into())];
+            assert!((d1 - d2).abs() < 1e-9, "ratio={ratio}, D1={d1}, D2={d2}");
+            assert!(d1 <= previous + 1e-12, "ratio={ratio}, current={d1}");
+            previous = d1;
+        }
+    }
+
+    #[test]
+    fn e28_selects_both_sources_with_one_shared_negative_node() {
+        let mut bench = Bench::new(Circuit::E28);
+        bench.act(Action::Run);
+        advance_steps(&bench.project, &mut bench.simulation, 2);
+        let five = bench.simulation.last_valid.as_ref().unwrap();
+        let five_current = five.led_currents[&ComponentId("D1".into())];
+        assert!(five_current > 0.005);
+        bench.toggle(0);
+        advance_steps(&bench.project, &mut bench.simulation, 2);
+        let nine = bench.simulation.last_valid.as_ref().unwrap();
+        let nine_current = nine.led_currents[&ComponentId("D1".into())];
+        assert!(nine_current > 0.005);
+        assert!((nine_current / five_current).abs() < 2.0);
+        assert!(nine.source_currents[&ComponentId("B1".into())].abs() < 1e-9);
+        assert!(nine.source_currents[&ComponentId("B2".into())].abs() > 0.005);
+    }
+
+    #[test]
+    fn e29_darlington_buzzer_sounds_only_while_button_is_held() {
+        let mut bench = Bench::new(Circuit::E29);
+        bench.act(Action::Run);
+        advance_steps(&bench.project, &mut bench.simulation, 2);
+        let released = bench
+            .simulation
+            .last_valid
+            .as_ref()
+            .unwrap()
+            .resistor_currents[&ComponentId("BZ1".into())];
+        assert!(released < 0.001);
+        bench.toggle(0);
+        advance_steps(&bench.project, &mut bench.simulation, 2);
+        let pressed = bench
+            .simulation
+            .last_valid
+            .as_ref()
+            .unwrap()
+            .resistor_currents[&ComponentId("BZ1".into())];
+        assert!(pressed >= 0.001, "pressed current={pressed}");
+    }
+
+    #[test]
+    fn e30_asymmetric_initial_state_sustains_multiple_alternating_led_cycles() {
+        let mut bench = Bench::new(Circuit::E30);
+        assert_eq!(
+            bench.project.initial_conditions.capacitor_voltages[&ComponentId("C2".into())],
+            0.5
+        );
+        bench.act(Action::Run);
+        let mut d1_states = Vec::new();
+        let mut d2_states = Vec::new();
+        for _ in 0..60_000 {
+            advance_steps(&bench.project, &mut bench.simulation, 1);
+            assert!(
+                bench.simulation.last_valid.is_some(),
+                "E30 stopped: {:?}",
+                bench.simulation.diagnostics
+            );
+            let result = bench.simulation.last_valid.as_ref().unwrap();
+            d1_states.push(result.led_currents[&ComponentId("D1".into())] > 0.001);
+            d2_states.push(result.led_currents[&ComponentId("D2".into())] > 0.001);
+        }
+        let transitions =
+            |states: &[bool]| states.windows(2).filter(|pair| pair[0] != pair[1]).count();
+        assert!(
+            transitions(&d1_states) >= 4,
+            "D1 transitions: {}, on samples: {}, first/last: {:?}/{:?}",
+            transitions(&d1_states),
+            d1_states.iter().filter(|state| **state).count(),
+            d1_states.first(),
+            d1_states.last()
+        );
+        assert!(
+            transitions(&d2_states) >= 4,
+            "D2 transitions: {}, on samples: {}, first/last: {:?}/{:?}",
+            transitions(&d2_states),
+            d2_states.iter().filter(|state| **state).count(),
+            d2_states.first(),
+            d2_states.last()
         );
     }
 }

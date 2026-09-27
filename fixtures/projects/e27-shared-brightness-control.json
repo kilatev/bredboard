@@ -1,0 +1,23 @@
+{
+  "format_version": 1,
+  "title": "E27: Shared Brightness Control",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "RV1", "kind": "potentiometer", "pins": { "a": "A28", "b": "B29" }, "parameters": { "min_resistance": 100.0, "max_resistance": 5000.0 } },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "collector": "B11", "base": "C29", "emitter": "A14" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "Q2", "kind": "npn_transistor", "pins": { "collector": "B23", "base": "D29", "emitter": "A26" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A5", "b": "B8" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "C8", "cathode": "A11" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "A17", "b": "B20" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D2", "kind": "led", "pins": { "anode": "C20", "cathode": "A23" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "D5", "to": "TP+:5" },
+    { "id": "W2", "from": "D17", "to": "TP+:17" },
+    { "id": "W3", "from": "C28", "to": "TP+:28" },
+    { "id": "W4", "from": "B14", "to": "TP-:14" },
+    { "id": "W5", "from": "B26", "to": "TP-:26" }
+  ],
+  "initial_conditions": { "control_ratios": { "RV1": 0.5 } }
+}
