@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "title": "E22: Mixed Logic",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "S1", "kind": "momentary_button", "pins": { "a": "A8", "b": "B11" }, "parameters": {} },
+    { "id": "S2", "kind": "momentary_button", "pins": { "a": "C11", "b": "D14" }, "parameters": {} },
+    { "id": "S3", "kind": "momentary_button", "pins": { "a": "A17", "b": "B20" }, "parameters": {} },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "C20", "b": "A23" }, "parameters": { "resistance": 1.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "E14", "b": "A26" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "B26", "cathode": "A29" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "B5", "to": "TP+:5" },
+    { "id": "W2", "from": "B8", "to": "TP+:8" },
+    { "id": "W3", "from": "B17", "to": "TP+:17" },
+    { "id": "W4", "from": "C23", "to": "C14" },
+    { "id": "W5", "from": "B29", "to": "TP-:29" }
+  ]
+}

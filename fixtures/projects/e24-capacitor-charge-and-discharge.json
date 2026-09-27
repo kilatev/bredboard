@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "title": "E24: Capacitor Charge and Discharge",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "SW1", "kind": "changeover_switch", "pins": { "common": "A5", "normally_closed": "F8", "normally_open": "F17" }, "parameters": {} },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A8", "b": "B11" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "C11", "cathode": "A14" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "A17", "b": "B20" }, "parameters": { "resistance": 2000.0 } },
+    { "id": "D2", "kind": "led", "pins": { "anode": "C20", "cathode": "A23" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "positive": "B14", "negative": "A26" }, "parameters": { "capacitance": 0.0001 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "B5", "to": "TP+:5" },
+    { "id": "W2", "from": "G8", "to": "E8" },
+    { "id": "W3", "from": "G17", "to": "E17" },
+    { "id": "W4", "from": "B23", "to": "C14" },
+    { "id": "W5", "from": "B26", "to": "TP-:26" }
+  ]
+}

@@ -1,6 +1,6 @@
 # T26 — Fixed exercises E21–E25
 
-Status: pending
+Status: in_progress
 
 ## Dependencies
 
@@ -120,4 +120,33 @@ push result.
 
 ## Evidence
 
-Not started.
+- Added `fixtures/projects/e21-adjustable-night-light-threshold.json` through
+  `e25-transistor-and.json`, with valid fixed projects using existing catalog
+  kinds and ranges. E22 includes a 1 Ω resistor in the S3 branch to avoid the
+  solver's underdetermined parallel-ideal-switch case while preserving the
+  required `(S1 AND S2) OR S3` behavior.
+- Added E21–E25 to the existing scrollable menu and added English title,
+  explanation, parts list, and task text for each fixture. E21 renders two
+  independent horizontal dials; E22 renders three button controls; E24 a
+  changeover switch; E25 two buttons.
+- Added regression tests for E21 threshold monotonicity and two-dial dispatch,
+  E22's all-eight truth table, E23 synchronized LED/buzzer switching, E24
+  distinct fast/slow capacitor current decay, and E25's all-four transistor
+  AND combinations. Full app suite passed: 39 tests.
+- Fixture validation passed for all ten E16–E25 projects with
+  `cargo run -p bredboard-tools --locked -- validate <fixture>`; every output
+  reported a valid project and derived topology nodes.
+- Required baseline checks passed on 2026-09-27:
+  `cargo fmt --all --check`; `cargo clippy --workspace --all-targets --locked
+  -- -D warnings`; `cargo test --workspace --locked` (39 app, 59 core, 2
+  tools tests); `cargo build -p bredboard-app --target
+  x86_64-unknown-linux-gnu --locked`; and `cargo build -p bredboard-app
+  --target wasm32-unknown-unknown --locked`.
+- Existing menu selection/text/parts-list tests now cover all 28 menu entries;
+  E21's two dials are independently updated through ordered core ratio
+  actions, and the generic control row is exercised by the three-button E22
+  truth-table test.
+- Required manual Linux executable inspection is blocked in this environment:
+  launching `target/x86_64-unknown-linux-gnu/debug/bredboard-app` fails with
+  `WaylandError(Connection(NoCompositor))`; forcing X11 fails with
+  `XNotSupported(XOpenDisplayFailed)`. No windowed inspection is claimed.

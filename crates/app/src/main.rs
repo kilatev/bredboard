@@ -33,6 +33,13 @@ const E18_JSON: &str = include_str!("../../../fixtures/projects/e18-volume-contr
 const E19_JSON: &str =
     include_str!("../../../fixtures/projects/e19-three-independent-branches.json");
 const E20_JSON: &str = include_str!("../../../fixtures/projects/e20-turn-on-delay.json");
+const E21_JSON: &str =
+    include_str!("../../../fixtures/projects/e21-adjustable-night-light-threshold.json");
+const E22_JSON: &str = include_str!("../../../fixtures/projects/e22-mixed-logic.json");
+const E23_JSON: &str = include_str!("../../../fixtures/projects/e23-light-and-sound-together.json");
+const E24_JSON: &str =
+    include_str!("../../../fixtures/projects/e24-capacitor-charge-and-discharge.json");
+const E25_JSON: &str = include_str!("../../../fixtures/projects/e25-transistor-and.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -59,6 +66,11 @@ enum Circuit {
     E18,
     E19,
     E20,
+    E21,
+    E22,
+    E23,
+    E24,
+    E25,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -75,7 +87,7 @@ struct DialSpec {
     component: &'static str,
 }
 impl Circuit {
-    fn all() -> [Self; 23] {
+    fn all() -> [Self; 28] {
         [
             Self::Led,
             Self::Rc,
@@ -100,6 +112,11 @@ impl Circuit {
             Self::E18,
             Self::E19,
             Self::E20,
+            Self::E21,
+            Self::E22,
+            Self::E23,
+            Self::E24,
+            Self::E25,
         ]
     }
     fn json(self) -> &'static str {
@@ -127,6 +144,11 @@ impl Circuit {
             Self::E18 => E18_JSON,
             Self::E19 => E19_JSON,
             Self::E20 => E20_JSON,
+            Self::E21 => E21_JSON,
+            Self::E22 => E22_JSON,
+            Self::E23 => E23_JSON,
+            Self::E24 => E24_JSON,
+            Self::E25 => E25_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -154,6 +176,11 @@ impl Circuit {
             Self::E18 => "E18: VOLUME CONTROL",
             Self::E19 => "E19: THREE INDEPENDENT BRANCHES",
             Self::E20 => "E20: TURN-ON DELAY",
+            Self::E21 => "E21: ADJUSTABLE NIGHT-LIGHT THRESHOLD",
+            Self::E22 => "E22: MIXED LOGIC",
+            Self::E23 => "E23: LIGHT AND SOUND TOGETHER",
+            Self::E24 => "E24: CAPACITOR CHARGE AND DISCHARGE",
+            Self::E25 => "E25: TRANSISTOR AND",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -243,6 +270,26 @@ impl Circuit {
                 "A resistor slowly charges a capacitor at the transistor base. Only after the capacitor voltage crosses the base threshold does the transistor switch the LED branch on.",
                 "Task: run the circuit and measure the LED turn-on delay in simulated seconds, using the step counter rather than wall-clock time.",
             ),
+            Self::E21 => (
+                "Ambient light and a potentiometer form two adjustable inputs to the transistor base, so the night-light threshold can be tuned without changing the fixed LED branch.",
+                "Task: set several potentiometer positions and find how the ambient-light level where the LED turns on shifts between them.",
+            ),
+            Self::E22 => (
+                "Two buttons in series make one AND path while a third button provides a parallel path, so the LED follows (S1 AND S2) OR S3.",
+                "Task: test all eight button combinations and write down which combinations light the LED.",
+            ),
+            Self::E23 => (
+                "The transistor's collector branch powers an LED and a buzzer together. A photoresistor controls its base, so both outputs switch at the same ambient-light threshold.",
+                "Task: sweep the ambient-light control through the threshold and confirm the LED and buzzer turn on and off together.",
+            ),
+            Self::E24 => (
+                "A changeover switch selects either a low-resistance bright charging path or a higher-resistance slow path into two LED branches that share one capacitor.",
+                "Task: compare both switch positions by watching the brief charge flash and the slower discharge flash in the simulated current traces.",
+            ),
+            Self::E25 => (
+                "Two transistor collector-emitter paths are stacked in series, and each base is controlled by its own button. Both transistors must conduct before the LED has a complete path.",
+                "Task: test all four button combinations and compare this transistor AND with E9's two-button series wiring.",
+            ),
         }
     }
     /// Control buttons for this bench, in display order. Empty for exercises
@@ -275,14 +322,49 @@ impl Circuit {
                 is_switch: false,
             },
         ];
+        const E22_BUTTONS: &[ControlSpec] = &[
+            ControlSpec {
+                label: "S1: PRESS / RELEASE",
+                component: "S1",
+                is_switch: false,
+            },
+            ControlSpec {
+                label: "S2: PRESS / RELEASE",
+                component: "S2",
+                is_switch: false,
+            },
+            ControlSpec {
+                label: "S3: PRESS / RELEASE",
+                component: "S3",
+                is_switch: false,
+            },
+        ];
+        const E25_BUTTONS: &[ControlSpec] = &[
+            ControlSpec {
+                label: "S1: PRESS / RELEASE",
+                component: "S1",
+                is_switch: false,
+            },
+            ControlSpec {
+                label: "S2: PRESS / RELEASE",
+                component: "S2",
+                is_switch: false,
+            },
+        ];
         const E11_SWITCH: &[ControlSpec] = &[ControlSpec {
             label: "S1: TOGGLE A / B",
             component: "S1",
             is_switch: true,
         }];
+        const E24_SWITCH: &[ControlSpec] = &[ControlSpec {
+            label: "SW1: TOGGLE A / B",
+            component: "SW1",
+            is_switch: true,
+        }];
         match self {
             Self::Rc => RC,
             Self::E11 => E11_SWITCH,
+            Self::E24 => E24_SWITCH,
             Self::Led
             | Self::Transistor
             | Self::E2
@@ -298,6 +380,8 @@ impl Circuit {
                 }
             }
             Self::E9 | Self::E14 => E9_BUTTONS,
+            Self::E22 => E22_BUTTONS,
+            Self::E25 => E25_BUTTONS,
             Self::E1
             | Self::E3
             | Self::E4
@@ -309,33 +393,49 @@ impl Circuit {
             | Self::E18
             | Self::E19
             | Self::E20 => &[],
+            Self::E21 | Self::E23 => &[],
         }
     }
     /// The continuous dial/slider control for variable-resistor exercises.
     /// `None` for every other bench.
-    fn dial(self) -> Option<DialSpec> {
-        match self {
-            Self::E5 => Some(DialSpec {
-                label: "RV1: BRIGHTNESS DIAL - drag left/right",
-                component: "RV1",
-            }),
-            Self::E6 => Some(DialSpec {
-                label: "RV1: AMBIENT LIGHT - drag left/right",
-                component: "RV1",
-            }),
-            Self::E16 => Some(DialSpec {
-                label: "R3: AMBIENT LIGHT - drag left/right",
-                component: "R3",
-            }),
-            Self::E17 => Some(DialSpec {
+    fn dials(self) -> &'static [DialSpec] {
+        const E21_DIALS: &[DialSpec] = &[
+            DialSpec {
                 label: "R2: AMBIENT LIGHT - drag left/right",
                 component: "R2",
-            }),
-            Self::E18 => Some(DialSpec {
+            },
+            DialSpec {
+                label: "RV1: THRESHOLD - drag left/right",
+                component: "RV1",
+            },
+        ];
+        match self {
+            Self::E5 => &[DialSpec {
+                label: "RV1: BRIGHTNESS DIAL - drag left/right",
+                component: "RV1",
+            }],
+            Self::E6 => &[DialSpec {
+                label: "RV1: AMBIENT LIGHT - drag left/right",
+                component: "RV1",
+            }],
+            Self::E16 => &[DialSpec {
+                label: "R3: AMBIENT LIGHT - drag left/right",
+                component: "R3",
+            }],
+            Self::E17 => &[DialSpec {
+                label: "R2: AMBIENT LIGHT - drag left/right",
+                component: "R2",
+            }],
+            Self::E18 => &[DialSpec {
                 label: "RV1: VOLUME DIAL - drag left/right",
                 component: "RV1",
-            }),
-            _ => None,
+            }],
+            Self::E21 => E21_DIALS,
+            Self::E23 => &[DialSpec {
+                label: "R3: AMBIENT LIGHT - drag left/right",
+                component: "R3",
+            }],
+            _ => &[],
         }
     }
 }
@@ -439,20 +539,35 @@ struct SceneEntity;
 struct MenuEntry(usize);
 #[derive(Component, Clone, Copy)]
 struct ClickTarget(Control, Vec2);
-/// The draggable track for E5/E6's continuous dial/slider control.
+/// A draggable track for a continuous dial/slider control.
 #[derive(Component)]
 struct DialTrack {
     component: ComponentId,
+    center: Vec2,
+    size: Vec2,
 }
 /// The handle sprite that shows a dial's current ratio; repositioned every
 /// frame from `SimulationState.control_ratios`.
 #[derive(Component)]
 struct DialHandle {
     component: ComponentId,
+    center: Vec2,
+    size: Vec2,
 }
 const DIAL_TRACK_CENTER: Vec2 = Vec2::new(205.0, -245.0);
 const DIAL_TRACK_SIZE: Vec2 = Vec2::new(400.0, 53.0);
 const DIAL_HANDLE_SIZE: Vec2 = Vec2::new(14.0, 53.0);
+
+fn dial_layout(index: usize, count: usize) -> (Vec2, Vec2) {
+    if count <= 1 {
+        (DIAL_TRACK_CENTER, DIAL_TRACK_SIZE)
+    } else {
+        (
+            Vec2::new(105.0 + index as f32 * 200.0, DIAL_TRACK_CENTER.y),
+            Vec2::new(190.0, DIAL_TRACK_SIZE.y),
+        )
+    }
+}
 #[derive(Clone, Copy)]
 enum Control {
     Select(Circuit),
@@ -1063,22 +1178,20 @@ fn spawn_bench(commands: &mut Commands, images: &mut Assets<Image>, bench: &Benc
             );
         }
     }
-    if let Some(spec) = bench.circuit.dial() {
+    let dials = bench.circuit.dials();
+    for (index, spec) in dials.iter().enumerate() {
         let component = ComponentId(spec.component.into());
-        let track = rect(
-            commands,
-            DIAL_TRACK_CENTER,
-            DIAL_TRACK_SIZE,
-            Color::srgb(0.10, 0.22, 0.25),
-            1.0,
-        );
+        let (center, size) = dial_layout(index, dials.len());
+        let track = rect(commands, center, size, Color::srgb(0.10, 0.22, 0.25), 1.0);
         commands.entity(track).insert(DialTrack {
             component: component.clone(),
+            center,
+            size,
         });
         label(
             commands,
             spec.label,
-            DIAL_TRACK_CENTER + Vec2::new(0.0, 20.0),
+            center + Vec2::new(0.0, 20.0),
             13.0,
             Color::srgb(0.75, 0.88, 0.89),
         );
@@ -1088,16 +1201,19 @@ fn spawn_bench(commands: &mut Commands, images: &mut Assets<Image>, bench: &Benc
             .get(&component)
             .copied()
             .unwrap_or(0.5);
-        let handle_x =
-            DIAL_TRACK_CENTER.x - DIAL_TRACK_SIZE.x / 2.0 + ratio as f32 * DIAL_TRACK_SIZE.x;
+        let handle_x = center.x - size.x / 2.0 + ratio as f32 * size.x;
         let handle = rect(
             commands,
-            Vec2::new(handle_x, DIAL_TRACK_CENTER.y),
+            Vec2::new(handle_x, center.y),
             DIAL_HANDLE_SIZE,
             Color::srgb(0.42, 0.90, 0.76),
             1.1,
         );
-        commands.entity(handle).insert(DialHandle { component });
+        commands.entity(handle).insert(DialHandle {
+            component,
+            center,
+            size,
+        });
     }
     button(
         commands,
@@ -1194,19 +1310,19 @@ fn handle_dial(
     let Some(point) = cursor_world(window) else {
         return;
     };
-    let Some(track) = tracks.iter().next() else {
+    for track in &tracks {
+        let half = track.size * 0.5;
+        if (point - track.center).abs().cmpgt(half).any() {
+            continue;
+        }
+        let ratio = ((point.x - (track.center.x - half.x)) / track.size.x) as f64;
+        if let Some(bench) = &mut session.bench {
+            bench.act(Action::SetControlRatio {
+                component: track.component.clone(),
+                ratio: ratio.clamp(0.0, 1.0),
+            });
+        }
         return;
-    };
-    let half = DIAL_TRACK_SIZE * 0.5;
-    if (point - DIAL_TRACK_CENTER).abs().cmpgt(half).any() {
-        return;
-    }
-    let ratio = ((point.x - (DIAL_TRACK_CENTER.x - half.x)) / DIAL_TRACK_SIZE.x) as f64;
-    if let Some(bench) = &mut session.bench {
-        bench.act(Action::SetControlRatio {
-            component: track.component.clone(),
-            ratio: ratio.clamp(0.0, 1.0),
-        });
     }
 }
 
@@ -1223,7 +1339,7 @@ fn update_dial_handle(session: Res<Session>, mut handles: Query<(&DialHandle, &m
             .copied()
             .unwrap_or(0.5);
         transform.translation.x =
-            DIAL_TRACK_CENTER.x - DIAL_TRACK_SIZE.x / 2.0 + ratio as f32 * DIAL_TRACK_SIZE.x;
+            handle.center.x - handle.size.x / 2.0 + ratio as f32 * handle.size.x;
     }
 }
 
@@ -1734,6 +1850,11 @@ mod tests {
             Circuit::E18,
             Circuit::E19,
             Circuit::E20,
+            Circuit::E21,
+            Circuit::E22,
+            Circuit::E23,
+            Circuit::E24,
+            Circuit::E25,
         ] {
             let mut app = App::new();
             app.init_resource::<Assets<Image>>();
@@ -2314,5 +2435,201 @@ mod tests {
             bench.simulation.last_valid.as_ref().unwrap().led_currents[&ComponentId("D1".into())];
         assert!(after > 0.001, "LED should turn on after charging: {after}");
         assert_eq!(bench.simulation.step, 20_001);
+    }
+
+    #[test]
+    fn e21_potentiometer_shifts_the_ambient_light_threshold_monotonically() {
+        let threshold = |pot_ratio: f64| {
+            let mut first_on = None;
+            for (index, light_ratio) in (0..=20).map(|i| i as f64 / 20.0).enumerate() {
+                let mut bench = Bench::new(Circuit::E21);
+                bench.act(Action::SetControlRatio {
+                    component: ComponentId("RV1".into()),
+                    ratio: pot_ratio,
+                });
+                bench.act(Action::SetControlRatio {
+                    component: ComponentId("R2".into()),
+                    ratio: light_ratio,
+                });
+                bench.act(Action::Run);
+                advance_steps(&bench.project, &mut bench.simulation, 2);
+                let current = bench.simulation.last_valid.as_ref().unwrap().led_currents
+                    [&ComponentId("D1".into())];
+                if current > 0.001 {
+                    first_on = Some(index);
+                    break;
+                }
+            }
+            first_on.expect("each E21 potentiometer setting should have a threshold")
+        };
+        let thresholds = [0.0, 0.5, 1.0].map(threshold);
+        assert!(thresholds[0] >= thresholds[1] && thresholds[1] >= thresholds[2]);
+    }
+
+    #[test]
+    fn e22_mixed_logic_matches_all_eight_button_combinations() {
+        for mask in 0..8 {
+            let mut bench = Bench::new(Circuit::E22);
+            for (index, id) in ["S1", "S2", "S3"].into_iter().enumerate() {
+                if mask & (1 << index) != 0 {
+                    bench.toggle(index);
+                }
+                assert!(
+                    bench
+                        .simulation
+                        .controls
+                        .contains_key(&ComponentId(id.into()))
+                );
+            }
+            bench.act(Action::Run);
+            advance_steps(&bench.project, &mut bench.simulation, 2);
+            assert!(
+                bench.simulation.last_valid.is_some(),
+                "mask={mask:03b}: {:?}",
+                bench.simulation.diagnostics
+            );
+            let current = bench.simulation.last_valid.as_ref().unwrap().led_currents
+                [&ComponentId("D1".into())];
+            let s1 = mask & 1 != 0;
+            let s2 = mask & 2 != 0;
+            let s3 = mask & 4 != 0;
+            assert_eq!(current > 0.001, (s1 && s2) || s3, "mask={mask:03b}");
+        }
+    }
+
+    #[test]
+    fn e23_led_and_buzzer_switch_together_with_ambient_light() {
+        let mut dark = Bench::new(Circuit::E23);
+        dark.act(Action::SetControlRatio {
+            component: ComponentId("R3".into()),
+            ratio: 0.0,
+        });
+        dark.act(Action::Run);
+        advance_steps(&dark.project, &mut dark.simulation, 2);
+        let dark_result = dark.simulation.last_valid.as_ref().unwrap();
+        assert!(dark_result.led_currents[&ComponentId("D1".into())] > 0.001);
+        assert!(dark_result.resistor_currents[&ComponentId("BZ1".into())] >= 0.001);
+
+        let mut bright = Bench::new(Circuit::E23);
+        bright.act(Action::SetControlRatio {
+            component: ComponentId("R3".into()),
+            ratio: 1.0,
+        });
+        bright.act(Action::Run);
+        advance_steps(&bright.project, &mut bright.simulation, 2);
+        let bright_result = bright.simulation.last_valid.as_ref().unwrap();
+        assert!(bright_result.led_currents[&ComponentId("D1".into())] < 0.000_5);
+        assert!(bright_result.resistor_currents[&ComponentId("BZ1".into())] < 0.001);
+    }
+
+    #[test]
+    fn e24_switch_paths_have_distinct_charge_current_traces() {
+        let mut fast = Bench::new(Circuit::E24);
+        fast.act(Action::Run);
+        advance_steps(&fast.project, &mut fast.simulation, 1);
+        let fast_initial =
+            fast.simulation.last_valid.as_ref().unwrap().led_currents[&ComponentId("D1".into())];
+        advance_steps(&fast.project, &mut fast.simulation, 100);
+        let fast_later =
+            fast.simulation.last_valid.as_ref().unwrap().led_currents[&ComponentId("D1".into())];
+
+        let mut slow = Bench::new(Circuit::E24);
+        slow.toggle(0);
+        slow.act(Action::Run);
+        advance_steps(&slow.project, &mut slow.simulation, 1);
+        let slow_initial =
+            slow.simulation.last_valid.as_ref().unwrap().led_currents[&ComponentId("D2".into())];
+        advance_steps(&slow.project, &mut slow.simulation, 100);
+        let slow_later =
+            slow.simulation.last_valid.as_ref().unwrap().led_currents[&ComponentId("D2".into())];
+
+        assert!(
+            fast_initial > slow_initial,
+            "fast={fast_initial}, slow={slow_initial}"
+        );
+        assert!(fast_later < fast_initial && slow_later < slow_initial);
+        assert!(
+            fast_later / fast_initial < slow_later / slow_initial,
+            "fast_initial={fast_initial}, fast={fast_later}, slow_initial={slow_initial}, slow={slow_later}"
+        );
+    }
+
+    #[test]
+    fn e25_transistor_and_lights_only_when_both_buttons_are_held() {
+        for mask in 0..4 {
+            let mut bench = Bench::new(Circuit::E25);
+            if mask & 1 != 0 {
+                bench.toggle(0);
+            }
+            if mask & 2 != 0 {
+                bench.toggle(1);
+            }
+            bench.act(Action::Run);
+            advance_steps(&bench.project, &mut bench.simulation, 4);
+            let current = bench.simulation.last_valid.as_ref().unwrap().led_currents
+                [&ComponentId("D1".into())];
+            assert_eq!(
+                current > 0.001,
+                mask == 3,
+                "mask={mask:02b}, current={current}"
+            );
+        }
+    }
+
+    #[test]
+    fn e21_renders_and_updates_two_independent_dials() {
+        let mut app = App::new();
+        app.insert_resource(Session {
+            bench: Some(Bench::new(Circuit::E21)),
+        })
+        .insert_resource(ButtonInput::<MouseButton>::default())
+        .init_resource::<Assets<Image>>()
+        .add_systems(Update, (handle_dial, update_dial_handle).chain());
+        let window = app
+            .world_mut()
+            .spawn(Window {
+                resolution: (1200, 760).into(),
+                ..default()
+            })
+            .id();
+        app.world_mut()
+            .resource_scope(|world, mut images: Mut<Assets<Image>>| {
+                let session = world.resource::<Session>();
+                let bench = session.bench.as_ref().unwrap();
+                let mut queue = bevy::ecs::world::CommandQueue::default();
+                let mut commands = Commands::new(&mut queue, world);
+                spawn_bench(&mut commands, &mut images, bench);
+                queue.apply(world);
+            });
+        let mut tracks = app.world_mut().query::<&DialTrack>();
+        assert_eq!(tracks.iter(app.world()).count(), 2);
+        let set_ratio = |app: &mut App, point: Vec2| {
+            let mut window = app.world_mut().get_mut::<Window>(window).unwrap();
+            let width = window.width();
+            let height = window.height();
+            let world_width = 1200.0_f32.max(760.0 * width / height);
+            let world_height = 760.0_f32.max(1200.0 * height / width);
+            window.set_cursor_position(Some(Vec2::new(
+                width * (0.5 + point.x / world_width),
+                height * (0.5 - point.y / world_height),
+            )));
+            let mut mouse = ButtonInput::<MouseButton>::default();
+            mouse.press(MouseButton::Left);
+            app.world_mut().insert_resource(mouse);
+            app.update();
+        };
+        set_ratio(&mut app, Vec2::new(20.0, DIAL_TRACK_CENTER.y));
+        set_ratio(&mut app, Vec2::new(390.0, DIAL_TRACK_CENTER.y));
+        let bench = app.world().resource::<Session>().bench.as_ref().unwrap();
+        assert!(
+            bench.simulation.control_ratios[&ComponentId("R2".into())] < 0.1,
+            "ratios={:?}",
+            bench.simulation.control_ratios
+        );
+        assert!(
+            bench.simulation.control_ratios[&ComponentId("RV1".into())] > 0.9,
+            "ratios={:?}",
+            bench.simulation.control_ratios
+        );
     }
 }

@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "title": "E21: Adjustable Night-Light Threshold",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "R2", "kind": "photoresistor", "pins": { "a": "A5", "b": "B8" }, "parameters": { "min_resistance": 100.0, "max_resistance": 20000.0 } },
+    { "id": "RV1", "kind": "potentiometer", "pins": { "a": "C8", "b": "A11" }, "parameters": { "min_resistance": 100.0, "max_resistance": 5000.0 } },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "collector": "B20", "base": "D8", "emitter": "A23" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A14", "b": "B17" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "C17", "cathode": "A20" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "B5", "to": "TP+:5" },
+    { "id": "W2", "from": "B14", "to": "TP+:14" },
+    { "id": "W3", "from": "B11", "to": "TP-:11" },
+    { "id": "W4", "from": "B23", "to": "TP-:23" }
+  ],
+  "initial_conditions": { "control_ratios": { "R2": 0.5, "RV1": 0.5 } }
+}
