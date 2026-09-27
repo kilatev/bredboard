@@ -22,6 +22,11 @@ const E9_JSON: &str = include_str!("../../../fixtures/projects/e9-logical-and.js
 const E10_JSON: &str = include_str!("../../../fixtures/projects/e10-smooth-fade.json");
 const E5_JSON: &str = include_str!("../../../fixtures/projects/e5-brightness-dial.json");
 const E6_JSON: &str = include_str!("../../../fixtures/projects/e6-light-reactive-led.json");
+const E11_JSON: &str = include_str!("../../../fixtures/projects/e11-two-way-switch.json");
+const E12_JSON: &str = include_str!("../../../fixtures/projects/e12-mixed-wiring.json");
+const E13_JSON: &str = include_str!("../../../fixtures/projects/e13-capacitor-against-bounce.json");
+const E14_JSON: &str = include_str!("../../../fixtures/projects/e14-buttons-or.json");
+const E15_JSON: &str = include_str!("../../../fixtures/projects/e15-transistor-inverter.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -38,6 +43,11 @@ enum Circuit {
     E10,
     E5,
     E6,
+    E11,
+    E12,
+    E13,
+    E14,
+    E15,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -54,7 +64,7 @@ struct DialSpec {
     component: &'static str,
 }
 impl Circuit {
-    fn all() -> [Self; 13] {
+    fn all() -> [Self; 18] {
         [
             Self::Led,
             Self::Rc,
@@ -69,6 +79,11 @@ impl Circuit {
             Self::E10,
             Self::E5,
             Self::E6,
+            Self::E11,
+            Self::E12,
+            Self::E13,
+            Self::E14,
+            Self::E15,
         ]
     }
     fn json(self) -> &'static str {
@@ -86,6 +101,11 @@ impl Circuit {
             Self::E10 => E10_JSON,
             Self::E5 => E5_JSON,
             Self::E6 => E6_JSON,
+            Self::E11 => E11_JSON,
+            Self::E12 => E12_JSON,
+            Self::E13 => E13_JSON,
+            Self::E14 => E14_JSON,
+            Self::E15 => E15_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -103,6 +123,11 @@ impl Circuit {
             Self::E10 => "E10: SMOOTH FADE",
             Self::E5 => "E5: BRIGHTNESS DIAL",
             Self::E6 => "E6: LIGHT-REACTIVE LED",
+            Self::E11 => "E11: TWO-WAY SWITCH",
+            Self::E12 => "E12: MIXED SERIES/PARALLEL WIRING",
+            Self::E13 => "E13: CAPACITOR AGAINST BOUNCE",
+            Self::E14 => "E14: BUTTONS OR",
+            Self::E15 => "E15: TRANSISTOR INVERTER",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -152,6 +177,26 @@ impl Circuit {
                 "A photoresistor's resistance falls as its ambient-light control rises, so more simulated light means less resistance and a brighter LED.",
                 "Task: drag the ambient-light slider across its full range and confirm the LED dims continuously toward off at the darkest setting.",
             ),
+            Self::E11 => (
+                "A changeover switch always connects its common pin to exactly one of two branches, each with its own resistor and LED, so exactly one LED can light at a time.",
+                "Task: toggle the switch and confirm D1 lights alone in one position and D2 lights alone in the other, never both together.",
+            ),
+            Self::E12 => (
+                "Two independent branches share the 5 V supply: one branch wires two LEDs in series behind a single resistor, the other wires a single LED behind its own resistor, so the branches' currents do not affect each other.",
+                "Task: run the circuit and confirm all three LEDs light steadily, with D1 and D2 in the series branch matching each other's brightness.",
+            ),
+            Self::E13 => (
+                "A capacitor sits across the same node the button feeds, alongside a resistor-and-LED branch; holding the button charges both the capacitor and the LED branch together, and releasing it lets the capacitor's stored charge keep the LED fading out smoothly instead of snapping dark.",
+                "Task: press and hold the button, then release it and confirm the LED fades out gradually rather than turning off instantly.",
+            ),
+            Self::E14 => (
+                "Two momentary buttons wired in parallel each independently complete the path to the resistor and LED, the same as a logical OR gate.",
+                "Task: confirm the LED lights when either button is held alone, and also when both are held together.",
+            ),
+            Self::E15 => (
+                "A pull-up resistor keeps the transistor's base high by default, switching it on and lighting the LED; pressing the button pulls the base directly to the negative rail, switching the transistor off, the same as a logical NOT gate.",
+                "Task: confirm the LED is lit while the button is unpressed, and goes dark while the button is held.",
+            ),
         }
     }
     /// Control buttons for this bench, in display order. Empty for exercises
@@ -184,17 +229,30 @@ impl Circuit {
                 is_switch: false,
             },
         ];
+        const E11_SWITCH: &[ControlSpec] = &[ControlSpec {
+            label: "S1: TOGGLE A / B",
+            component: "S1",
+            is_switch: true,
+        }];
         match self {
             Self::Rc => RC,
-            Self::Led | Self::Transistor | Self::E2 | Self::E7 | Self::E8 | Self::E10 => {
+            Self::E11 => E11_SWITCH,
+            Self::Led
+            | Self::Transistor
+            | Self::E2
+            | Self::E7
+            | Self::E8
+            | Self::E10
+            | Self::E13
+            | Self::E15 => {
                 if matches!(self, Self::Led | Self::Transistor) {
                     B1_BUTTON
                 } else {
                     S1_BUTTON
                 }
             }
-            Self::E9 => E9_BUTTONS,
-            Self::E1 | Self::E3 | Self::E4 | Self::E5 | Self::E6 => &[],
+            Self::E9 | Self::E14 => E9_BUTTONS,
+            Self::E1 | Self::E3 | Self::E4 | Self::E5 | Self::E6 | Self::E12 => &[],
         }
     }
     /// The continuous dial/slider control for E5/E6's potentiometer or
@@ -739,7 +797,13 @@ fn spawn_source(commands: &mut Commands, images: &mut Assets<Image>, component: 
                 srgb(sprites::palette::WIRE_BLUE_SHADE),
             )
         };
-        draw_wire(commands, start, hole_position(&hole.0).unwrap(), color, shade);
+        draw_wire(
+            commands,
+            start,
+            hole_position(&hole.0).unwrap(),
+            color,
+            shade,
+        );
     }
     let art = sprites::art_for(component.kind).expect("dc_voltage_source has sprite art");
     let body = art.body(component, 0);
@@ -1368,7 +1432,7 @@ fn hole_at(point: Vec2) -> Option<String> {
 mod tests {
     use super::*;
     use bevy::time::{TimePlugin, TimeUpdateStrategy};
-    use std::collections::BTreeSet;
+    use std::collections::{BTreeMap, BTreeSet};
     use std::time::Duration;
 
     fn click(app: &mut App, window: Entity, point: Vec2) {
@@ -1587,6 +1651,11 @@ mod tests {
             Circuit::E10,
             Circuit::E5,
             Circuit::E6,
+            Circuit::E11,
+            Circuit::E12,
+            Circuit::E13,
+            Circuit::E14,
+            Circuit::E15,
         ] {
             let mut app = App::new();
             app.init_resource::<Assets<Image>>();
@@ -1936,5 +2005,118 @@ mod tests {
         assert_eq!(menu_entry_base_y(0), 100.0);
         assert_eq!(menu_entry_base_y(1), -5.0);
         assert_eq!(menu_entry_base_y(2), -110.0);
+    }
+
+    #[test]
+    fn e11_switch_selects_exactly_one_led() {
+        let mut bench = Bench::new(Circuit::E11);
+        bench.act(Action::Run);
+        advance_steps(&bench.project, &mut bench.simulation, 10);
+        let result = bench.simulation.last_valid.as_ref().unwrap();
+        let d1 = result.led_currents[&ComponentId("D1".into())];
+        let d2 = result.led_currents[&ComponentId("D2".into())];
+        assert!(d1 > 0.001 && d2.abs() < 1e-6, "default position: {d1} {d2}");
+
+        bench.toggle(0);
+        advance_steps(&bench.project, &mut bench.simulation, 10);
+        let result = bench.simulation.last_valid.as_ref().unwrap();
+        let d1 = result.led_currents[&ComponentId("D1".into())];
+        let d2 = result.led_currents[&ComponentId("D2".into())];
+        assert!(d1.abs() < 1e-6 && d2 > 0.001, "toggled position: {d1} {d2}");
+    }
+
+    #[test]
+    fn e12_branches_are_independently_solvable() {
+        let bench = Bench::new(Circuit::E12);
+        let empty_ratios = BTreeMap::new();
+        let combined =
+            bredboard_core::solve_dc(&bench.project, &bench.simulation.controls, &empty_ratios)
+                .unwrap();
+
+        let mut series_only = bench.project.clone();
+        series_only
+            .components
+            .retain(|c| !["R2", "D3"].contains(&c.id.0.as_str()));
+        series_only
+            .wires
+            .retain(|w| !["W3", "W4"].contains(&w.id.0.as_str()));
+        let series_result =
+            bredboard_core::solve_dc(&series_only, &bench.simulation.controls, &empty_ratios)
+                .unwrap();
+
+        let mut parallel_only = bench.project.clone();
+        parallel_only
+            .components
+            .retain(|c| !["R1", "D1", "D2"].contains(&c.id.0.as_str()));
+        parallel_only
+            .wires
+            .retain(|w| !["W1", "W2"].contains(&w.id.0.as_str()));
+        let parallel_result =
+            bredboard_core::solve_dc(&parallel_only, &bench.simulation.controls, &empty_ratios)
+                .unwrap();
+
+        for id in ["D1", "D2"] {
+            let component = ComponentId(id.into());
+            assert!(
+                (combined.led_currents[&component] - series_result.led_currents[&component]).abs()
+                    < 1e-9,
+                "{id} current should not depend on the parallel branch"
+            );
+        }
+        let component = ComponentId("D3".into());
+        assert!(
+            (combined.led_currents[&component] - parallel_result.led_currents[&component]).abs()
+                < 1e-9,
+            "D3 current should not depend on the series branch"
+        );
+    }
+
+    #[test]
+    fn e14_or_truth_table_across_all_combinations() {
+        for (s1, s2) in [
+            (ControlState::ButtonReleased, ControlState::ButtonReleased),
+            (ControlState::ButtonPressed, ControlState::ButtonReleased),
+            (ControlState::ButtonReleased, ControlState::ButtonPressed),
+            (ControlState::ButtonPressed, ControlState::ButtonPressed),
+        ] {
+            let mut bench = Bench::new(Circuit::E14);
+            bench.act(Action::SetControl {
+                component: ComponentId("S1".into()),
+                state: s1,
+            });
+            bench.act(Action::SetControl {
+                component: ComponentId("S2".into()),
+                state: s2,
+            });
+            bench.act(Action::Run);
+            advance_steps(&bench.project, &mut bench.simulation, 10);
+            let current = bench.simulation.last_valid.as_ref().unwrap().led_currents
+                [&ComponentId("D1".into())];
+            let expected_on =
+                s1 == ControlState::ButtonPressed || s2 == ControlState::ButtonPressed;
+            assert_eq!(current > 0.001, expected_on, "S1={s1:?} S2={s2:?}");
+        }
+    }
+
+    #[test]
+    fn e15_inverter_lights_when_unpressed_and_darkens_when_pressed() {
+        let mut bench = Bench::new(Circuit::E15);
+        bench.act(Action::Run);
+        advance_steps(&bench.project, &mut bench.simulation, 10);
+        let unpressed =
+            bench.simulation.last_valid.as_ref().unwrap().led_currents[&ComponentId("D1".into())];
+        assert!(
+            unpressed > 0.001,
+            "LED should be lit when unpressed: {unpressed}"
+        );
+
+        bench.toggle(0);
+        advance_steps(&bench.project, &mut bench.simulation, 10);
+        let pressed =
+            bench.simulation.last_valid.as_ref().unwrap().led_currents[&ComponentId("D1".into())];
+        assert!(
+            pressed.abs() < 1e-6,
+            "LED should be dark when pressed: {pressed}"
+        );
     }
 }

@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "title": "E11: Two-Way Switch",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "S1", "kind": "changeover_switch", "pins": { "normally_closed": "F5", "common": "F14", "normally_open": "F20" }, "parameters": {} },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A5", "b": "A8" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "B8", "cathode": "A11" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "A20", "b": "A23" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D2", "kind": "led", "pins": { "anode": "B23", "cathode": "A26" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "G5", "to": "C5" },
+    { "id": "W2", "from": "B11", "to": "TP-:11" },
+    { "id": "W3", "from": "TP+:14", "to": "G14" },
+    { "id": "W4", "from": "G20", "to": "C20" },
+    { "id": "W5", "from": "B26", "to": "TP-:26" }
+  ]
+}

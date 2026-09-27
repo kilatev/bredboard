@@ -14,7 +14,7 @@ Add placement of supported components, wire creation, deletion, undo/redo, and u
 
 Add guided built-in lessons if teaching needs more than the three fixed experiments. Extend project sharing with declarative lesson steps, hints, and measurable completion conditions when imported lessons are requested. Validate references and conditions before use; imported content must not execute arbitrary code. Provide English schemas and complete AI-authoring examples.
 
-[docs/roadmap/LESSONS.md](LESSONS.md) specifies a smaller, concrete first slice of this phase: ten new fixed exercises added to the menu (still fixed fixtures, not a lesson-scripting engine), plus the potentiometer, photoresistor, and buzzer component kinds they need, decomposed into [T19–T23](../TASKS.md#post-mvp-presentation-tasks). The declarative lesson-step/hint/completion-condition engine described above remains unimplemented after T19–T23.
+[docs/roadmap/LESSONS.md](LESSONS.md) specifies a concrete slice of this phase: 30 new fixed exercises added to the menu (still fixed fixtures, not a lesson-scripting engine). The first ten need the potentiometer, photoresistor, and buzzer component kinds; decomposed into [T19–T23](../TASKS.md#post-mvp-presentation-tasks). The next 20 (E11–E30) need no new component kinds; decomposed into [T24–T27](../TASKS.md#post-mvp-presentation-tasks). The declarative lesson-step/hint/completion-condition engine described above remains unimplemented after T19–T27.
 
 ## 3. Analog expansion
 

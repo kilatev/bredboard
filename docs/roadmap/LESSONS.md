@@ -72,6 +72,58 @@ copied verbatim where the mockup states a check specific to the mockup's own
 UI) lives with whichever task card adds the exercise; this spec does not
 duplicate the full copy to avoid drift between two authored copies.
 
+## Extended exercise list (E11–E30)
+
+A second owner-authored mockup (owner-only link, not needed to implement or
+review): <https://claude.ai/artifact/9kKBB71Mty3D57GwJZckKm>, in Russian,
+levels 11–30, extends the exercise list from 10 to 30. Unlike E1–E10, every
+one of these 20 uses component kinds already in the catalog after T17/T19/T20
+(`dc_voltage_source`, `resistor`, `led`, `momentary_button`, `changeover_switch`,
+`capacitor`, `npn_transistor`, `potentiometer`, `photoresistor`, `buzzer`); no
+new `ComponentKind` is needed for this slice. The board's two independent rail
+pairs (`TP+`/`TP-` and `BP+`/`BP-`, both wired to a common negative in E28)
+already support two coexisting `dc_voltage_source` components, so E28 (dual
+battery) needs no new board or persistence support either.
+
+| # | English title | Notable mechanism | Difficulty |
+| --- | --- | --- | --- |
+| E11 | Two-Way Switch | `changeover_switch` selects one of two LED branches | Easy |
+| E12 | Mixed Series/Parallel Wiring | two independent branches, one with LEDs in series | Easy |
+| E13 | Capacitor Against Bounce | capacitor across a button-driven LED branch | Easy |
+| E14 | Buttons OR | two buttons in parallel | Medium |
+| E15 | Transistor Inverter | button pulls the base low, closing the transistor (logical NOT) | Medium |
+| E16 | Automatic Night Light | photoresistor pulls the base low in light (inverse of E6) | Medium |
+| E17 | Light Alarm | photoresistor between `+` and base; light opens the transistor, buzzer sounds | Medium |
+| E18 | Volume Control | potentiometer in series with the buzzer, current-limiting | Medium |
+| E19 | Three Independent Branches | three resistor/LED branches with different resistor values for equal brightness | Medium |
+| E20 | Turn-On Delay | large-resistor RC charge into the base, delayed transistor turn-on | Hard |
+| E21 | Adjustable Night-Light Threshold | photoresistor + potentiometer divider sets the trigger level | Hard |
+| E22 | Mixed Logic | `(A AND B) OR C` from three buttons | Hard |
+| E23 | Light and Sound Together | one transistor drives an LED and a buzzer in parallel | Hard |
+| E24 | Capacitor Charge and Discharge | switch routes current into a charge branch or a discharge branch | Hard |
+| E25 | Transistor AND | two transistors in series, each gated by its own button | Hard |
+| E26 | Transistor OR | two transistors with tied collectors, each gated by its own button | Hard |
+| E27 | Shared Brightness Control | one potentiometer node feeds two transistor bases together | Hard |
+| E28 | Power Source Selector | switch picks between a 5 V and a 9 V source, each with its own resistor | Hard |
+| E29 | Sensitivity Detector | Darlington pair amplifies a tiny base current through a 1 MΩ resistor | Hard |
+| E30 | Two-Transistor Flasher | astable multivibrator: cross-coupled capacitors, no button | Hard |
+
+Full parts lists, explanations, player tasks, and connection lists for E11–E30
+are specified in their own task cards (T24–T27), not duplicated here, per the
+same rule as E1–E10.
+
+E30 is a genuine free-running oscillator, unlike every other fixed exercise
+(including E1–E10), which are static or button/dial-driven. A perfectly
+symmetric numeric simulation of a symmetric astable multivibrator can settle
+at (or never leave) the unstable symmetric equilibrium instead of oscillating,
+the way a real circuit's component tolerances break the tie. T27 (which adds
+E30) must specify and verify a concrete, deterministic way to break that
+symmetry (for example, a tiny asymmetry in initial capacitor voltages or
+resistor values, or an explicit documented initial condition) and must not
+claim E30 works from a single lucky run; the acceptance criteria require a
+regression test that starts from the documented initial state and confirms
+sustained oscillation over many transient steps.
+
 ## Task sequence
 
 1. [T19 — Variable-resistor components](../tasks/T19-variable-resistor-components.md):
@@ -87,9 +139,16 @@ duplicate the full copy to avoid drift between two authored copies.
    E3, E4, E7, E8, E9, E10 (needs T20 and T21).
 5. [T23 — Variable-resistor exercises](../tasks/T23-fixed-exercises-variable.md):
    E5, E6 (needs T19 and T21).
+6. [T24 — Fixed exercises E11–E15](../tasks/T24-fixed-exercises-e11-e15.md).
+7. [T25 — Fixed exercises E16–E20](../tasks/T25-fixed-exercises-e16-e20.md).
+8. [T26 — Fixed exercises E21–E25](../tasks/T26-fixed-exercises-e21-e25.md).
+9. [T27 — Fixed exercises E26–E30](../tasks/T27-fixed-exercises-e26-e30.md).
 
 T22 and T23 can be done in either order once their dependencies land; neither
-depends on the other.
+depends on the other. T24–T27 each depend only on T21 (the scrollable menu)
+and this document, and are independent of each other and of T22/T23; execute
+them in numeric order only because each specifies its fixtures' `id` numbers
+relative to the previous card's, not because of any functional dependency.
 
 ## Explicitly out of scope for this phase
 

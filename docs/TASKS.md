@@ -38,10 +38,17 @@ No Codex Goal is currently active merely because these files exist. Copy a card'
 | [T21](tasks/T21-scrollable-exercise-menu.md) | Scrollable N-entry exercise menu | T09 |
 | [T22](tasks/T22-fixed-exercises-basic.md) | Eight new fixed practice exercises | T20, T21 |
 | [T23](tasks/T23-fixed-exercises-variable.md) | Two potentiometer/photoresistor exercises | T19, T21 |
+| [T24](tasks/T24-fixed-exercises-e11-e15.md) | Five fixed practice exercises (E11–E15) | T21 |
+| [T25](tasks/T25-fixed-exercises-e16-e20.md) | Five fixed practice exercises (E16–E20) | T21 |
+| [T26](tasks/T26-fixed-exercises-e21-e25.md) | Five fixed practice exercises (E21–E25) | T21 |
+| [T27](tasks/T27-fixed-exercises-e26-e30.md) | Five fixed practice exercises (E26–E30) | T21 |
 
 T19–T23 implement the scoped slice of Phase 2 specified in
 [docs/roadmap/LESSONS.md](roadmap/LESSONS.md): ten new fixed exercises added
-to the menu, not a lesson-scripting engine or free assembly.
+to the menu, not a lesson-scripting engine or free assembly. T24–T27 extend
+that same slice with the 20 further fixed exercises (E11–E30) specified in
+that document's "Extended exercise list" section, using only component kinds
+already in the catalog.
 
 The former [T10 file workflow](tasks/T10-file-workflow.md), [T11 LED lesson](tasks/T11-led-lesson.md), and [T12 remaining lessons](tasks/T12-remaining-lessons.md) are deferred to the [post-MVP roadmap](roadmap/POST-MVP.md). Their IDs remain reserved to keep historical references unambiguous.
 
