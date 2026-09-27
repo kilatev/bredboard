@@ -1,0 +1,19 @@
+{
+  "format_version": 1,
+  "title": "E17: Light Alarm",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "BZ1", "kind": "buzzer", "pins": { "positive": "A5", "negative": "B8" }, "parameters": { "resistance": 32.0 } },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "collector": "C8", "base": "B17", "emitter": "A11" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "R2", "kind": "photoresistor", "pins": { "a": "A14", "b": "A17" }, "parameters": { "min_resistance": 100.0, "max_resistance": 20000.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "C17", "b": "A20" }, "parameters": { "resistance": 1000.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "B5", "to": "TP+:5" },
+    { "id": "W2", "from": "B11", "to": "TP-:11" },
+    { "id": "W3", "from": "B14", "to": "TP+:14" },
+    { "id": "W4", "from": "B20", "to": "TP-:20" }
+  ],
+  "initial_conditions": { "control_ratios": { "R2": 0.5 } }
+}

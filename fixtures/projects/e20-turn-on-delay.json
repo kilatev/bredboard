@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "title": "E20: Turn-On Delay",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "A5", "b": "B8" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "collector": "B23", "base": "C8", "emitter": "A26" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "positive": "D8", "negative": "A14" }, "parameters": { "capacitance": 0.0001 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A17", "b": "B20" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "C20", "cathode": "A23" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "B5", "to": "TP+:5" },
+    { "id": "W2", "from": "B14", "to": "TP-:14" },
+    { "id": "W3", "from": "B17", "to": "TP+:17" },
+    { "id": "W4", "from": "B26", "to": "TP-:26" }
+  ],
+  "initial_conditions": { "capacitor_voltages": { "C1": 0.0 } }
+}

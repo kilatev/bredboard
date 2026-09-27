@@ -1,6 +1,6 @@
 # T25 — Fixed exercises E16–E20
 
-Status: pending
+Status: in_progress
 
 ## Dependencies
 
@@ -114,4 +114,33 @@ push result.
 
 ## Evidence
 
-Not started.
+- Added `fixtures/projects/e16-automatic-night-light.json` through
+  `e20-turn-on-delay.json`, with the specified fixed topologies and existing
+  catalog parameter ranges. The existing core topology/solver accepts all
+  five; the app tests also assert unique lead/wire holes and menu reachability.
+- Added E16–E20 to the existing scrollable menu and reused the existing dial
+  mechanism for E16's `R3` photoresistor, E17's `R2` photoresistor, and E18's
+  `RV1` potentiometer. Added English title, explanation, parts list, and task
+  text for each fixture.
+- Added regression tests for E16 inverse light response, E17 light threshold,
+  E18 monotonic buzzer current and silence, E19 independent branch currents,
+  and E20 fixed-step capacitor delay. `cargo test -p bredboard-app --locked`
+  passed: 33 tests.
+- Fixture validation passed for all five:
+  `cargo run -p bredboard-tools --locked -- validate
+  fixtures/projects/e16-automatic-night-light.json` (6 components, 4 wires,
+  5 nodes), E17 (5, 4, 4), E18 (3, 2, 3), E19 (7, 6, 5), and E20 (6, 4, 5).
+- Required baseline checks passed on 2026-09-27:
+  `cargo fmt --all --check`; `cargo clippy --workspace --all-targets --locked
+  -- -D warnings`; `cargo test --workspace --locked` (33 app, 59 core, 2
+  tools tests); `cargo build -p bredboard-app --target
+  x86_64-unknown-linux-gnu --locked`; and `cargo build -p bredboard-app
+  --target wasm32-unknown-unknown --locked`.
+- Menu selection, dial dispatch, exercise text, fixed-step behavior, and
+  control/reset paths are covered by the Bevy app tests, including all five
+  new circuits in `all_circuits_are_selectable_via_the_scrolled_menu` and
+  `new_exercises_show_title_explanation_and_task_text`.
+- Required manual Linux executable inspection is blocked in this environment:
+  launching `target/x86_64-unknown-linux-gnu/debug/bredboard-app` fails with
+  `WaylandError(Connection(NoCompositor))`; forcing X11 fails with
+  `XNotSupported(XOpenDisplayFailed)`. No windowed inspection is claimed.

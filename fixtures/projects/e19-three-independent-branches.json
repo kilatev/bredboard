@@ -1,0 +1,22 @@
+{
+  "format_version": 1,
+  "title": "E19: Three Independent Branches",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A5", "b": "B8" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "C8", "cathode": "A11" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "A14", "b": "B17" }, "parameters": { "resistance": 1000.0 } },
+    { "id": "D2", "kind": "led", "pins": { "anode": "C17", "cathode": "A20" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "A23", "b": "B26" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D3", "kind": "led", "pins": { "anode": "C26", "cathode": "A29" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "B5", "to": "TP+:5" },
+    { "id": "W2", "from": "B14", "to": "TP+:14" },
+    { "id": "W3", "from": "B23", "to": "TP+:23" },
+    { "id": "W4", "from": "B11", "to": "TP-:11" },
+    { "id": "W5", "from": "B20", "to": "TP-:20" },
+    { "id": "W6", "from": "B29", "to": "TP-:29" }
+  ]
+}

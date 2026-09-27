@@ -27,6 +27,12 @@ const E12_JSON: &str = include_str!("../../../fixtures/projects/e12-mixed-wiring
 const E13_JSON: &str = include_str!("../../../fixtures/projects/e13-capacitor-against-bounce.json");
 const E14_JSON: &str = include_str!("../../../fixtures/projects/e14-buttons-or.json");
 const E15_JSON: &str = include_str!("../../../fixtures/projects/e15-transistor-inverter.json");
+const E16_JSON: &str = include_str!("../../../fixtures/projects/e16-automatic-night-light.json");
+const E17_JSON: &str = include_str!("../../../fixtures/projects/e17-light-alarm.json");
+const E18_JSON: &str = include_str!("../../../fixtures/projects/e18-volume-control.json");
+const E19_JSON: &str =
+    include_str!("../../../fixtures/projects/e19-three-independent-branches.json");
+const E20_JSON: &str = include_str!("../../../fixtures/projects/e20-turn-on-delay.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -48,6 +54,11 @@ enum Circuit {
     E13,
     E14,
     E15,
+    E16,
+    E17,
+    E18,
+    E19,
+    E20,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -64,7 +75,7 @@ struct DialSpec {
     component: &'static str,
 }
 impl Circuit {
-    fn all() -> [Self; 18] {
+    fn all() -> [Self; 23] {
         [
             Self::Led,
             Self::Rc,
@@ -84,6 +95,11 @@ impl Circuit {
             Self::E13,
             Self::E14,
             Self::E15,
+            Self::E16,
+            Self::E17,
+            Self::E18,
+            Self::E19,
+            Self::E20,
         ]
     }
     fn json(self) -> &'static str {
@@ -106,6 +122,11 @@ impl Circuit {
             Self::E13 => E13_JSON,
             Self::E14 => E14_JSON,
             Self::E15 => E15_JSON,
+            Self::E16 => E16_JSON,
+            Self::E17 => E17_JSON,
+            Self::E18 => E18_JSON,
+            Self::E19 => E19_JSON,
+            Self::E20 => E20_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -128,6 +149,11 @@ impl Circuit {
             Self::E13 => "E13: CAPACITOR AGAINST BOUNCE",
             Self::E14 => "E14: BUTTONS OR",
             Self::E15 => "E15: TRANSISTOR INVERTER",
+            Self::E16 => "E16: AUTOMATIC NIGHT LIGHT",
+            Self::E17 => "E17: LIGHT ALARM",
+            Self::E18 => "E18: VOLUME CONTROL",
+            Self::E19 => "E19: THREE INDEPENDENT BRANCHES",
+            Self::E20 => "E20: TURN-ON DELAY",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -197,10 +223,30 @@ impl Circuit {
                 "A pull-up resistor keeps the transistor's base high by default, switching it on and lighting the LED; pressing the button pulls the base directly to the negative rail, switching the transistor off, the same as a logical NOT gate.",
                 "Task: confirm the LED is lit while the button is unpressed, and goes dark while the button is held.",
             ),
+            Self::E16 => (
+                "The photoresistor senses ambient light through a voltage divider and controls a transistor that switches the LED. Darkness raises the base voltage, so the LED becomes a night light.",
+                "Task: move the ambient-light control from bright to dark and confirm the LED responds inversely to E6: it becomes brighter as the room gets darker.",
+            ),
+            Self::E17 => (
+                "The photoresistor and base resistor control a transistor that powers the buzzer. Bright ambient light raises the base voltage enough to sound the alarm.",
+                "Task: sweep the ambient-light control from dark to bright and find the threshold where the buzzer changes from silent to sounding.",
+            ),
+            Self::E18 => (
+                "The potentiometer sets the series resistance feeding the buzzer, so turning the dial changes the buzzer current and eventually silences it.",
+                "Task: turn the volume dial upward, find where the buzzer cuts off, and record that dial ratio.",
+            ),
+            Self::E19 => (
+                "Three separate resistor-and-LED branches share the supply rails but not each other's components. Each resistor sets its own branch current independently.",
+                "Task: run the circuit and compare each LED current with its own resistor value; changing one branch must not change the other two.",
+            ),
+            Self::E20 => (
+                "A resistor slowly charges a capacitor at the transistor base. Only after the capacitor voltage crosses the base threshold does the transistor switch the LED branch on.",
+                "Task: run the circuit and measure the LED turn-on delay in simulated seconds, using the step counter rather than wall-clock time.",
+            ),
         }
     }
     /// Control buttons for this bench, in display order. Empty for exercises
-    /// with no live control (E1, E3, E4: always-on circuits).
+    /// with no live control (for example, E1, E3, E4, E19, and E20).
     fn controls(self) -> &'static [ControlSpec] {
         const RC: &[ControlSpec] = &[ControlSpec {
             label: "S1: CHANGE PATH",
@@ -252,12 +298,21 @@ impl Circuit {
                 }
             }
             Self::E9 | Self::E14 => E9_BUTTONS,
-            Self::E1 | Self::E3 | Self::E4 | Self::E5 | Self::E6 | Self::E12 => &[],
+            Self::E1
+            | Self::E3
+            | Self::E4
+            | Self::E5
+            | Self::E6
+            | Self::E12
+            | Self::E16
+            | Self::E17
+            | Self::E18
+            | Self::E19
+            | Self::E20 => &[],
         }
     }
-    /// The continuous dial/slider control for E5/E6's potentiometer or
-    /// photoresistor, shown instead of a button row. `None` for every other
-    /// bench.
+    /// The continuous dial/slider control for variable-resistor exercises.
+    /// `None` for every other bench.
     fn dial(self) -> Option<DialSpec> {
         match self {
             Self::E5 => Some(DialSpec {
@@ -266,6 +321,18 @@ impl Circuit {
             }),
             Self::E6 => Some(DialSpec {
                 label: "RV1: AMBIENT LIGHT - drag left/right",
+                component: "RV1",
+            }),
+            Self::E16 => Some(DialSpec {
+                label: "R3: AMBIENT LIGHT - drag left/right",
+                component: "R3",
+            }),
+            Self::E17 => Some(DialSpec {
+                label: "R2: AMBIENT LIGHT - drag left/right",
+                component: "R2",
+            }),
+            Self::E18 => Some(DialSpec {
+                label: "RV1: VOLUME DIAL - drag left/right",
                 component: "RV1",
             }),
             _ => None,
@@ -1555,7 +1622,13 @@ mod tests {
 
     #[test]
     fn dragging_the_dial_sets_the_control_ratio_and_moves_its_handle() {
-        for circuit in [Circuit::E5, Circuit::E6] {
+        for (circuit, id) in [
+            (Circuit::E5, "RV1"),
+            (Circuit::E6, "RV1"),
+            (Circuit::E16, "R3"),
+            (Circuit::E17, "R2"),
+            (Circuit::E18, "RV1"),
+        ] {
             let mut app = App::new();
             app.insert_resource(Session {
                 bench: Some(Bench::new(circuit)),
@@ -1596,7 +1669,7 @@ mod tests {
                 app.update();
             };
 
-            let id = ComponentId("RV1".into());
+            let id = ComponentId(id.into());
             let left_x = DIAL_TRACK_CENTER.x - DIAL_TRACK_SIZE.x / 2.0 + 2.0;
             drag(window, Vec2::new(left_x, DIAL_TRACK_CENTER.y), &mut app);
             let low_ratio = app
@@ -1656,6 +1729,11 @@ mod tests {
             Circuit::E13,
             Circuit::E14,
             Circuit::E15,
+            Circuit::E16,
+            Circuit::E17,
+            Circuit::E18,
+            Circuit::E19,
+            Circuit::E20,
         ] {
             let mut app = App::new();
             app.init_resource::<Assets<Image>>();
@@ -2118,5 +2196,123 @@ mod tests {
             pressed.abs() < 1e-6,
             "LED should be dark when pressed: {pressed}"
         );
+    }
+
+    #[test]
+    fn e16_night_light_is_brighter_in_darkness_than_in_bright_light() {
+        let mut bench = Bench::new(Circuit::E16);
+        bench.act(Action::SetControlRatio {
+            component: ComponentId("R3".into()),
+            ratio: 0.0,
+        });
+        bench.act(Action::Run);
+        advance_steps(&bench.project, &mut bench.simulation, 10);
+        let dark =
+            bench.simulation.last_valid.as_ref().unwrap().led_currents[&ComponentId("D1".into())];
+
+        bench.act(Action::SetControlRatio {
+            component: ComponentId("R3".into()),
+            ratio: 1.0,
+        });
+        advance_steps(&bench.project, &mut bench.simulation, 10);
+        let bright =
+            bench.simulation.last_valid.as_ref().unwrap().led_currents[&ComponentId("D1".into())];
+        assert!(
+            dark > 0.001 && bright < 0.000_5,
+            "dark={dark}, bright={bright}"
+        );
+    }
+
+    #[test]
+    fn e17_light_alarm_crosses_from_silent_to_sounding() {
+        let mut bench = Bench::new(Circuit::E17);
+        bench.act(Action::SetControlRatio {
+            component: ComponentId("R2".into()),
+            ratio: 0.0,
+        });
+        bench.act(Action::Run);
+        advance_steps(&bench.project, &mut bench.simulation, 10);
+        let dark = bench
+            .simulation
+            .last_valid
+            .as_ref()
+            .unwrap()
+            .resistor_currents[&ComponentId("BZ1".into())];
+
+        bench.act(Action::SetControlRatio {
+            component: ComponentId("R2".into()),
+            ratio: 1.0,
+        });
+        advance_steps(&bench.project, &mut bench.simulation, 10);
+        let bright = bench
+            .simulation
+            .last_valid
+            .as_ref()
+            .unwrap()
+            .resistor_currents[&ComponentId("BZ1".into())];
+        assert!(
+            dark < 0.001 && bright >= 0.001,
+            "dark={dark}, bright={bright}"
+        );
+    }
+
+    #[test]
+    fn e18_volume_control_buzzer_current_decreases_to_silence() {
+        let mut bench = Bench::new(Circuit::E18);
+        bench.act(Action::Run);
+        let mut previous = f64::INFINITY;
+        let mut silent = false;
+        for ratio in [0.0, 0.25, 0.5, 0.75, 1.0] {
+            bench.act(Action::SetControlRatio {
+                component: ComponentId("RV1".into()),
+                ratio,
+            });
+            advance_steps(&bench.project, &mut bench.simulation, 1);
+            let current = bench
+                .simulation
+                .last_valid
+                .as_ref()
+                .unwrap()
+                .resistor_currents[&ComponentId("BZ1".into())];
+            assert!(
+                current <= previous + 1e-12,
+                "ratio={ratio}, current={current}"
+            );
+            silent |= current < 0.001;
+            previous = current;
+        }
+        assert!(silent, "the high-resistance end must be silent");
+    }
+
+    #[test]
+    fn e19_three_led_currents_match_their_independent_resistors() {
+        let mut bench = Bench::new(Circuit::E19);
+        bench.act(Action::Run);
+        advance_steps(&bench.project, &mut bench.simulation, 10);
+        let result = bench.simulation.last_valid.as_ref().unwrap();
+        for id in ["R1", "R2", "R3"] {
+            let resistor = ComponentId(id.into());
+            let led = ComponentId(format!("D{}", &id[1..]));
+            assert!(
+                (result.resistor_currents[&resistor] - result.led_currents[&led]).abs() < 1e-12
+            );
+            assert!(result.led_currents[&led] > 0.001, "{id}");
+        }
+    }
+
+    #[test]
+    fn e20_turn_on_delay_is_measured_in_fixed_simulation_steps() {
+        let mut bench = Bench::new(Circuit::E20);
+        bench.act(Action::Run);
+        advance_steps(&bench.project, &mut bench.simulation, 1);
+        let before =
+            bench.simulation.last_valid.as_ref().unwrap().led_currents[&ComponentId("D1".into())];
+        assert!(before < 0.001, "LED should start off: {before}");
+
+        advance_steps(&bench.project, &mut bench.simulation, 20_000);
+        let after =
+            bench.simulation.last_valid.as_ref().unwrap().led_currents[&ComponentId("D1".into())];
+        assert!(after > 0.001, "LED should turn on after charging: {after}");
+        assert_eq!(bench.simulation.step, 20_001);
     }
 }
