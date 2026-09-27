@@ -2,19 +2,19 @@
 
 ## Outcome and scope
 
-Build an educational 2D breadboard simulator for a school-age beginner with no electronics background. Use Rust and Bevy, with an independently testable electrical core. One Bevy app provides the same menu, controls, and board view for Linux and WASM deployments. The Linux executable is the MVP interaction target; the WASM target is compilation-checked only. The browser wrapper adds a canvas and startup call, with no separate product UI.
+Build an educational 2D breadboard simulator for a school-age beginner with no electronics background. Use Rust and Bevy, with an independently testable electrical core. One Bevy app provides the same menu, controls, and board view for Linux and WASM deployments. The Linux executable is the MVP interaction target; the WASM target is compilation-checked only. The browser wrapper adds a canvas and startup call, with no separate product UI. The planned commercial distribution target is an offline-first desktop release on Steam; Steam integration must not make simulation or level creation depend on a network service.
 
 English is canonical for all project artifacts: plans, task cards, documentation, code comments, UI, board labels, component descriptions, lessons, diagnostics, JSON Schema descriptions, examples, and commit messages. Keep user-facing strings separate from logic. Russian localization is outside the MVP.
 
 The MVP menu selects one of three fixed, physically buildable circuits: LED and resistor, capacitor charge/discharge, or transistor-controlled LED. Each opens paused with a run/pause control, reset, and its switch or press/release button. Show calculated voltage/current, calculation failures, and LED brightness driven by calculated current. Hovering a hole reveals its exact ID and plugged leads. No guided lesson engine, parameter editor, graph, or user-facing JSON file workflow is required for the MVP.
 
-Exclude free assembly, isometric rendering, programmable devices, imported lessons, accounts, a backend, and integrated AI chat. External AI tools can author documented JSON through the core and CLI. The MVP does not model heating, production variability, wire parasitics, or irreversible component damage; component rating warnings can be added with editable assembly.
+Exclude free assembly, isometric rendering, programmable devices, imported lessons, accounts, a required remote backend, and integrated AI chat. External AI tools can author documented JSON through the core and CLI. Optional online sharing, Workshop integration, and synchronization may be added later, but the local application remains usable offline. The MVP does not model heating, production variability, wire parasitics, or irreversible component damage; component rating warnings can be added with editable assembly.
 
 ## Core and presentation
 
 Organize a Cargo workspace into an independent core, a Bevy application, and verification tools. Pin compatible toolchain/dependency versions during T01 and retain the lockfile. Do not select moving versions during later tasks without a task-scoped reason.
 
-The core owns these contracts:
+The core owns these contracts and remains the authority for local, offline simulation:
 
 - `Project`: board definition, components, parameters, pin placements, wires, and initial conditions.
 - `SimulationState`: integer step/time, component internals, calculated readings, and diagnostics.
@@ -29,7 +29,7 @@ Apply actions in order between fixed calculation steps. Frame rate does not chan
 
 Support one documented breadboard model with explicit contact groups and power-rail continuity. Derive electrical nodes from connected holes, component pins, and wire endpoints. Screen-space crossings do not connect wires. Do not expose a second editable connectivity representation that can disagree with the board layout.
 
-Initial catalog: DC voltage source, resistor, LED, capacitor, NPN transistor, momentary button, changeover switch, and wires. Document pin names, model parameters, units, ratings, and supported parameter ranges in the versioned catalog as each model is introduced. Use one common solver for arbitrary supported assemblies rather than circuit-specific scripted results.
+Initial catalog: DC voltage source, resistor, LED, capacitor, NPN transistor, momentary button, changeover switch, and wires. Document pin names, model parameters, units, ratings, and supported parameter ranges in the versioned catalog as each model is introduced. Use one common local solver for arbitrary supported assemblies rather than circuit-specific scripted results. An external SPICE engine may be used later as an optional native backend or independent numerical reference, but it must not be required by the core or by the WASM build.
 
 Selected numerical baseline:
 
@@ -53,7 +53,7 @@ Use `serde`, `serde_json`, and JSON Schema generated with Schemars. Version the 
 
 Validate structure, references, placement, catalog parameters, limits, and supported versions before replacing the current project. Structural validity is separate from electrical solvability. A structurally valid but unsolvable bench should show the solver diagnostic; malformed files must leave the current project untouched. Regenerate derived connectivity rather than trusting serialized caches.
 
-Stable ordering and explicit internal state must make save/restore and replay testable in the core and CLI. Unsupported versions fail with useful errors; do not invent silent migrations. User-facing file adapters are deferred until interactive assembly exists.
+Stable ordering and explicit internal state must make save/restore and replay testable in the core and CLI. Unsupported versions fail with useful errors; do not invent silent migrations. A minimal explicit migration path must be designed before the project format grows beyond the current fixed-exercise corpus. User-facing file adapters are deferred until interactive assembly exists.
 
 ## Board and UI
 
@@ -73,7 +73,7 @@ Add tests with each feature, not only at final integration. Use Proptest generat
 - Invalid imports, contradictory sources, floating nodes, limit violations, and nonlinear failure produce bounded diagnostics without hangs or misleading live readings.
 - Select and operate all three fixed circuits in the Linux executable. A successful build alone is not Linux interaction acceptance.
 
-T01 establishes exact formatting-check, Clippy, test, Linux-build, and WASM-build commands. Later cards add numerical, property, and interaction checks. Report unavailable required checks as blockers rather than passes.
+T01 establishes exact formatting-check, Clippy, test, Linux-build, and WASM-build commands. Later cards add numerical, property, and interaction checks. Report unavailable required checks as blockers rather than passes. Before expanding the fixed-exercise corpus beyond E30, add a local `.cir` exporter and representative differential checks against ngspice; this is a development/reference tool, not an online runtime dependency.
 
 The project uses the owner-selected [MIT License](../LICENSE) from the initial GitHub commit. English contributor/build instructions and dependency/asset license and attribution review are prerequisites for the MVP release. Public hosting and repository publication require an established destination and authorization.
 
@@ -86,6 +86,10 @@ Execute [the task sequence](TASKS.md), one bounded Goal and coherent change at a
 The MVP boundary is closed at T14. T00–T14 and the accepted prerequisite cards have satisfied their documented acceptance criteria; no post-MVP task is required to complete or redefine the MVP. Future work starts from the [post-MVP roadmap](roadmap/POST-MVP.md) and must not reopen MVP scope unless the owner explicitly requests an MVP bug fix.
 
 See [the post-MVP roadmap](roadmap/POST-MVP.md) for free assembly, AI-authored lessons, expanded analog simulation, and a separate digital-logic plan.
+
+### Current post-MVP direction
+
+Complete the fixed exercise sequence through E30 using the existing fixture-and-menu architecture. Do not introduce a remote backend or a new solver solely to add these levels. After E30, pause content expansion and specify data-driven level metadata, declarative completion conditions, and the required format migration before targeting a larger catalog or user-authored circuits. Steam packaging and optional native ngspice integration are later release work and must preserve offline play.
 
 ## Design references
 

@@ -2,6 +2,25 @@
 
 The MVP is complete at T14. These phases are post-MVP work and are not acceptance requirements for the released MVP. Before implementing each phase, prepare a dedicated specification and commit-sized task cards using the same Goal and verification conventions as the MVP. Do not reopen MVP scope while executing them.
 
+## Current direction and checkpoint
+
+The near-term target is to finish the fixed exercise sequence through E30
+with the existing local solver, JSON fixtures, and fixed menu architecture.
+E11–E30 do not require a remote backend, online validation, or ngspice at
+runtime. The application must remain fully playable offline.
+
+After E30, pause further level expansion. Before targeting a substantially
+larger catalog or user-authored circuits, specify data-driven level metadata,
+declarative completion conditions, and an explicit project-format migration
+path. Add a local `.cir` exporter and representative ngspice differential
+checks as a development/reference tool before relying on the numerical model
+for a larger content corpus.
+
+Steam is a planned desktop distribution target, not a reason to make the
+application network-dependent. Optional Workshop, cloud synchronization, and
+community services may be added later; local simulation and local project
+creation remain available without them.
+
 ## Browser deployment verification
 
 Package and verify the same Bevy app in a browser after Linux MVP acceptance. The wrapper remains a canvas and startup call; menu, controls, and rendering stay in the shared app. Test complete interactions in Chromium and Firefox then. Compare native and WASM discrete states exactly and voltage/current values with `abs(a-b) <= atol + 1e-6 * max(abs(a), abs(b))`, using `atol = 1e-6 V` or `1e-9 A` respectively. The current WASM build is a compatibility check, not browser acceptance.
