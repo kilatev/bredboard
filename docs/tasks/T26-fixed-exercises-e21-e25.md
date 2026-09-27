@@ -146,7 +146,11 @@ push result.
   E21's two dials are independently updated through ordered core ratio
   actions, and the generic control row is exercised by the three-button E22
   truth-table test.
-- Required manual Linux executable inspection is blocked in this environment:
-  launching `target/x86_64-unknown-linux-gnu/debug/bredboard-app` fails with
+- Required manual Linux executable inspection remains blocked in this
+  environment. In the normal task environment, launching
+  `target/x86_64-unknown-linux-gnu/debug/bredboard-app` fails with
   `WaylandError(Connection(NoCompositor))`; forcing X11 fails with
-  `XNotSupported(XOpenDisplayFailed)`. No windowed inspection is claimed.
+  `XNotSupported(XOpenDisplayFailed)`. A host-display launch succeeded, but
+  the desktop was locked and no native app surface was available to the UI
+  connector, so no safe visual or input inspection was possible. No windowed
+  inspection is claimed.

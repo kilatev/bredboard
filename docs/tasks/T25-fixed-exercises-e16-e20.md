@@ -140,7 +140,11 @@ push result.
   control/reset paths are covered by the Bevy app tests, including all five
   new circuits in `all_circuits_are_selectable_via_the_scrolled_menu` and
   `new_exercises_show_title_explanation_and_task_text`.
-- Required manual Linux executable inspection is blocked in this environment:
-  launching `target/x86_64-unknown-linux-gnu/debug/bredboard-app` fails with
+- Required manual Linux executable inspection remains blocked in this
+  environment. In the normal task environment, launching
+  `target/x86_64-unknown-linux-gnu/debug/bredboard-app` fails with
   `WaylandError(Connection(NoCompositor))`; forcing X11 fails with
-  `XNotSupported(XOpenDisplayFailed)`. No windowed inspection is claimed.
+  `XNotSupported(XOpenDisplayFailed)`. A host-display launch succeeded, but
+  the desktop was locked and no native app surface was available to the UI
+  connector, so no safe visual or input inspection was possible. No windowed
+  inspection is claimed.

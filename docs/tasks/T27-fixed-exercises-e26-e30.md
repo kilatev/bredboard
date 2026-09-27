@@ -163,7 +163,10 @@ push result.
   tools tests); `cargo build -p bredboard-app --target
   x86_64-unknown-linux-gnu --locked`; and `cargo build -p bredboard-app
   --target wasm32-unknown-unknown --locked`.
-- The Linux executable inspection has the same environment blocker as
-  T25/T26: this session has no compositor
-  (`WaylandError(Connection(NoCompositor))`) and X11 fallback reports
-  `XNotSupported(XOpenDisplayFailed)`. No windowed inspection is claimed.
+- The Linux executable inspection remains blocked as documented for T25/T26.
+  In the normal task environment, launching the executable reports
+  `WaylandError(Connection(NoCompositor))`; forcing X11 reports
+  `XNotSupported(XOpenDisplayFailed)`. A host-display launch succeeded, but
+  the desktop was locked and no native app surface was available to the UI
+  connector, so no safe visual or input inspection was possible. No windowed
+  inspection is claimed.
