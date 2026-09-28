@@ -1643,6 +1643,45 @@ mod tests {
     }
 
     #[test]
+    fn c05_pulse_generator_calculates_led_pulses_and_dial_effect() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c05-s07-08-pulse-generator.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Run]);
+        let mut max_led = 0.0_f64;
+        for _ in 0..4_000 {
+            advance_steps(&project, &mut state, 1);
+            max_led = max_led
+                .max(state.last_valid.as_ref().unwrap().led_currents[&ComponentId("LED1".into())]);
+        }
+        let middle =
+            state.last_valid.as_ref().unwrap().capacitor_voltages[&ComponentId("C1".into())];
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::Reset,
+                Action::SetControlRatio {
+                    component: ComponentId("RV1".into()),
+                    ratio: 0.9,
+                },
+                Action::Run,
+            ],
+        );
+        for _ in 0..4_000 {
+            advance_steps(&project, &mut state, 1);
+        }
+        let high = state.last_valid.as_ref().unwrap().capacitor_voltages[&ComponentId("C1".into())];
+        assert!(!state.stale, "diagnostics={:?}", state.diagnostics);
+        assert!(max_led > 0.001);
+        assert_ne!(middle, high);
+    }
+
+    #[test]
     fn c03_shift_register_calculates_shift_then_latch() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c03-s04-05-shift-register.json"

@@ -47,16 +47,23 @@ and [`10-power-energy.md`](../../breadboard-circuits/spec/10-power-energy.md).
 
 ## Implementation evidence so far
 
-The first admitted C05 fixture is `CAT-S07-10` (two-minute timer). It uses a
-calculated 555 monostable, adjustable RC timing, button input, LED/buzzer load
-readouts, and a PNP companion branch. The source two-minute wall-clock
-calibration and passive-buzzer behavior remain explicit discrepancies; manual
+The first admitted C05 fixtures are `CAT-S07-10` (two-minute timer) and
+`CAT-S07-08` (pulse generator). S07-10 uses a calculated 555 monostable,
+adjustable RC timing, button input, LED/buzzer load readouts, and a PNP
+companion branch. S07-08 uses an adjustable calculated 555 astable and LED
+pulse readout. The source timing calibration, passive-buzzer behavior, rotary
+selector, and external output terminals remain explicit discrepancies; manual
 browser and real-breadboard evidence remain pending.
 
 The S07-10 full gate passed on 2026-09-29 with `cargo fmt --all --check`,
 `cargo clippy --workspace --all-targets --locked -- -D warnings`,
 `cargo test --workspace --locked` (49 app, 95 core, 3 tools, 0 doc-test
 failures), native and WASM app builds, fixture validation and 4,000-step
+simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
+
+The S07-08 full gate passed on 2026-09-29 with the same workspace checks (49
+app, 96 core, 3 tools, 0 doc-test failures), native and WASM app builds,
+fixture validation (`11 components, 4 wires, 7 derived nodes`), 4,000-step
 simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
 --check`.
 

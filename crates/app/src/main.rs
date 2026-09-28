@@ -117,6 +117,8 @@ const C04_S06_08_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-0
 const C04_S06_03_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-03-piano.json");
 const C05_S07_10_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-10-two-minute-timer.json");
+const C05_S07_08_JSON: &str =
+    include_str!("../../../fixtures/projects/c05-s07-08-pulse-generator.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -192,6 +194,7 @@ enum Circuit {
     C04S06_08,
     C04S06_03,
     C05S07_10,
+    C05S07_08,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -209,7 +212,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 72] {
+    fn all() -> [Self; 73] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -250,6 +253,7 @@ impl Circuit {
             Self::C04S06_08,
             Self::C04S06_03,
             Self::C05S07_10,
+            Self::C05S07_08,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -359,6 +363,7 @@ impl Circuit {
             Self::C04S06_08 => C04_S06_08_JSON,
             Self::C04S06_03 => C04_S06_03_JSON,
             Self::C05S07_10 => C05_S07_10_JSON,
+            Self::C05S07_08 => C05_S07_08_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -435,6 +440,7 @@ impl Circuit {
             Self::C04S06_08 => "C04-S06-08: POLICE SIREN",
             Self::C04S06_03 => "C04-S06-03: ELECTRONIC PIANO",
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
+            Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -599,6 +605,10 @@ impl Circuit {
             Self::C05S07_10 => (
                 "A calculated 555 monostable uses a button and adjustable RC path to drive a bounded LED and buzzer load, with a PNP companion branch. The source's two-minute wall-clock calibration remains an explicit discrepancy.",
                 "Task: drag RV1, press S1, run the fixture, and compare the calculated LED, buzzer, and PNP currents.",
+            ),
+            Self::C05S07_08 => (
+                "A calculated 555 astable produces fixed-step pulses through an adjustable RC path and current-limited LED. The source's rotary output selector and external output terminals remain explicit discrepancies.",
+                "Task: drag RV1, run the fixture, and compare the calculated timing capacitor with the LED pulse activity.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -1126,6 +1136,7 @@ impl Circuit {
                 component: "S1",
                 is_switch: false,
             }],
+            Self::C05S07_08 => &[],
             Self::C03S04_06 => &[
                 ControlSpec {
                     label: "RED PLAYER",
@@ -1318,6 +1329,10 @@ impl Circuit {
             ],
             Self::C05S07_10 => &[DialSpec {
                 label: "RV1: TIMER LENGTH - drag left/right",
+                component: "RV1",
+            }],
+            Self::C05S07_08 => &[DialSpec {
+                label: "RV1: PULSE RATE - drag left/right",
                 component: "RV1",
             }],
             Self::E27 => &[DialSpec {
@@ -2955,7 +2970,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            72
+            73
         );
         assert!(matches!(
             items[0],
