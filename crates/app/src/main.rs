@@ -113,6 +113,7 @@ const C03_S05_08_JSON: &str =
 const C04_S06_04_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-04-metronome.json");
 const C04_S06_02_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-02-cricket.json");
 const C04_S06_05_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-05-doorbell.json");
+const C04_S06_08_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-08-siren.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -185,6 +186,7 @@ enum Circuit {
     C04S06_04,
     C04S06_02,
     C04S06_05,
+    C04S06_08,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -202,7 +204,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 69] {
+    fn all() -> [Self; 70] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -240,6 +242,7 @@ impl Circuit {
             Self::C04S06_04,
             Self::C04S06_02,
             Self::C04S06_05,
+            Self::C04S06_08,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -346,6 +349,7 @@ impl Circuit {
             Self::C04S06_04 => C04_S06_04_JSON,
             Self::C04S06_02 => C04_S06_02_JSON,
             Self::C04S06_05 => C04_S06_05_JSON,
+            Self::C04S06_08 => C04_S06_08_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -419,6 +423,7 @@ impl Circuit {
             Self::C04S06_04 => "C04-S06-04: METRONOME",
             Self::C04S06_02 => "C04-S06-02: CRICKET",
             Self::C04S06_05 => "C04-S06-05: DOORBELL",
+            Self::C04S06_08 => "C04-S06-08: POLICE SIREN",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -571,6 +576,10 @@ impl Circuit {
             Self::C04S06_05 => (
                 "A calculated 555 monostable drives a bounded speaker load through diode and transistor branches. Pressing the button creates an electrical doorbell pulse; the source's exact two-tone envelope remains an explicit discrepancy.",
                 "Task: press S1, run the fixture, and compare the calculated speaker load with the NPN and PNP collector currents.",
+            ),
+            Self::C04S06_08 => (
+                "Two calculated 555 stages provide slow and fast fixed-step timing, while a speaker load reports the resulting electrical activity. S1 selects two finite mode branches; the source's exact control-voltage sweep remains an explicit discrepancy.",
+                "Task: drag RV1, toggle S1, run the fixture, and compare the two calculated timing capacitors and speaker load.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -1046,6 +1055,11 @@ impl Circuit {
                 component: "S1",
                 is_switch: false,
             }],
+            Self::C04S06_08 => &[ControlSpec {
+                label: "S1: SIREN / MODE",
+                component: "S1",
+                is_switch: true,
+            }],
             Self::C03S04_06 => &[
                 ControlSpec {
                     label: "RED PLAYER",
@@ -1196,6 +1210,10 @@ impl Circuit {
             }],
             Self::C04S06_02 => &[DialSpec {
                 label: "RV1: BURST RATE - drag left/right",
+                component: "RV1",
+            }],
+            Self::C04S06_08 => &[DialSpec {
+                label: "RV1: SLOW RATE - drag left/right",
                 component: "RV1",
             }],
             Self::E27 => &[DialSpec {
@@ -2833,7 +2851,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            69
+            70
         );
         assert!(matches!(
             items[0],

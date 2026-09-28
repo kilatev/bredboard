@@ -1505,6 +1505,51 @@ mod tests {
     }
 
     #[test]
+    fn c04_siren_composes_dual_timers_and_switchable_mode_load() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c04-s06-08-siren.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Run]);
+        let mut max_speaker = 0.0_f64;
+        for _ in 0..4_000 {
+            advance_steps(&project, &mut state, 1);
+            let solved = state.last_valid.as_ref().unwrap();
+            max_speaker = max_speaker.max(
+                solved
+                    .resistor_currents
+                    .get(&ComponentId("SP1".into()))
+                    .copied()
+                    .unwrap_or(0.0)
+                    .abs(),
+            );
+        }
+        let normally_closed =
+            state.last_valid.as_ref().unwrap().resistor_currents[&ComponentId("R8".into())];
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("S1".into()),
+                    state: ControlState::SwitchNormallyOpen,
+                },
+                Action::SingleStep,
+            ],
+        );
+        let normally_open =
+            state.last_valid.as_ref().unwrap().resistor_currents[&ComponentId("R7".into())];
+        assert!(!state.stale, "diagnostics={:?}", state.diagnostics);
+        assert!(max_speaker > 0.004);
+        assert!(normally_closed.abs() > 0.00001);
+        assert!(normally_open.abs() > 0.00001);
+        assert_ne!(normally_closed, normally_open);
+    }
+
+    #[test]
     fn c03_shift_register_calculates_shift_then_latch() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c03-s04-05-shift-register.json"
