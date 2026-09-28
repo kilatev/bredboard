@@ -121,6 +121,8 @@ const C05_S07_08_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-08-pulse-generator.json");
 const C06_S08_01_JSON: &str =
     include_str!("../../../fixtures/projects/c06-s08-01-motor-with-switch.json");
+const C07_S09_03_JSON: &str =
+    include_str!("../../../fixtures/projects/c07-s09-03-two-station-telegraph.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -198,6 +200,7 @@ enum Circuit {
     C05S07_10,
     C05S07_08,
     C06S08_01,
+    C07S09_03,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -215,7 +218,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 74] {
+    fn all() -> [Self; 75] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -258,6 +261,7 @@ impl Circuit {
             Self::C05S07_10,
             Self::C05S07_08,
             Self::C06S08_01,
+            Self::C07S09_03,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -369,6 +373,7 @@ impl Circuit {
             Self::C05S07_10 => C05_S07_10_JSON,
             Self::C05S07_08 => C05_S07_08_JSON,
             Self::C06S08_01 => C06_S08_01_JSON,
+            Self::C07S09_03 => C07_S09_03_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -447,6 +452,7 @@ impl Circuit {
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
             Self::C06S08_01 => "C06-S08-01: MOTOR WITH SWITCH",
+            Self::C07S09_03 => "C07-S09-03: TWO-STATION TELEGRAPH",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -619,6 +625,10 @@ impl Circuit {
             Self::C06S08_01 => (
                 "A calculated 3 V source drives a two-terminal DC motor through an SPDT switch. Motor current and signed no-load speed are derived from terminal voltage; the source propeller remains a presentation discrepancy.",
                 "Task: toggle S1, run the fixture, and compare the calculated motor current and signed speed readout.",
+            ),
+            Self::C07S09_03 => (
+                "Two calculated button stations drive independent LED and active-buzzer branches. The source's long cable is represented by board wiring and remains an explicit presentation discrepancy.",
+                "Task: press B1 or B2, run the fixture, and compare the calculated LED and buzzer currents for each station.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -1152,6 +1162,18 @@ impl Circuit {
                 component: "S1",
                 is_switch: true,
             }],
+            Self::C07S09_03 => &[
+                ControlSpec {
+                    label: "B1: STATION 1",
+                    component: "B1",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B2: STATION 2",
+                    component: "B2",
+                    is_switch: false,
+                },
+            ],
             Self::C03S04_06 => &[
                 ControlSpec {
                     label: "RED PLAYER",
@@ -2751,6 +2773,41 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C07S09_03 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Station currents: run to measure".into(),
+                        |result| {
+                            format!(
+                                "S1 LED {:.2} mA / BZ {:.2} mA   S2 LED {:.2} mA / BZ {:.2} mA",
+                                1000.0
+                                    * result
+                                        .led_currents
+                                        .get(&ComponentId("D1".into()))
+                                        .copied()
+                                        .unwrap_or(0.0),
+                                1000.0
+                                    * result
+                                        .resistor_currents
+                                        .get(&ComponentId("BZ1".into()))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                                        .abs(),
+                                1000.0
+                                    * result
+                                        .led_currents
+                                        .get(&ComponentId("D2".into()))
+                                        .copied()
+                                        .unwrap_or(0.0),
+                                1000.0
+                                    * result
+                                        .resistor_currents
+                                        .get(&ComponentId("BZ2".into()))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                                        .abs()
+                            )
+                        },
+                    )
                 } else {
                     bench.simulation.last_valid.as_ref().map_or(
                         "LED current: run to measure".into(),
@@ -3016,7 +3073,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            74
+            75
         );
         assert!(matches!(
             items[0],

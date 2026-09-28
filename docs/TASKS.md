@@ -80,6 +80,7 @@ batches:
 | [C04](tasks/C04-catalog-implementation.md) | The bounded implementation card for sections 06, 11, and 16, covering 27 sound, op-amp, and analog-computer schemes | C03, plus the signal, audio, and analog-computer decisions named in the card |
 | [C05](tasks/C05-catalog-implementation.md) | The bounded implementation card for sections 07 and 10, covering 24 home-tool and power-energy schemes | C01, C02, C04, plus the measurement, regulator, and power-safety decisions named in the card |
 | [C06](tasks/C06-catalog-implementation.md) | The bounded implementation card for section 08, covering 19 motor and motion schemes | C00, plus the motor, actuator, driver, sensor, and motion contracts named in the card |
+| [C07](tasks/C07-catalog-implementation.md) | The bounded implementation card for section 09, covering 19 hardware-logic and module schemes | C00, plus the module, sensor, actuator, and multi-board contracts named in the card |
 
 C00 is documentation-only and is marked `ready_for_fukit` with its exact
 source checks and limitations recorded in the card. C01 remains `pending`;

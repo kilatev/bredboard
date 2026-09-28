@@ -2802,6 +2802,28 @@ mod tests {
         assert!((on.motor_speeds[&ComponentId("M1".into())] - 10_000.0).abs() < 1e-9);
     }
 
+    #[test]
+    fn telegraph_button_drives_only_its_calculated_station_loads() {
+        let project: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c07-s09-03-two-station-telegraph.json"
+        ))
+        .unwrap();
+        let first = solve_internal(
+            &project,
+            &BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            None,
+            MAX_NONLINEAR_ITERATIONS,
+        )
+        .unwrap();
+        assert!(first.led_currents[&ComponentId("D1".into())] > 0.001);
+        assert!(first.resistor_currents[&ComponentId("BZ1".into())].abs() > 0.01);
+        assert!(first.led_currents[&ComponentId("D2".into())].abs() < 1e-12);
+        assert!(first.resistor_currents[&ComponentId("BZ2".into())].abs() < 1e-12);
+    }
+
     fn variable_resistor_divider(kind: ComponentKind, min: f64, max: f64) -> Project {
         let mut p = divider();
         p.components[1].kind = kind;
