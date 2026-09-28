@@ -2,7 +2,8 @@
 
 Status: in_progress; the Section 04 and Section 05 source review is recorded
 and implementation is proceeding in bounded capability slices. Six Section 04
-fixtures are admitted; the remaining 11 entries and all manual evidence remain
+and one Section 05 fixture are admitted; the remaining 10 entries and all
+manual evidence remain
 open.
 
 ## Scope
@@ -80,13 +81,14 @@ electrical behavior.
 
 ## Implementation evidence so far
 
-The current slice adds calculated `digital_counter`, `shift_register`, and
-`seven_segment_display` contracts, six embedded Section 04 fixtures, menu
-entries, and fixed-step regressions for rising-edge counting, BCD segment
-decoding, serial shifting, and output latching.
+The current slice adds calculated `digital_counter`, `shift_register`,
+`seven_segment_display`, and `four_bit_adder` contracts, six embedded Section
+04 fixtures, one embedded Section 05 fixture, menu entries, and fixed-step
+regressions for rising-edge counting, BCD segment decoding, serial shifting,
+output latching, and binary addition.
 
-Section 05 is reconciled in the ledger as blocked rather than simulated: its
-eight records require DIP input banks, arithmetic and bus contracts, stronger
+Section 05 is reconciled in the ledger as one fixture plus seven blocked
+records: the remaining entries require DIP input banks, arithmetic and bus contracts, stronger
 state-machine timing, crystal dividers, SRAM, or multi-board supply and
 presentation behavior that the current core does not provide.
 
@@ -99,6 +101,8 @@ cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s04-02-e
 cargo test -p bredboard-core c03_dice_counter_calculates_the_one_dot_pattern --locked — passed
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s04-09-dual-555-noisemaker.json — passed; 16 components, 9 wires, 10 derived nodes
 cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c03-s04-09-dual-555-noisemaker.json 10 — passed; transient state advanced for C1/C2/C3/C4
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s05-01-four-bit-adder.json — passed; 28 components, 15 wires, 23 derived nodes
+cargo test -p bredboard-core c03_four_bit_adder_calculates_five_plus_nine --locked — passed
 cargo test -p bredboard-core digital_counter_advances_once_per_calculated_rising_edge --locked — passed
 cargo test -p bredboard-core c03_counter_fixture_drives_a_calculated_display_digit --locked — passed
 cargo test -p bredboard-core c03_shift_register_calculates_shift_then_latch --locked — passed

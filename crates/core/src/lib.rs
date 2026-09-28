@@ -147,6 +147,8 @@ pub enum ComponentKind {
     ShiftRegister,
     /// Common-cathode seven-segment display represented as a calculated load.
     SevenSegmentDisplay,
+    /// Four-bit combinational adder/subtractor with calculated carry output.
+    FourBitAdder,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Wire {
@@ -520,6 +522,25 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
             "a", "b", "c", "common", "d", "e", "f", "g", "gnd", "input_b0", "input_b1", "input_b2",
             "input_b3", "vcc",
         ],
+        ComponentKind::FourBitAdder => &[
+            "a0",
+            "a1",
+            "a2",
+            "a3",
+            "b0",
+            "b1",
+            "b2",
+            "b3",
+            "carry_in",
+            "carry_out",
+            "gnd",
+            "subtract",
+            "sum0",
+            "sum1",
+            "sum2",
+            "sum3",
+            "vcc",
+        ],
     }
 }
 fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
@@ -544,6 +565,7 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::DigitalCounter => &["modulus", "output_mode", "output_resistance"],
         ComponentKind::ShiftRegister => &["output_resistance"],
         ComponentKind::SevenSegmentDisplay => &["output_resistance"],
+        ComponentKind::FourBitAdder => &["output_resistance"],
     }
 }
 fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
@@ -582,6 +604,7 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         (ComponentKind::DigitalCounter, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::ShiftRegister, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::SevenSegmentDisplay, "output_resistance") => Some((1.0, 1e7)),
+        (ComponentKind::FourBitAdder, "output_resistance") => Some((1.0, 1e7)),
         _ => None,
     }
 }

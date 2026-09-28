@@ -172,6 +172,17 @@ enum NonlinearElement {
         gnd: usize,
         resistance: f64,
     },
+    FourBitAdder {
+        a: [usize; 4],
+        b: [usize; 4],
+        carry_in: usize,
+        carry_out: usize,
+        subtract: usize,
+        sum: [usize; 4],
+        vcc: usize,
+        gnd: usize,
+        resistance: f64,
+    },
 }
 
 pub const FIXED_STEP_SECONDS: f64 = 100e-6;
@@ -430,6 +441,29 @@ fn solve_internal(
                 let mut pairs = vec![(*common, *gnd), (*vcc, *gnd)];
                 pairs.extend(inputs.iter().map(|input| (*input, *gnd)));
                 pairs.extend(segments.iter().map(|segment| (*segment, *common)));
+                pairs
+            }
+            NonlinearElement::FourBitAdder {
+                a,
+                b,
+                carry_in,
+                carry_out,
+                subtract,
+                sum,
+                vcc,
+                gnd,
+                ..
+            } => {
+                let mut pairs = vec![
+                    (*carry_in, sum[0]),
+                    (*subtract, sum[0]),
+                    (*vcc, sum[0]),
+                    (*gnd, sum[0]),
+                    (*carry_out, sum[0]),
+                ];
+                pairs.extend(a.iter().map(|input| (*input, sum[0])));
+                pairs.extend(b.iter().map(|input| (*input, sum[0])));
+                pairs.extend(sum.windows(2).map(|pair| (pair[0], pair[1])));
                 pairs
             }
         };
@@ -691,7 +725,8 @@ fn solve_internal(
             | NonlinearElement::DFlipFlop { .. }
             | NonlinearElement::DigitalCounter { .. }
             | NonlinearElement::ShiftRegister { .. }
-            | NonlinearElement::SevenSegmentDisplay { .. } => {}
+            | NonlinearElement::SevenSegmentDisplay { .. }
+            | NonlinearElement::FourBitAdder { .. } => {}
         }
     }
     Ok(SolveResult {
@@ -989,6 +1024,38 @@ fn make_branches(
                     inputs,
                     segments,
                     common,
+                    vcc,
+                    gnd,
+                    resistance: component.parameters["output_resistance"],
+                });
+                continue;
+            }
+            ComponentKind::FourBitAdder => {
+                let a = ["a0", "a1", "a2", "a3"].map(node);
+                let a = a.into_iter().collect::<Result<Vec<_>, _>>()?;
+                let a: [usize; 4] = a.try_into().expect("four adder A inputs");
+                let b = ["b0", "b1", "b2", "b3"].map(node);
+                let b = b.into_iter().collect::<Result<Vec<_>, _>>()?;
+                let b: [usize; 4] = b.try_into().expect("four adder B inputs");
+                let sum = ["sum0", "sum1", "sum2", "sum3"].map(node);
+                let sum = sum.into_iter().collect::<Result<Vec<_>, _>>()?;
+                let sum: [usize; 4] = sum.try_into().expect("four adder sum outputs");
+                let carry_in = node("carry_in")?;
+                let carry_out = node("carry_out")?;
+                let gnd = node("gnd")?;
+                let subtract = node("subtract")?;
+                let vcc = node("vcc")?;
+                active.extend(a);
+                active.extend(b);
+                active.extend(sum);
+                active.extend([carry_in, carry_out, gnd, subtract, vcc]);
+                nonlinear.push(NonlinearElement::FourBitAdder {
+                    a,
+                    b,
+                    carry_in,
+                    carry_out,
+                    subtract,
+                    sum,
                     vcc,
                     gnd,
                     resistance: component.parameters["output_resistance"],
@@ -1689,6 +1756,58 @@ fn stamp_element(
                     rhs,
                 );
             }
+        }
+        NonlinearElement::FourBitAdder {
+            a,
+            b,
+            carry_in,
+            carry_out,
+            subtract,
+            sum,
+            vcc,
+            gnd,
+            resistance,
+        } => {
+            let supply = voltage(guess, vars, *vcc);
+            let bit = |node: &usize| u32::from(logic_high(voltage(guess, vars, *node), supply));
+            let a_value = a
+                .iter()
+                .enumerate()
+                .fold(0u32, |value, (index, node)| value | bit(node) << index);
+            let b_value = b
+                .iter()
+                .enumerate()
+                .fold(0u32, |value, (index, node)| value | bit(node) << index);
+            let subtracting = bit(subtract) != 0;
+            let total = if subtracting {
+                a_value + ((!b_value) & 0xf) + bit(carry_in)
+            } else {
+                a_value + b_value + bit(carry_in)
+            };
+            for (index, output) in sum.iter().enumerate() {
+                stamp_logic_output(
+                    *output,
+                    *vcc,
+                    *gnd,
+                    total & (1 << index) != 0,
+                    *resistance,
+                    guess,
+                    vars,
+                    matrix,
+                    rhs,
+                );
+            }
+            stamp_logic_output(
+                *carry_out,
+                *vcc,
+                *gnd,
+                total > 0xf,
+                *resistance,
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
         }
     }
 }

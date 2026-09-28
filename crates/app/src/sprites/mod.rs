@@ -87,7 +87,8 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
         | ComponentKind::DFlipFlop
         | ComponentKind::DigitalCounter
         | ComponentKind::ShiftRegister
-        | ComponentKind::SevenSegmentDisplay => Some(&ic::IntegratedCircuit),
+        | ComponentKind::SevenSegmentDisplay
+        | ComponentKind::FourBitAdder => Some(&ic::IntegratedCircuit),
     }
 }
 
