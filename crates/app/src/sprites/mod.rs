@@ -91,7 +91,8 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
         | ComponentKind::FourBitAdder
         | ComponentKind::BargraphDisplay
         | ComponentKind::AudioAmplifier
-        | ComponentKind::StepSequencer => Some(&ic::IntegratedCircuit),
+        | ComponentKind::StepSequencer
+        | ComponentKind::Sram => Some(&ic::IntegratedCircuit),
     }
 }
 

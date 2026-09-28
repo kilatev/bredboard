@@ -123,7 +123,8 @@ impl SimulationState {
                 ComponentKind::DFlipFlop
                 | ComponentKind::DigitalCounter
                 | ComponentKind::ShiftRegister
-                | ComponentKind::StepSequencer => {
+                | ComponentKind::StepSequencer
+                | ComponentKind::Sram => {
                     digital_states.insert(component.id.clone(), 0);
                 }
                 _ => {}
@@ -353,7 +354,8 @@ fn update_digital_states(
             ComponentKind::DFlipFlop
             | ComponentKind::DigitalCounter
             | ComponentKind::ShiftRegister
-            | ComponentKind::StepSequencer => states.entry(component.id.clone()).or_default(),
+            | ComponentKind::StepSequencer
+            | ComponentKind::Sram => states.entry(component.id.clone()).or_default(),
             _ => continue,
         };
         let supply = voltage(&component.id, "vcc").max(1e-6);
@@ -409,6 +411,24 @@ fn update_digital_states(
                 let stage = *entry & 0xff;
                 let next = if rising { (stage + 1) % 8 } else { stage };
                 *entry = next | u32::from(clock_high) << 16;
+            }
+            ComponentKind::Sram => {
+                let reset_high = voltage(&component.id, "reset") > supply * 0.5;
+                let address = u32::from(voltage(&component.id, "address") > supply * 0.5);
+                let mut memory = *entry & 0xffff;
+                if reset_high {
+                    memory = 0;
+                } else if rising && voltage(&component.id, "write") > supply * 0.5 {
+                    let value = (0..8).fold(0, |value, bit| {
+                        value
+                            | u32::from(
+                                voltage(&component.id, &format!("data{bit}")) > supply * 0.5,
+                            ) << bit
+                    });
+                    let mask = 0xff << (address * 8);
+                    memory = (memory & !mask) | (value << (address * 8));
+                }
+                *entry = memory | u32::from(clock_high) << 16;
             }
             _ => {}
         }
@@ -1318,6 +1338,52 @@ mod tests {
             );
         }
         assert_eq!(state.digital_states[&ComponentId("SEQ1".into())] & 0xff, 0);
+    }
+
+    #[test]
+    fn c03_bounded_sram_writes_and_reads_a_calculated_byte() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c03-s05-08-bounded-sram.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("D0".into()),
+                    state: ControlState::SwitchNormallyOpen,
+                },
+                Action::SetControl {
+                    component: ComponentId("D2".into()),
+                    state: ControlState::SwitchNormallyOpen,
+                },
+                Action::SetControl {
+                    component: ComponentId("WRITE".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::SetControl {
+                    component: ComponentId("CLOCK".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::SingleStep,
+            ],
+        );
+        assert_eq!(
+            state.digital_states[&ComponentId("U1".into())] & 0xffff,
+            0b0000_0101,
+            "states={:?} diagnostics={:?} readings={:?}",
+            state.digital_states,
+            state.diagnostics,
+            state.last_valid
+        );
+        let solved = state.last_valid.as_ref().unwrap();
+        assert!(solved.led_currents[&ComponentId("LED0".into())] > 0.001);
+        assert!(solved.led_currents[&ComponentId("LED2".into())] > 0.001);
+        assert!(solved.led_currents[&ComponentId("LED1".into())] < 1e-6);
     }
 
     #[test]

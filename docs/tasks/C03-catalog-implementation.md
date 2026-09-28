@@ -2,8 +2,7 @@
 
 Status: in_progress; the Section 04 and Section 05 source review is recorded
 and implementation is proceeding in bounded capability slices. Nine Section 04
-and seven Section 05 fixtures are admitted; the remaining one entry and all
-manual evidence remain open.
+and eight Section 05 fixtures are admitted; all manual evidence remains open.
 
 ## Scope
 
@@ -44,9 +43,9 @@ electrical behavior.
   crystal assumptions. Educational bounded timing is admissible only when the
   observable state is calculated from pins and fixed simulation steps.
 - S05-08 explicitly requires approximately 30 ICs, SRAM, three boards, and a
-  5 V / 2 A supply. It remains a multi-board scope blocker until board
-  identity, supply limits, SRAM behavior, and the presentation surface are
-  defined.
+  5 V / 2 A supply. It is admitted with a bounded two-word, eight-bit SRAM
+  contract; the full SAP-1 CPU, board identity, supply limits, and presentation
+  surface remain explicit discrepancies.
 
 ## Required capability slice
 
@@ -60,7 +59,7 @@ electrical behavior.
 - Reuse the existing timer, button, switch, LED, resistor, capacitor, and
   potentiometer models where their pin-level behavior is sufficient.
 - Add an IC/display sprite and placement checks for every occupied lead hole.
-- Record unsupported audio, crystal, SRAM, op-amp, bargraph, physical-prop,
+- Record unsupported audio, crystal, full SAP-1 CPU, op-amp, bargraph, physical-prop,
   and multi-board requirements as ledger dispositions instead of faking them.
 
 ## Acceptance criteria
@@ -88,12 +87,12 @@ The current slice adds calculated `digital_counter`, `shift_register`,
 Section 05 fixtures, menu entries, and fixed-step regressions for rising-edge
 counting, cascaded decimal carry, BCD segment decoding, serial shifting,
 output latching, binary addition, ordered code entry, sequencer selection, and
-reset.
+reset. The final Section 05 fixture also has a calculated two-word SRAM write
+and read regression.
 
-Section 05 is reconciled in the ledger as seven fixtures plus one blocked
-records: the remaining entries require DIP input banks, arithmetic and bus contracts, stronger
-state-machine timing, crystal dividers, SRAM, or multi-board supply and
-presentation behavior that the current core does not provide.
+Section 05 is reconciled in the ledger as eight bounded fixtures. S05-08
+records the full SAP-1 CPU, four-board layout, and 5 V / 2 A supply as source
+discrepancies rather than hiding them in the electrical result.
 
 ```text
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s04-03-button-counter.json — passed; 5 components, 0 wires, 20 derived nodes
@@ -125,6 +124,8 @@ cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s05-06-d
 cargo test -p bredboard-core c03_clock_core_cascades_six_calculated_stages --locked — passed
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s05-07-step-sequencer.json — passed; 37 components, 0 wires, 28 derived nodes
 cargo test -p bredboard-core c03_step_sequencer_advances_led_and_control_selection --locked — passed
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s05-08-bounded-sram.json — passed; 33 components, 8 wires, 30 derived nodes
+cargo test -p bredboard-core c03_bounded_sram_writes_and_reads_a_calculated_byte --locked — passed
 cargo test -p bredboard-core digital_counter_advances_once_per_calculated_rising_edge --locked — passed
 cargo test -p bredboard-core c03_counter_fixture_drives_a_calculated_display_digit --locked — passed
 cargo test -p bredboard-core c03_shift_register_calculates_shift_then_latch --locked — passed
@@ -132,7 +133,7 @@ cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes 
 cargo test -p bredboard-app each_circuit_uses_core_controls_and_reset --locked — passed
 cargo fmt --all --check — passed after `cargo fmt --all`
 cargo clippy --workspace --all-targets --locked -- -D warnings — passed
-cargo test --workspace --locked — passed (49 app, 88 core, 3 tools, 0 doc-tests)
+cargo test --workspace --locked — passed (49 app, 89 core, 3 tools, 0 doc-tests)
 cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked — passed
 cargo build -p bredboard-app --target wasm32-unknown-unknown --locked — passed
 cargo run -p bredboard-tools --locked -- validate-catalog breadboard-circuits/spec/catalog.json breadboard-circuits/spec/catalog.schema.json — passed; 20 sections, 212 schematics
@@ -140,8 +141,8 @@ cargo run -p bredboard-tools --locked -- validate-catalog breadboard-circuits/sp
 
 ## Current blockers
 
-- LM358/LM3914/LM386, microphone, bargraph, crystal, SRAM, and multi-board
-  supply/presentation contracts are not yet available.
+- LM358/LM3914/LM386, microphone, full SAP-1 CPU, bargraph, crystal, and
+  multi-board supply/presentation contracts are not yet available.
 - Manual interaction and real-breadboard evidence are pending for every new
   fixture.
 

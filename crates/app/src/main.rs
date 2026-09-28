@@ -108,6 +108,8 @@ const C03_S05_06_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s05-06-digital-clock.json");
 const C03_S05_07_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s05-07-step-sequencer.json");
+const C03_S05_08_JSON: &str =
+    include_str!("../../../fixtures/projects/c03-s05-08-bounded-sram.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -176,6 +178,7 @@ enum Circuit {
     C03S05_05,
     C03S05_06,
     C03S05_07,
+    C03S05_08,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -193,7 +196,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 65] {
+    fn all() -> [Self; 66] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -227,6 +230,7 @@ impl Circuit {
             Self::C03S05_05,
             Self::C03S05_06,
             Self::C03S05_07,
+            Self::C03S05_08,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -329,6 +333,7 @@ impl Circuit {
             Self::C03S05_05 => C03_S05_05_JSON,
             Self::C03S05_06 => C03_S05_06_JSON,
             Self::C03S05_07 => C03_S05_07_JSON,
+            Self::C03S05_08 => C03_S05_08_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -398,6 +403,7 @@ impl Circuit {
             Self::C03S05_05 => "C03-S05-05: DIGITAL STOPWATCH",
             Self::C03S05_06 => "C03-S05-06: DIGITAL CLOCK CORE",
             Self::C03S05_07 => "C03-S05-07: STEP SEQUENCER",
+            Self::C03S05_08 => "C03-S05-08: BOUNDED SRAM COMPUTER",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -534,6 +540,10 @@ impl Circuit {
             Self::C03S05_07 => (
                 "An eight-step calculated sequencer advances on electrical STEP edges, selects one of eight potentiometer control voltages, drives the selected output load, and lights the active step LED. The source 555 audio-frequency readout is bounded to a calculated control-voltage path.",
                 "Task: adjust the eight dials, press STEP repeatedly, and compare the active LED with the selected control-voltage output.",
+            ),
+            Self::C03S05_08 => (
+                "A bounded SRAM model stores two calculated eight-bit words on electrical WRITE edges and drives the selected word onto an eight-bit LED read bus. The source SAP-1 CPU, four-board layout, and 5 V / 2 A supply remain explicit discrepancies.",
+                "Task: select an address and data byte, press WRITE, then switch the address and verify the stored calculated byte on the output LEDs.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -985,6 +995,23 @@ impl Circuit {
                 component: "STEP",
                 is_switch: false,
             }],
+            Self::C03S05_08 => &[
+                ControlSpec {
+                    label: "WRITE: PRESS / RELEASE",
+                    component: "WRITE",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "RESET: PRESS / RELEASE",
+                    component: "RESET",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "CLOCK: PRESS / RELEASE",
+                    component: "CLOCK",
+                    is_switch: false,
+                },
+            ],
             Self::C03S04_06 => &[
                 ControlSpec {
                     label: "RED PLAYER",
@@ -1961,6 +1988,7 @@ fn component_summary(component: &Component) -> String {
         ComponentKind::BargraphDisplay => format!("{id}  ten-segment level bargraph"),
         ComponentKind::AudioAmplifier => format!("{id}  bounded audio amplifier"),
         ComponentKind::StepSequencer => format!("{id}  bounded eight-step sequencer"),
+        ComponentKind::Sram => format!("{id}  bounded 2×8 SRAM  address/data/output bus"),
     }
 }
 
@@ -2763,7 +2791,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            65
+            66
         );
         assert!(matches!(
             items[0],

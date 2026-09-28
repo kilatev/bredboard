@@ -166,6 +166,18 @@ enum NonlinearElement {
         resistance: f64,
         state: u32,
     },
+    Sram {
+        address: usize,
+        clock: usize,
+        data: [usize; 8],
+        output: [usize; 8],
+        reset: usize,
+        vcc: usize,
+        gnd: usize,
+        write: usize,
+        resistance: f64,
+        state: u32,
+    },
     ShiftRegister {
         clock: usize,
         data: usize,
@@ -451,6 +463,29 @@ fn solve_internal(
                 let mut pairs = vec![(*clock, *output), (*vcc, *output), (*gnd, *output)];
                 pairs.extend(controls.iter().map(|control| (*control, *output)));
                 pairs.extend(steps.iter().map(|step| (*step, *output)));
+                pairs
+            }
+            NonlinearElement::Sram {
+                address,
+                clock,
+                data,
+                output,
+                reset,
+                vcc,
+                gnd,
+                write,
+                ..
+            } => {
+                let mut pairs = vec![
+                    (*address, output[0]),
+                    (*clock, output[0]),
+                    (*reset, output[0]),
+                    (*vcc, output[0]),
+                    (*gnd, output[0]),
+                    (*write, output[0]),
+                ];
+                pairs.extend(data.iter().map(|input| (*input, output[0])));
+                pairs.extend(output.windows(2).map(|pair| (pair[0], pair[1])));
                 pairs
             }
             NonlinearElement::ShiftRegister {
@@ -787,6 +822,7 @@ fn solve_internal(
             | NonlinearElement::DFlipFlop { .. }
             | NonlinearElement::DigitalCounter { .. }
             | NonlinearElement::StepSequencer { .. }
+            | NonlinearElement::Sram { .. }
             | NonlinearElement::ShiftRegister { .. }
             | NonlinearElement::SevenSegmentDisplay { .. }
             | NonlinearElement::FourBitAdder { .. }
@@ -1073,6 +1109,46 @@ fn make_branches(
                     steps,
                     vcc,
                     gnd,
+                    resistance: component.parameters["output_resistance"],
+                    state: digital_states
+                        .get(&component.id)
+                        .copied()
+                        .unwrap_or_default(),
+                });
+                continue;
+            }
+            ComponentKind::Sram => {
+                let address = node("address")?;
+                let clock = node("clock")?;
+                let data: [Result<usize, ElectricalError>; 8] = [
+                    "data0", "data1", "data2", "data3", "data4", "data5", "data6", "data7",
+                ]
+                .map(node);
+                let data = data.into_iter().collect::<Result<Vec<_>, _>>()?;
+                let data: [usize; 8] = data.try_into().expect("eight SRAM data inputs");
+                let output: [Result<usize, ElectricalError>; 8] = [
+                    "output0", "output1", "output2", "output3", "output4", "output5", "output6",
+                    "output7",
+                ]
+                .map(node);
+                let output = output.into_iter().collect::<Result<Vec<_>, _>>()?;
+                let output: [usize; 8] = output.try_into().expect("eight SRAM outputs");
+                let reset = node("reset")?;
+                let vcc = node("vcc")?;
+                let gnd = node("gnd")?;
+                let write = node("write")?;
+                active.extend([address, clock, reset, vcc, gnd, write]);
+                active.extend(data);
+                active.extend(output);
+                nonlinear.push(NonlinearElement::Sram {
+                    address,
+                    clock,
+                    data,
+                    output,
+                    reset,
+                    vcc,
+                    gnd,
+                    write,
                     resistance: component.parameters["output_resistance"],
                     state: digital_states
                         .get(&component.id)
@@ -1866,6 +1942,32 @@ fn stamp_element(
                 matrix,
                 rhs,
             );
+        }
+        NonlinearElement::Sram {
+            address,
+            output,
+            vcc,
+            gnd,
+            resistance,
+            state,
+            ..
+        } => {
+            let supply = voltage(guess, vars, *vcc);
+            let selected = usize::from(voltage(guess, vars, *address) > supply * 0.5);
+            let value = ((*state >> (selected * 8)) & 0xff) as u8;
+            for (index, pin) in output.iter().enumerate() {
+                stamp_logic_output(
+                    *pin,
+                    *vcc,
+                    *gnd,
+                    value & (1 << index) != 0,
+                    *resistance,
+                    guess,
+                    vars,
+                    matrix,
+                    rhs,
+                );
+            }
         }
         NonlinearElement::ShiftRegister {
             outputs,

@@ -145,6 +145,8 @@ pub enum ComponentKind {
     DigitalCounter,
     /// Eight-step rising-edge sequencer with calculated analog control selection.
     StepSequencer,
+    /// Bounded two-word, eight-bit SRAM with calculated read and write behavior.
+    Sram,
     /// Eight-bit serial-in, parallel-out shift register with a separate latch.
     ShiftRegister,
     /// Common-cathode seven-segment display represented as a calculated load.
@@ -525,6 +527,11 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
             "control6", "control7", "gnd", "output", "step0", "step1", "step2", "step3", "step4",
             "step5", "step6", "step7", "vcc",
         ],
+        ComponentKind::Sram => &[
+            "address", "clock", "data0", "data1", "data2", "data3", "data4", "data5", "data6",
+            "data7", "gnd", "output0", "output1", "output2", "output3", "output4", "output5",
+            "output6", "output7", "reset", "vcc", "write",
+        ],
         ComponentKind::ShiftRegister => &[
             "clear", "clock", "data", "gnd", "latch", "q0", "q1", "q2", "q3", "q4", "q5", "q6",
             "q7", "vcc",
@@ -580,6 +587,7 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::DFlipFlop => &["output_resistance"],
         ComponentKind::DigitalCounter => &["modulus", "output_mode", "output_resistance"],
         ComponentKind::StepSequencer => &["output_resistance"],
+        ComponentKind::Sram => &["output_resistance"],
         ComponentKind::ShiftRegister => &["output_resistance"],
         ComponentKind::SevenSegmentDisplay => &["output_resistance"],
         ComponentKind::FourBitAdder => &["output_resistance"],
@@ -622,6 +630,7 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         (ComponentKind::DigitalCounter, "output_mode") => Some((0.0, 2.0)),
         (ComponentKind::DigitalCounter, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::StepSequencer, "output_resistance") => Some((1.0, 1e7)),
+        (ComponentKind::Sram, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::ShiftRegister, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::SevenSegmentDisplay, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::FourBitAdder, "output_resistance") => Some((1.0, 1e7)),

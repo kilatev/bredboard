@@ -210,6 +210,7 @@ pub fn restore_snapshot(
                     | ComponentKind::DigitalCounter
                     | ComponentKind::ShiftRegister
                     | ComponentKind::StepSequencer
+                    | ComponentKind::Sram
             )
         })
         .map(|c| c.id.clone())
