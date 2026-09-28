@@ -68,6 +68,18 @@ and the end-to-end batch sequence is specified in
 bounded card per implementation batch before changing code; the plan itself
 does not make a batch active.
 
+The catalog foundation cards are now recorded separately from implementation
+batches:
+
+| Task | Outcome | Depends on |
+| --- | --- | --- |
+| [C00](tasks/C00-catalog-audit.md) | Auditable 212-entry ledger, 20-section coarse triage, C01 readiness audit, and shared manual assembly protocol | Source catalog and roadmap documents |
+| [C01](tasks/C01-catalog-implementation.md) | The bounded implementation card for sections 01 and 02, covering 13 schemes | C00, plus the model/physical decisions named in the card |
+
+C00 is documentation-only and is marked `ready_for_fukit` with its exact
+source checks and limitations recorded in the card. C01 remains `pending`;
+creating its card does not authorize its implementation.
+
 T19–T23 implement the scoped slice of Phase 2 specified in
 [docs/roadmap/LESSONS.md](roadmap/LESSONS.md): ten new fixed exercises added
 to the menu, not a lesson-scripting engine or free assembly. T24–T27 extend

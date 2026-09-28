@@ -84,6 +84,22 @@ at all.
    represented as board holes at all; flag these explicitly rather than
    silently dropping them during implementation.
 
+The C00 baseline for these prerequisites is recorded in:
+
+- [`docs/catalog/CATALOG-AUDIT-LEDGER.md`](../catalog/CATALOG-AUDIT-LEDGER.md),
+  covering all 212 entries;
+- [`docs/catalog/CATALOG-SECTION-TRIAGE.md`](../catalog/CATALOG-SECTION-TRIAGE.md),
+  covering all 20 sections;
+- [`docs/catalog/C01-READINESS-AUDIT.md`](../catalog/C01-READINESS-AUDIT.md),
+  covering the 13 schemes in sections 01 and 02; and
+- [`docs/catalog/MANUAL-ASSEMBLY-PROTOCOL.md`](../catalog/MANUAL-ASSEMBLY-PROTOCOL.md),
+  defining the shared physical acceptance protocol.
+
+The bounded cards are [`C00`](../tasks/C00-catalog-audit.md), which is
+documentation-only and ready for the separate finish workflow, and
+[`C01`](../tasks/C01-catalog-implementation.md), which remains pending. The
+baseline does not authorize C01 implementation.
+
 `.cir` export, ngspice comparisons, data-driven level metadata, and format
 migration are intentionally deferred from this phase. Revisit them after the
 first catalog batches and manual assembly findings.
