@@ -91,6 +91,8 @@ const C03_S04_09_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s04-09-dual-555-noisemaker.json");
 const C03_S05_01_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s05-01-four-bit-adder.json");
+const C03_S05_02_JSON: &str =
+    include_str!("../../../fixtures/projects/c03-s05-02-four-bit-subtractor.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -150,6 +152,7 @@ enum Circuit {
     C03S04_02,
     C03S04_09,
     C03S05_01,
+    C03S05_02,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -167,7 +170,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 56] {
+    fn all() -> [Self; 57] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -192,6 +195,7 @@ impl Circuit {
             Self::C03S04_02,
             Self::C03S04_09,
             Self::C03S05_01,
+            Self::C03S05_02,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -285,6 +289,7 @@ impl Circuit {
             Self::C03S04_02 => C03_S04_02_JSON,
             Self::C03S04_09 => C03_S04_09_JSON,
             Self::C03S05_01 => C03_S05_01_JSON,
+            Self::C03S05_02 => C03_S05_02_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -345,6 +350,7 @@ impl Circuit {
             Self::C03S04_02 => "C03-S04-02: ELECTRONIC DICE",
             Self::C03S04_09 => "C03-S04-09: DUAL 555 NOISEMAKER",
             Self::C03S05_01 => "C03-S05-01: FOUR-BIT ADDER",
+            Self::C03S05_02 => "C03-S05-02: FOUR-BIT SUBTRACTOR",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -445,6 +451,10 @@ impl Circuit {
             Self::C03S05_01 => (
                 "Eight electrical changeover inputs feed a calculated four-bit adder. Four sum outputs and carry drive current-limited LEDs.",
                 "Task: set A and B with the eight input switches and verify the calculated sum and carry outputs.",
+            ),
+            Self::C03S05_02 => (
+                "The calculated four-bit arithmetic unit uses two's-complement subtraction to show a bounded A minus B result and carry state.",
+                "Task: set the eight input switches and verify the calculated difference and carry output.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -731,6 +741,48 @@ impl Circuit {
             | Self::C01S02_02 => &[],
             Self::C02S03_01 | Self::C02S03_06 | Self::C02S03_07 | Self::C03S04_09 => &[],
             Self::C03S05_01 => &[
+                ControlSpec {
+                    label: "A0: LOW / HIGH",
+                    component: "SA0",
+                    is_switch: true,
+                },
+                ControlSpec {
+                    label: "A1: LOW / HIGH",
+                    component: "SA1",
+                    is_switch: true,
+                },
+                ControlSpec {
+                    label: "A2: LOW / HIGH",
+                    component: "SA2",
+                    is_switch: true,
+                },
+                ControlSpec {
+                    label: "A3: LOW / HIGH",
+                    component: "SA3",
+                    is_switch: true,
+                },
+                ControlSpec {
+                    label: "B0: LOW / HIGH",
+                    component: "SB0",
+                    is_switch: true,
+                },
+                ControlSpec {
+                    label: "B1: LOW / HIGH",
+                    component: "SB1",
+                    is_switch: true,
+                },
+                ControlSpec {
+                    label: "B2: LOW / HIGH",
+                    component: "SB2",
+                    is_switch: true,
+                },
+                ControlSpec {
+                    label: "B3: LOW / HIGH",
+                    component: "SB3",
+                    is_switch: true,
+                },
+            ],
+            Self::C03S05_02 => &[
                 ControlSpec {
                     label: "A0: LOW / HIGH",
                     component: "SA0",
@@ -2486,7 +2538,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            56
+            57
         );
         assert!(matches!(
             items[0],

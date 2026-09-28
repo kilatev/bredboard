@@ -1780,7 +1780,7 @@ fn stamp_element(
                 .fold(0u32, |value, (index, node)| value | bit(node) << index);
             let subtracting = bit(subtract) != 0;
             let total = if subtracting {
-                a_value + ((!b_value) & 0xf) + bit(carry_in)
+                a_value + ((!b_value) & 0xf) + 1 + bit(carry_in)
             } else {
                 a_value + b_value + bit(carry_in)
             };

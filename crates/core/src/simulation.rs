@@ -733,6 +733,36 @@ mod tests {
     }
 
     #[test]
+    fn c03_four_bit_subtractor_calculates_nine_minus_five() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c03-s05-02-four-bit-subtractor.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::SingleStep]);
+        let solved = state.last_valid.as_ref().unwrap();
+        let pin_voltage = |pin: &str| {
+            solved
+                .node_voltages
+                .iter()
+                .find(|node| {
+                    node.contacts.contains(&crate::Contact::ComponentPin(
+                        ComponentId("U1".into()),
+                        crate::PinId(pin.into()),
+                    ))
+                })
+                .unwrap()
+                .voltage
+        };
+        assert!(pin_voltage("sum0") < 1.0);
+        assert!(pin_voltage("sum1") < 1.0);
+        assert!(pin_voltage("sum2") > 3.0);
+        assert!(pin_voltage("sum3") < 1.0);
+        assert!(pin_voltage("carry_out") > 3.0);
+    }
+
+    #[test]
     fn c03_shift_register_calculates_shift_then_latch() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c03-s04-05-shift-register.json"
