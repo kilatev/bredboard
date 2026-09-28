@@ -251,4 +251,4 @@ C01-specific design, safety, and buildability codes are resolved in the detailed
 
 ## Release interpretation
 
-Every row has a disposition and explicit negative implementation/manual evidence. The ledger is therefore a complete audit baseline, not a claim that the source corpus is correct or playable. C01 is bounded separately in [`docs/tasks/C01-catalog-implementation.md`](../tasks/C01-catalog-implementation.md), and no successor batch is active.
+Every row has a disposition and explicit negative implementation/manual evidence. The ledger is therefore a complete audit baseline, not a claim that the source corpus is correct or playable. C01 is bounded separately in [`docs/tasks/C01-catalog-implementation.md`](../tasks/C01-catalog-implementation.md), and C02 is now bounded in [`docs/tasks/C02-catalog-implementation.md`](../tasks/C02-catalog-implementation.md).

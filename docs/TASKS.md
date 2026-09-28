@@ -75,6 +75,7 @@ batches:
 | --- | --- | --- |
 | [C00](tasks/C00-catalog-audit.md) | Auditable 212-entry ledger, 20-section coarse triage, C01 readiness audit, and shared manual assembly protocol | Source catalog and roadmap documents |
 | [C01](tasks/C01-catalog-implementation.md) | The bounded implementation card for sections 01 and 02, covering 13 schemes | C00, plus the model/physical decisions named in the card |
+| [C02](tasks/C02-catalog-implementation.md) | The bounded implementation card for section 03, covering 7 first-IC schemes | C00b, C01, plus the IC model decisions named in the card |
 
 C00 is documentation-only and is marked `ready_for_fukit` with its exact
 source checks and limitations recorded in the card. C01 remains `pending`;
