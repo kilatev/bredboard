@@ -1,0 +1,15 @@
+{
+  "format_version": 1,
+  "title": "C06-S08-01: Motor with switch",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 3.0 } },
+    { "id": "S1", "kind": "changeover_switch", "pins": { "common": "A5", "normally_closed": "A8", "normally_open": "A11" }, "parameters": {} },
+    { "id": "M1", "kind": "motor", "pins": { "positive": "B5", "negative": "B8" }, "parameters": { "resistance": 8.0, "rated_voltage": 3.0, "no_load_speed_rpm": 10000.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "C11", "to": "TP+:5" },
+    { "id": "W2", "from": "C8", "to": "TP-:8" }
+  ],
+  "initial_conditions": { "controls": { "S1": "switch_normally_closed" } }
+}

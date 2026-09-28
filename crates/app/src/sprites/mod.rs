@@ -14,6 +14,7 @@ mod diode;
 mod future;
 mod ic;
 mod led;
+mod motor;
 pub mod palette;
 mod photoresistor;
 mod potentiometer;
@@ -40,6 +41,8 @@ pub struct PartContext {
     /// readings are stale. Shared by both kinds: they are electrically
     /// identical fixed resistive loads with the same sounding threshold.
     pub buzzer_current: f64,
+    /// Calculated signed motor speed in RPM; 0 when readings are stale.
+    pub motor_speed: f64,
     pub control: Option<ControlState>,
 }
 
@@ -80,6 +83,7 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
         ComponentKind::Thermistor => Some(&photoresistor::Photoresistor),
         ComponentKind::Buzzer => Some(&buzzer::Buzzer),
         ComponentKind::Speaker => Some(&speaker::Speaker),
+        ComponentKind::Motor => Some(&motor::Motor),
         ComponentKind::LogicGate
         | ComponentKind::SchmittInverter
         | ComponentKind::Comparator
@@ -287,7 +291,7 @@ mod tests {
 
     #[test]
     fn every_state_of_a_part_has_the_same_size() {
-        let parts: [(&dyn PartArt, Component); 11] = [
+        let parts: [(&dyn PartArt, Component); 12] = [
             (
                 &resistor::Resistor,
                 component(
@@ -380,6 +384,18 @@ mod tests {
                     &[("resistance", 8.0)],
                 ),
             ),
+            (
+                &motor::Motor,
+                component(
+                    ComponentKind::Motor,
+                    &[("positive", "A1"), ("negative", "A4")],
+                    &[
+                        ("resistance", 8.0),
+                        ("rated_voltage", 3.0),
+                        ("no_load_speed_rpm", 10_000.0),
+                    ],
+                ),
+            ),
         ];
         for (art, c) in parts {
             let sizes: Vec<_> = (0..art.state_count())
@@ -441,7 +457,7 @@ mod tests {
 
         #[test]
         fn placements_cover_every_pin_hole(
-            ax in -8i32..8, ay in -8i32..8, dx in -6i32..=6, dy in -6i32..=6, kind in 0usize..7,
+            ax in -8i32..8, ay in -8i32..8, dx in -6i32..=6, dy in -6i32..=6, kind in 0usize..8,
         ) {
             prop_assume!((dx, dy) != (0, 0));
             let a = Vec2::new(ax as f32, ay as f32) * 16.0;
@@ -453,7 +469,8 @@ mod tests {
                 3 => (&potentiometer::Potentiometer, component(ComponentKind::Potentiometer, &[("a", "A1"), ("b", "A4")], &[("min_resistance", 1.0), ("max_resistance", 10_000.0)])),
                 4 => (&photoresistor::Photoresistor, component(ComponentKind::Photoresistor, &[("a", "A1"), ("b", "A4")], &[("min_resistance", 100.0), ("max_resistance", 1_000_000.0)])),
                 5 => (&buzzer::Buzzer, component(ComponentKind::Buzzer, &[("positive", "A1"), ("negative", "A4")], &[("resistance", 32.0)])),
-                _ => (&speaker::Speaker, component(ComponentKind::Speaker, &[("positive", "A1"), ("negative", "A4")], &[("resistance", 8.0)])),
+                6 => (&speaker::Speaker, component(ComponentKind::Speaker, &[("positive", "A1"), ("negative", "A4")], &[("resistance", 8.0)])),
+                _ => (&motor::Motor, component(ComponentKind::Motor, &[("positive", "A1"), ("negative", "A4")], &[("resistance", 8.0), ("rated_voltage", 3.0), ("no_load_speed_rpm", 10_000.0)])),
             };
             assert_leads_reach_holes(art, &c, &[a, b])?;
         }

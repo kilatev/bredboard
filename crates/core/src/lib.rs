@@ -128,6 +128,11 @@ pub enum ComponentKind {
     /// rather than a piezo buzzer, with its own sprite and a lower, fuller
     /// tone while sounding.
     Speaker,
+    /// Two-terminal DC motor. The electrical branch is resistive; the solver
+    /// also derives signed shaft speed from terminal voltage using the
+    /// component's rated voltage and no-load speed parameters. Inertia,
+    /// torque load, and physical props are outside this core contract.
+    Motor,
     /// Two-input digital gate with a voltage-derived output.
     LogicGate,
     /// Voltage-threshold inverting buffer with hysteresis-free educational behavior.
@@ -503,7 +508,9 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::Potentiometer | ComponentKind::Photoresistor | ComponentKind::Thermistor => {
             &["a", "b"]
         }
-        ComponentKind::Buzzer | ComponentKind::Speaker => &["positive", "negative"],
+        ComponentKind::Buzzer | ComponentKind::Speaker | ComponentKind::Motor => {
+            &["positive", "negative"]
+        }
         ComponentKind::LogicGate => &["gnd", "input_a", "input_b", "output", "vcc"],
         ComponentKind::SchmittInverter => &["gnd", "input", "output", "vcc"],
         ComponentKind::Comparator => &["gnd", "inverting", "non_inverting", "output", "vcc"],
@@ -580,6 +587,7 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
             &["min_resistance", "max_resistance"]
         }
         ComponentKind::Buzzer | ComponentKind::Speaker => &["resistance"],
+        ComponentKind::Motor => &["resistance", "rated_voltage", "no_load_speed_rpm"],
         ComponentKind::LogicGate => &["operation", "output_resistance"],
         ComponentKind::SchmittInverter => &["output_resistance"],
         ComponentKind::Comparator => &["output_resistance"],
@@ -616,6 +624,9 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         // Dynamic speakers are low-impedance voice coils (typically 4-32
         // ohms), unlike the piezo buzzer's much wider practical range.
         (ComponentKind::Speaker, "resistance") => Some((1.0, 100.0)),
+        (ComponentKind::Motor, "resistance") => Some((1.0, 1000.0)),
+        (ComponentKind::Motor, "rated_voltage") => Some((0.1, 12.0)),
+        (ComponentKind::Motor, "no_load_speed_rpm") => Some((1.0, 50_000.0)),
         (ComponentKind::LogicGate, "operation") => Some((0.0, 3.0)),
         (
             ComponentKind::LogicGate

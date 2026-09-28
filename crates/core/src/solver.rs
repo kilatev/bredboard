@@ -28,6 +28,9 @@ pub struct SolveResult {
     pub source_currents: BTreeMap<ComponentId, f64>,
     /// Current through a closed ideal switch, positive from first to second pin.
     pub switch_currents: BTreeMap<ComponentId, f64>,
+    /// Motor current is positive from pin `positive` to pin `negative`.
+    #[serde(default)]
+    pub motor_currents: BTreeMap<ComponentId, f64>,
     pub capacitor_voltages: BTreeMap<ComponentId, f64>,
     pub capacitor_currents: BTreeMap<ComponentId, f64>,
     #[serde(default)]
@@ -38,6 +41,11 @@ pub struct SolveResult {
     pub transistor_collector_currents: BTreeMap<ComponentId, f64>,
     #[serde(default)]
     pub pnp_collector_currents: BTreeMap<ComponentId, f64>,
+    /// Signed no-load speed estimate in RPM. Positive voltage from `positive`
+    /// to `negative` yields positive speed; this is an explicit educational
+    /// actuator contract, not a mechanical inertia simulation.
+    #[serde(default)]
+    pub motor_speeds: BTreeMap<ComponentId, f64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -58,6 +66,7 @@ struct Branch {
 #[derive(Clone, Copy)]
 enum BranchKind {
     Resistor,
+    Motor,
     VoltageSource,
     Switch,
     Capacitor,
@@ -331,12 +340,14 @@ fn solve_internal(
             resistor_currents: BTreeMap::new(),
             source_currents: BTreeMap::new(),
             switch_currents: BTreeMap::new(),
+            motor_currents: BTreeMap::new(),
             capacitor_voltages: BTreeMap::new(),
             capacitor_currents: BTreeMap::new(),
             led_currents: BTreeMap::new(),
             diode_currents: BTreeMap::new(),
             transistor_collector_currents: BTreeMap::new(),
             pnp_collector_currents: BTreeMap::new(),
+            motor_speeds: BTreeMap::new(),
         });
     }
 
@@ -645,7 +656,7 @@ fn solve_internal(
         let mut rhs = vec![0.0; size];
         for branch in &branches {
             match branch.kind {
-                BranchKind::Resistor | BranchKind::Capacitor => {
+                BranchKind::Resistor | BranchKind::Motor | BranchKind::Capacitor => {
                     let g = 1.0 / branch.value;
                     let conductance = if matches!(branch.kind, BranchKind::Capacitor) {
                         branch.value
@@ -716,15 +727,17 @@ fn solve_internal(
     let mut resistor_currents = BTreeMap::new();
     let mut source_currents = BTreeMap::new();
     let mut switch_currents = BTreeMap::new();
+    let mut motor_currents = BTreeMap::new();
     let mut capacitor_voltages = BTreeMap::new();
     let mut capacitor_currents = BTreeMap::new();
     let mut led_currents = BTreeMap::new();
     let mut diode_currents = BTreeMap::new();
     let mut transistor_collector_currents = BTreeMap::new();
     let mut pnp_collector_currents = BTreeMap::new();
+    let mut motor_speeds = BTreeMap::new();
     for branch in &branches {
         let current = match branch.kind {
-            BranchKind::Resistor => {
+            BranchKind::Resistor | BranchKind::Motor => {
                 (voltage(&solution, &voltage_vars, branch.a)
                     - voltage(&solution, &voltage_vars, branch.b))
                     / branch.value
@@ -751,6 +764,9 @@ fn solve_internal(
         match branch.kind {
             BranchKind::Resistor => {
                 resistor_currents.insert(branch.component.clone(), current);
+            }
+            BranchKind::Motor => {
+                motor_currents.insert(branch.component.clone(), current);
             }
             BranchKind::VoltageSource => {
                 source_currents.insert(branch.component.clone(), current);
@@ -830,17 +846,52 @@ fn solve_internal(
             | NonlinearElement::AudioAmplifier { .. } => {}
         }
     }
+    for component in project
+        .components
+        .iter()
+        .filter(|component| component.kind == ComponentKind::Motor)
+    {
+        let positive =
+            pin_node(topology.as_slice(), &component.id, "positive").ok_or_else(|| {
+                calc(
+                    "missing_pin_node",
+                    format!(
+                        "component {} pin positive has no compiled node",
+                        component.id.0
+                    ),
+                )
+            })?;
+        let negative =
+            pin_node(topology.as_slice(), &component.id, "negative").ok_or_else(|| {
+                calc(
+                    "missing_pin_node",
+                    format!(
+                        "component {} pin negative has no compiled node",
+                        component.id.0
+                    ),
+                )
+            })?;
+        let terminal_voltage = voltage(&solution, &voltage_vars, positive)
+            - voltage(&solution, &voltage_vars, negative);
+        motor_speeds.insert(
+            component.id.clone(),
+            component.parameters["no_load_speed_rpm"]
+                * (terminal_voltage / component.parameters["rated_voltage"]).clamp(-1.0, 1.0),
+        );
+    }
     Ok(SolveResult {
         node_voltages: voltages,
         resistor_currents,
         source_currents,
         switch_currents,
+        motor_currents,
         capacitor_voltages,
         capacitor_currents,
         led_currents,
         diode_currents,
         transistor_collector_currents,
         pnp_collector_currents,
+        motor_speeds,
     })
 }
 
@@ -1395,6 +1446,13 @@ fn component_branch(
             "positive",
             "negative",
             BranchKind::Resistor,
+            value("resistance")?,
+            0.0,
+        )),
+        ComponentKind::Motor => Some((
+            "positive",
+            "negative",
+            BranchKind::Motor,
             value("resistance")?,
             0.0,
         )),
@@ -2717,6 +2775,31 @@ mod tests {
             pin_voltage(&plain, "R1", "b"),
             pin_voltage(&as_speaker, "R1", "negative")
         );
+    }
+
+    #[test]
+    fn motor_switch_derives_current_and_signed_speed_from_terminal_voltage() {
+        let project: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c06-s08-01-motor-with-switch.json"
+        ))
+        .unwrap();
+        let off = solve(&project).unwrap();
+        assert_eq!(off.motor_speeds[&ComponentId("M1".into())], 0.0);
+        assert!(off.switch_currents[&ComponentId("S1".into())].abs() < 1e-12);
+
+        let on = solve_internal(
+            &project,
+            &BTreeMap::from([(ComponentId("S1".into()), ControlState::SwitchNormallyOpen)]),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            None,
+            MAX_NONLINEAR_ITERATIONS,
+        )
+        .unwrap();
+        assert!((on.switch_currents[&ComponentId("S1".into())].abs() - 0.375).abs() < 1e-12);
+        assert!((on.motor_currents[&ComponentId("M1".into())] - 0.375).abs() < 1e-12);
+        assert!((on.motor_speeds[&ComponentId("M1".into())] - 10_000.0).abs() < 1e-9);
     }
 
     fn variable_resistor_divider(kind: ComponentKind, min: f64, max: f64) -> Project {

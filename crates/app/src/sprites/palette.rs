@@ -28,6 +28,7 @@ pub const RESISTOR_HIGHLIGHT: Rgb = hex(0xfbe9bd);
 pub const METAL: Rgb = hex(0xb3bbc2);
 pub const METAL_LIGHT: Rgb = hex(0xe4e9ed);
 pub const METAL_DARK: Rgb = hex(0x78828b);
+pub const MOTOR_SHAFT: Rgb = hex(0x4e5962);
 pub const CAP: Rgb = hex(0x33343f);
 pub const CAP_LIGHT: Rgb = hex(0x5d6073);
 pub const CAP_SPECULAR: Rgb = hex(0x8a8ea3);
