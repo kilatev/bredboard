@@ -13,7 +13,7 @@ impl Section {
     pub(crate) const fn label(self) -> &'static str {
         match self {
             Self::Mvp => "MVP BENCHES",
-            Self::Foundations => "FOUNDATIONS · C01-S01 + E1–E10",
+            Self::Foundations => "FOUNDATIONS · C01-S01/S02 + E1–E10",
             Self::SwitchingAndTiming => "SWITCHING & TIMING · E11–E20",
             Self::Advanced => "ADVANCED · E21–E30",
         }
@@ -43,6 +43,8 @@ pub(crate) fn items() -> Vec<Item> {
         Item::Circuit(C01S01_04),
         Item::Circuit(C01S01_05),
         Item::Circuit(C01S01_06),
+        Item::Circuit(C01S02_01),
+        Item::Circuit(C01S02_02),
         Item::Circuit(E1),
         Item::Circuit(E2),
         Item::Circuit(E3),

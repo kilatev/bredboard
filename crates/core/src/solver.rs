@@ -1492,6 +1492,8 @@ mod tests {
         fixture_json!(C01_S01_04, "c01-s01-04-potentiometer-dimmer.json");
         fixture_json!(C01_S01_05, "c01-s01-05-reverse-polarity.json");
         fixture_json!(C01_S01_06, "c01-s01-06-smooth-fade.json");
+        fixture_json!(C01_S02_01, "c01-s02-01-transistor-key.json");
+        fixture_json!(C01_S02_02, "c01-s02-02-dusk-night-light.json");
 
         #[test]
         fn all_ten_exercise_fixtures_have_valid_solvable_topology() {
@@ -1558,6 +1560,45 @@ mod tests {
                 .insert(crate::PinId("negative".into()), positive);
             let reversed = solve_dc(&project, &BTreeMap::new(), &BTreeMap::new()).unwrap();
             assert!(reversed.diode_currents[&ComponentId("D0".into())].abs() < 1e-6);
+        }
+
+        #[test]
+        fn c01_transistor_key_and_dusk_light_follow_calculated_controls() {
+            let key = fixture(C01_S02_01);
+            let released = solve_dc(&key, &BTreeMap::new(), &BTreeMap::new()).unwrap();
+            let pressed = solve_dc(&key, &pressed("B1"), &BTreeMap::new()).unwrap();
+            assert!(released.led_currents[&ComponentId("D1".into())] < 1e-5);
+            assert!(pressed.led_currents[&ComponentId("D1".into())] > 0.005);
+            assert!(
+                (pressed.transistor_collector_currents[&ComponentId("Q1".into())]
+                    - pressed.led_currents[&ComponentId("D1".into())])
+                    .abs()
+                    < 1e-9
+            );
+
+            let dusk = fixture(C01_S02_02);
+            let dark = solve_dc(
+                &dusk,
+                &BTreeMap::new(),
+                &BTreeMap::from([
+                    (ComponentId("R3".into()), 0.0),
+                    (ComponentId("RV1".into()), 0.5),
+                ]),
+            )
+            .unwrap();
+            let bright = solve_dc(
+                &dusk,
+                &BTreeMap::new(),
+                &BTreeMap::from([
+                    (ComponentId("R3".into()), 1.0),
+                    (ComponentId("RV1".into()), 0.5),
+                ]),
+            )
+            .unwrap();
+            assert!(
+                dark.led_currents[&ComponentId("D1".into())]
+                    > bright.led_currents[&ComponentId("D1".into())]
+            );
         }
 
         #[test]

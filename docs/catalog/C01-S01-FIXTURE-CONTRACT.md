@@ -1,4 +1,4 @@
-# C01-S01 fixture contract
+# C01 fixture contract: Sections 01 and 02 slices
 
 Status: implemented; manual assembly evidence is still required before any
 entry can become `ready`.
@@ -21,3 +21,20 @@ Automated evidence for this slice is provided by the core C01 fixture and
 polarity tests and the app's embedded-board, menu, control, sprite, and reset
 tests. Manual continuity, polarity, measurement, and visual evidence remain
 open in the shared assembly protocol.
+
+## Section 02 NPN fixtures
+
+The admitted NPN slice selects a BC547 convention for content and assembly:
+the flat face is the reference orientation and the electrical names remain
+`base`, `collector`, and `emitter` in the project contract. The source's
+“BC547 or 2N3904” alternative is not exposed in the fixture. Both fixtures
+use the normalized 5 V supply.
+
+| Entry | Fixture | Controls/readouts | Model decision |
+|---|---|---|---|
+| C01-S02-01 | `c01-s02-01-transistor-key.json` | B1; D1 and Q1 collector current | The source's unlisted motor behavior is excluded; the calculated LED load is the documented switched output. |
+| C01-S02-02 | `c01-s02-02-dusk-night-light.json` | R3 ambient light; RV1 threshold; D1/Q1 current | The photoresistor and potentiometer are two-terminal rheostats; dark raises the base drive and bright lowers it. |
+
+The touch-pad, water-probe, two-transistor flasher, transistor-logic, and
+PNP/speaker entries remain blocked in the ledger until their physical or model
+contracts are accepted. No scripted output is used for those entries.

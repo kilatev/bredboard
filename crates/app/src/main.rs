@@ -60,6 +60,10 @@ const C01_S01_05_JSON: &str =
     include_str!("../../../fixtures/projects/c01-s01-05-reverse-polarity.json");
 const C01_S01_06_JSON: &str =
     include_str!("../../../fixtures/projects/c01-s01-06-smooth-fade.json");
+const C01_S02_01_JSON: &str =
+    include_str!("../../../fixtures/projects/c01-s02-01-transistor-key.json");
+const C01_S02_02_JSON: &str =
+    include_str!("../../../fixtures/projects/c01-s02-02-dusk-night-light.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -102,6 +106,8 @@ enum Circuit {
     C01S01_04,
     C01S01_05,
     C01S01_06,
+    C01S02_01,
+    C01S02_02,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -119,7 +125,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 39] {
+    fn all() -> [Self; 41] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -127,6 +133,8 @@ impl Circuit {
             Self::C01S01_04,
             Self::C01S01_05,
             Self::C01S01_06,
+            Self::C01S02_01,
+            Self::C01S02_02,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -203,6 +211,8 @@ impl Circuit {
             Self::C01S01_04 => C01_S01_04_JSON,
             Self::C01S01_05 => C01_S01_05_JSON,
             Self::C01S01_06 => C01_S01_06_JSON,
+            Self::C01S02_01 => C01_S02_01_JSON,
+            Self::C01S02_02 => C01_S02_02_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -246,6 +256,8 @@ impl Circuit {
             Self::C01S01_04 => "C01-S01-04: POTENTIOMETER DIMMER",
             Self::C01S01_05 => "C01-S01-05: REVERSE-POLARITY PROTECTION",
             Self::C01S01_06 => "C01-S01-06: SMOOTH FADE",
+            Self::C01S02_01 => "C01-S02-01: BC547 TRANSISTOR KEY",
+            Self::C01S02_02 => "C01-S02-02: DUSK NIGHT LIGHT",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -278,6 +290,14 @@ impl Circuit {
             Self::C01S01_06 => (
                 "The button charges a 470 uF capacitor through 100 ohms; after release, the capacitor discharges through the 470 ohm LED branch.",
                 "Task: hold the button, release it, and observe the calculated capacitor voltage and LED fade.",
+            ),
+            Self::C01S02_01 => (
+                "A fixed BC547 NPN transistor uses a small button current through 10 kΩ to switch the LED branch through its collector and emitter.",
+                "Task: press and hold B1; confirm the calculated collector and LED currents rise together.",
+            ),
+            Self::C01S02_02 => (
+                "The photoresistor and two-terminal threshold control bias a BC547 so the LED becomes brighter as the simulated room gets darker.",
+                "Task: sweep R3 from bright to dark and adjust RV1; compare the LED current at each threshold.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -485,6 +505,7 @@ impl Circuit {
                 },
             ],
             Self::C01S01_06 => B1_BUTTON,
+            Self::C01S02_01 => B1_BUTTON,
             Self::E11 => E11_SWITCH,
             Self::E24 => E24_SWITCH,
             Self::Led
@@ -519,7 +540,11 @@ impl Circuit {
             | Self::E19
             | Self::E20 => &[],
             Self::E21 | Self::E23 | Self::E27 | Self::E30 => &[],
-            Self::C01S01_01 | Self::C01S01_03 | Self::C01S01_04 | Self::C01S01_05 => &[],
+            Self::C01S01_01
+            | Self::C01S01_03
+            | Self::C01S01_04
+            | Self::C01S01_05
+            | Self::C01S02_02 => &[],
         }
     }
     /// The continuous dial/slider control for variable-resistor exercises.
@@ -540,6 +565,16 @@ impl Circuit {
                 label: "RV1: DIMMER - drag left/right",
                 component: "RV1",
             }],
+            Self::C01S02_02 => &[
+                DialSpec {
+                    label: "R3: AMBIENT LIGHT - drag left/right",
+                    component: "R3",
+                },
+                DialSpec {
+                    label: "RV1: THRESHOLD - drag left/right",
+                    component: "RV1",
+                },
+            ],
             Self::E5 => &[DialSpec {
                 label: "RV1: BRIGHTNESS DIAL - drag left/right",
                 component: "RV1",
@@ -2156,7 +2191,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            39
+            41
         );
         assert!(matches!(
             items[0],

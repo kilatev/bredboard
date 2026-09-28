@@ -118,6 +118,12 @@ cargo test -p bredboard-app — passed
 The Section 01 rows remain release-blocked until manual continuity, polarity,
 measurement, and visual evidence is recorded. C01 is not `ready_for_fukit`.
 
+The current Section 02 slice adds two NPN fixtures under
+`fixtures/projects/c01-s02-*.json`, selects the BC547 pin convention, and
+removes the source's unlisted motor behavior from the player-facing contract.
+The touch, water, oscillator, logic, and PNP/speaker entries remain blocked
+with their ledger dispositions intact.
+
 ## Manual assembly checklist
 
 Use [`MANUAL-ASSEMBLY-PROTOCOL.md`](../catalog/MANUAL-ASSEMBLY-PROTOCOL.md).
