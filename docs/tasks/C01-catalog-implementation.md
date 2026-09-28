@@ -122,7 +122,11 @@ measurement, and visual evidence is recorded. C01 is not `ready_for_fukit`.
 The current Section 02 slice adds two NPN fixtures under
 `fixtures/projects/c01-s02-*.json`, selects the BC547 pin convention, and
 removes the source's unlisted motor behavior from the player-facing contract.
-The touch, water, oscillator, logic, and PNP/speaker entries remain blocked
+The diode and PNP runtime contracts are also present, but no S02-05 candidate
+is admitted: the catalog's 47 kΩ/47 µF cross-coupled oscillator remains
+nonconvergent at a later polarity transition under the fixed-step solver.
+S02-06 remains blocked because its SVG contains five NPN symbols while its BOM
+claims three. The touch, water, logic, and PNP/speaker entries remain blocked
 with their ledger dispositions intact.
 
 ## Manual assembly checklist
@@ -142,6 +146,11 @@ battery-only safety decisions.
   convention.
 - The diode and PNP runtime models now have named pin contracts; S02-07 still
   lacks a bounded speaker-load and oscillator-startup fixture.
+- A candidate S02-05 project with the source's 47 kΩ/47 µF values validated
+  structurally but stopped with `nonconvergence` during a later polarity
+  transition; it was deleted and is not counted as an implementation.
+- S02-06 requires an owner decision on the five-transistor SVG versus the
+  three-transistor BOM before its topology can be represented honestly.
 - Touch pads and water probes need a safe, reproducible physical-prop scope
   decision.
 - S01-06's nominal RC time constant does not support its “couple seconds”
