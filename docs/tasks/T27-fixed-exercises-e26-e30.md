@@ -1,6 +1,6 @@
 # T27 — Fixed exercises E26–E30
 
-Status: in_progress
+Status: ready_for_fukit
 
 ## Dependencies
 
@@ -170,3 +170,52 @@ push result.
   the desktop was locked and no native app surface was available to the UI
   connector, so no safe visual or input inspection was possible. No windowed
   inspection is claimed.
+- Follow-up app catalog change: the menu schema now separates the 33 built-in
+  circuits into MVP, foundations (E1–E10), switching/timing (E11–E20), and
+  advanced (E21–E30) groups in `crates/app/src/exercise_catalog.rs`; section
+  headers scroll with their entries. Typing in the menu filters circuit
+  entries while preserving the grouped catalog; this is covered by
+  `exercise_catalog_keeps_search_groups_and_circuits_separate`,
+  `menu_filter_keeps_only_matching_exercises_clickable`, and
+  `keyboard_search_builds_an_exercise_query_and_escape_clears_it`. The full
+  app suite now passes 47 tests.
+- Follow-up verification on 2026-09-27 passed:
+  `cargo fmt --all --check`; `cargo clippy --workspace --all-targets --locked
+  -- -D warnings`; `cargo test --workspace --locked` (47 app, 59 core, 3
+  tools tests); both Linux and WASM app builds; and
+  `cargo run -p bredboard-tools --locked -- verify-native`. Native UI
+  inspection remains blocked by the compositor errors above.
+- A fresh native launch probe on 2026-09-27 at 16:20:21 again failed before
+  creating a window with `WaylandError(Connection(NoCompositor))`.
+- A desktop-enabled launch at 16:20:58 reached Vulkan adapter creation and
+  logged `Creating new window bredboard`, but the UI connector exposed no app
+  or window surface (`apps: []`, no listed native windows). Therefore visual
+  and input inspection is still not claimed.
+- Fresh desktop-session probe on 2026-09-27 confirmed
+  `WAYLAND_DISPLAY=wayland-1`, `DISPLAY=:0`, and
+  `XDG_RUNTIME_DIR=/run/user/1000`. `cargo run -p bredboard-app --locked`
+  reached Vulkan and created a mapped `bredboard` window at Hyprland position
+  `[0, 26]` with size `[1056, 1054]`; a compositor screenshot visibly showed
+  the rendered MVP menu. The native-app CUA surface remained unavailable,
+  and the desktop locked during the subsequent pointer-input attempt, so the
+  required E26–E30 selection/control checks remain unclaimed.
+
+- Fresh verification on 2026-09-28 passed `cargo fmt --all --check`,
+  `cargo clippy --workspace --all-targets --locked -- -D warnings`,
+  `cargo test --workspace --locked` (47 app, 59 core, 3 tools tests),
+  `cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked`,
+  `cargo build -p bredboard-app --target wasm32-unknown-unknown --locked`, and
+  `cargo run -p bredboard-tools --locked -- verify-native`.
+  All five fixture commands `cargo run -p bredboard-tools --locked -- validate
+  fixtures/projects/e26-transistor-or.json` through E30 passed; the imported
+  reference catalog also passed `cargo run -p bredboard-tools --locked --
+  validate-catalog breadboard-circuits/spec/catalog.json` with 20 sections and
+  212 schematics.
+- The already-built Linux executable reached Vulkan and created a mapped
+  `bredboard` window in the desktop session, but the current CUA runtime
+  exposes no native-app binding or window screenshot/input surface. The
+  required manual E26–E30 inspection therefore remains blocked and is not
+  counted as passed.
+- Owner verification on 2026-09-28 completed the required manual Linux
+  inspection for E26–E30, including menu selection, controls, and exercise
+  behavior. This supersedes the earlier environment-only inspection blocker.

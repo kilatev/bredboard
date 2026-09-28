@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Каталог схем для бредборда — 5 уровней</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#EEF1F4; --board:#FFFFFF; --ink:#1A2230; --muted:#5B6576;
+  --hole:#C9D0DA; --rail-red:#D0342C; --rail-blue:#2A5BD7; --line:#DCE1E8;
+  --body-res:#E4C79A;
+  --b1:#7A4A24; --b2:#D0342C; --b3:#EE7A1F; --b4:#E9C419; --b5:#2E9B4A;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#161B24; --board:#1F2632; --ink:#E7EBF1; --muted:#9AA4B4;
+    --hole:#3A4454; --line:#2E3746; --body-res:#B89A6C;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161B24; --board:#1F2632; --ink:#E7EBF1; --muted:#9AA4B4;
+  --hole:#3A4454; --line:#2E3746; --body-res:#B89A6C;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:16px;line-height:1.5}
+.wrap{max-width:880px;margin:0 auto;padding:40px 20px 64px}
+header h1{font-family:"Press Start 2P","Courier New",monospace;font-weight:400;
+  font-size:clamp(18px,4.4vw,28px);line-height:1.5;margin:0 0 16px}
+header p{max-width:62ch;color:var(--muted);margin:0 0 12px}
+.rails{display:flex;flex-direction:column;gap:6px;margin:28px 0 8px}
+.rail{height:4px;border-radius:2px}
+.rail.r{background:var(--rail-red)} .rail.b{background:var(--rail-blue)}
+
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin:18px 0 0;padding:0;list-style:none;font-size:14px;color:var(--muted)}
+.legend li{display:flex;align-items:center;gap:8px}
+.sw{width:14px;height:14px;border-radius:3px;display:inline-block}
+
+details.level{background:var(--board);border:1px solid var(--line);border-radius:14px;
+  margin-top:14px;position:relative;overflow:hidden}
+details.level::before{content:"";position:absolute;inset:0 auto 0 0;width:6px;background:var(--band)}
+details.level summary{list-style:none;cursor:pointer;padding:18px 20px 14px 26px;display:block}
+details.level summary::-webkit-details-marker{display:none}
+details.level summary:focus-visible{outline:3px solid var(--rail-blue);outline-offset:-3px;border-radius:14px}
+details.level summary:hover .chev{border-color:var(--ink)}
+details.level > ul{padding:0 20px 6px 26px}
+.count{margin-left:auto;font-size:13px;font-weight:500;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 9px}
+.chev{width:10px;height:10px;border-right:2.5px solid var(--muted);border-bottom:2.5px solid var(--muted);transform:rotate(45deg);margin:0 4px 4px 2px;transition:transform .15s}
+details[open] .chev{transform:rotate(-135deg);margin-bottom:-4px}
+@media (prefers-reduced-motion:reduce){.chev{transition:none}}
+.group{font-size:15px;font-weight:700;color:var(--muted);margin:36px 0 0}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.toolbar button{font:inherit;font-size:14px;font-weight:500;color:var(--ink);background:var(--board);border:1px solid var(--line);border-radius:8px;padding:7px 14px;cursor:pointer}
+.toolbar button:hover{border-color:var(--ink)}
+.search-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+.search-row label{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px}
+.search-row input{width:min(420px,100%);font:inherit;color:var(--ink);background:var(--board);border:1px solid var(--line);border-radius:8px;padding:8px 11px}
+.search-row input:focus-visible{outline:3px solid var(--rail-blue);outline-offset:2px}
+.search-status{color:var(--muted);font-size:14px}
+.lv-head{display:flex;align-items:center;gap:14px;margin-bottom:4px}
+.lv-head svg{flex:none;width:96px;height:26px}
+.lv-head h2{font-family:"Press Start 2P","Courier New",monospace;font-weight:400;font-size:14px;line-height:1.6;margin:0}
+.chev{flex:none}
+.lv-sub{color:var(--muted);margin:4px 0 0;max-width:64ch;font-size:15px}
+
+.items{list-style:none;margin:0;padding:0}
+.items li{display:grid;grid-template-columns:22px 1fr;gap:4px 14px;padding:16px 0;border-top:1px dashed var(--line)}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--hole);margin-top:6px;
+  box-shadow:inset 0 0 0 3px var(--board), 0 0 0 1px var(--hole)}
+.items h3{margin:0;font-size:17px;font-weight:700;line-height:1.35}
+.items p{margin:2px 0 0;max-width:66ch}
+.items .see{color:var(--muted);font-size:14.5px;margin-top:6px}
+.items .see b{color:var(--ink);font-weight:500}
+.boss .dot{background:var(--band);box-shadow:none}
+.tagged .dot{width:14px;height:14px;border-radius:3px;background:var(--band);box-shadow:none;margin-top:5px}
+.tagged.boss .dot{border-radius:50%;box-shadow:0 0 0 3px var(--board),0 0 0 5px var(--band)}
+
+footer{margin-top:40px;color:var(--muted);font-size:14px;max-width:64ch}
+a:focus-visible,button:focus-visible{outline:3px solid var(--rail-blue);outline-offset:2px}
+@media (max-width:520px){
+  details.level summary{padding:16px 14px 12px 20px}
+  details.level > ul{padding:0 14px 4px 20px}
+  .lv-head svg{width:64px;height:18px}
+  .lv-head h2{font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Что можно собрать на бредборде</h1>
+  <p>Черновой каталог схем для игры: пять уровней сложности, тематические отделы и режим «найди ошибку», всё без микроконтроллеров и без программирования. Каждая схема собирается из деталей, которые продаются в обычных наборах и магазинах.</p>
+  <p>Нажми на раздел, чтобы открыть его. Открытые разделы запоминаются. Цвет первой полосы на резисторе у каждого уровня совпадает с его номером в цветовой маркировке: коричневый — 1, красный — 2, оранжевый — 3, жёлтый — 4, зелёный — 5. Этими же цветами в отделах помечена сложность каждой схемы.</p>
+  <div class="toolbar"><button type="button" id="openAll">Развернуть всё</button><button type="button" id="closeAll">Свернуть всё</button></div>
+  <div class="search-row">
+    <label for="catalogSearch">Поиск по каталогу
+      <input id="catalogSearch" type="search" placeholder="название, деталь или раздел" autocomplete="off">
+    </label>
+    <span id="searchStatus" class="search-status" aria-live="polite"></span>
+  </div>
+  <div class="rails" aria-hidden="true"><div class="rail r"></div><div class="rail b"></div></div>
+</header>
+
+<!-- LEVEL 1 -->
+<h2 class="group">Основные уровни</h2>
+<details class="level" style="--band:var(--b1)" data-id="s1738">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><line x1="0" y1="16" x2="120" y2="16" stroke="var(--muted)" stroke-width="2"/><rect x="24" y="4" width="72" height="24" rx="10" fill="var(--body-res)"/><rect x="36" y="4" width="7" height="24" fill="var(--b1)"/><rect x="50" y="4" width="5" height="24" fill="#222"/><rect x="61" y="4" width="5" height="24" fill="#222"/><rect x="80" y="4" width="5" height="24" fill="#C9A227"/></svg>
+    <h2>Уровень 1. Первый ток</h2><span class="count">6</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Только пассивные детали, LED и кнопки. Цель — понять бредборд, полярность и зачем нужен резистор.</p></summary>
+  <ul class="items">
+    <li><span class="dot"></span><div><h3>Светодиод с резистором</h3><p>Самая первая цепь: батарейка, резистор, LED. Учит, что без резистора светодиод сгорает.</p><p class="see"><b>Игрок видит:</b> LED загорается или эффектно сгорает с дымком.</p></div></li>
+    <li><span class="dot"></span><div><h3>Кнопка и выключатель</h3><p>Разрыв цепи вручную. Разница между кнопкой (пока держишь) и тумблером (запоминает положение).</p><p class="see"><b>Игрок видит:</b> LED реагирует на клик по кнопке в игре.</p></div></li>
+    <li><span class="dot"></span><div><h3>Последовательно и параллельно</h3><p>Два-три LED в разных включениях. Почему в гирлянде один сгоревший гасит всю цепочку.</p><p class="see"><b>Игрок видит:</b> разную яркость и «цепочку», которая гаснет целиком.</p></div></li>
+    <li><span class="dot"></span><div><h3>Диммер на потенциометре</h3><p>Крутилка меняет сопротивление и яркость. Первое знакомство с регулировкой.</p><p class="see"><b>Игрок видит:</b> плавную яркость LED при повороте ручки.</p></div></li>
+    <li><span class="dot"></span><div><h3>Защита от переполюсовки</h3><p>Диод как «обратный клапан»: вставил батарейку наоборот — ничего не сломалось.</p><p class="see"><b>Игрок видит:</b> при перевороте питания схема просто молчит, а не сгорает.</p></div></li>
+    <li><span class="dot"></span><div><h3>Плавное угасание</h3><p>Конденсатор заряжается от кнопки и медленно разряжается через LED. Первое «время» в схеме.</p><p class="see"><b>Игрок видит:</b> LED гаснет за пару секунд после отпускания кнопки.</p></div></li>
+  </ul>
+</details>
+
+<!-- LEVEL 2 -->
+<details class="level" style="--band:var(--b2)" data-id="s34507">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><line x1="0" y1="16" x2="120" y2="16" stroke="var(--muted)" stroke-width="2"/><rect x="24" y="4" width="72" height="24" rx="10" fill="var(--body-res)"/><rect x="36" y="4" width="7" height="24" fill="var(--b2)"/><rect x="50" y="4" width="5" height="24" fill="#222"/><rect x="61" y="4" width="5" height="24" fill="#222"/><rect x="80" y="4" width="5" height="24" fill="#C9A227"/></svg>
+    <h2>Уровень 2. Транзисторы</h2><span class="count">7</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Транзистор как ключ и усилитель, датчики, первые колебания. Микросхем ещё нет.</p></summary>
+  <ul class="items">
+    <li><span class="dot"></span><div><h3>Транзисторный ключ</h3><p>Слабый ток управляет сильным. Основа почти всего дальше.</p><p class="see"><b>Игрок видит:</b> крошечный ток в базе включает яркий LED или моторчик.</p></div></li>
+    <li><span class="dot"></span><div><h3>Сумеречный ночник</h3><p>Фоторезистор и транзистор: темно — свет включается сам.</p><p class="see"><b>Игрок видит:</b> ползунок «освещённость» в игре, LED включается в темноте.</p></div></li>
+    <li><span class="dot"></span><div><h3>Сенсорная кнопка</h3><p>Пара Дарлингтона чувствует прикосновение пальца к двум контактам.</p><p class="see"><b>Игрок видит:</b> касание курсором пластинок зажигает LED.</p></div></li>
+    <li><span class="dot"></span><div><h3>Датчик воды</h3><p>Два проводка в стакане: вода проводит ток, звучит пищалка. Практичная «сигнализация протечки».</p><p class="see"><b>Игрок видит:</b> анимированный стакан, при заполнении срабатывает писк.</p></div></li>
+    <li><span class="dot"></span><div><h3>Мигалка на двух транзисторах</h3><p>Классический мультивибратор: два LED мигают по очереди без всяких микросхем.</p><p class="see"><b>Игрок видит:</b> поочерёдное мигание, частота зависит от конденсаторов.</p></div></li>
+    <li><span class="dot"></span><div><h3>Логика на кнопках и транзисторах</h3><p>И, ИЛИ, НЕ, собранные из транзисторов. Показывает, из чего сделаны логические микросхемы.</p><p class="see"><b>Игрок видит:</b> таблицу истинности, которая заполняется по мере нажатий.</p></div></li>
+    <li><span class="dot"></span><div><h3>Простая сирена</h3><p>Генератор звука на транзисторах с динамиком. Первая схема, которая «звучит», а не светит.</p><p class="see"><b>Игрок видит и слышит:</b> тон из динамика, меняется потенциометром.</p></div></li>
+  </ul>
+</details>
+
+<!-- LEVEL 3 -->
+<details class="level" style="--band:var(--b3)" data-id="s49037">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><line x1="0" y1="16" x2="120" y2="16" stroke="var(--muted)" stroke-width="2"/><rect x="24" y="4" width="72" height="24" rx="10" fill="var(--body-res)"/><rect x="36" y="4" width="7" height="24" fill="var(--b3)"/><rect x="50" y="4" width="5" height="24" fill="#222"/><rect x="61" y="4" width="5" height="24" fill="#222"/><rect x="80" y="4" width="5" height="24" fill="#C9A227"/></svg>
+    <h2>Уровень 3. Первые микросхемы</h2><span class="count">7</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Таймер 555, логика 74HC, компаратор. Игрок учится читать распиновку и ставить микросхему через канавку.</p></summary>
+  <ul class="items">
+    <li><span class="dot"></span><div><h3>Мигалка на 555</h3><p>Та же мигалка, но на одной микросхеме. Сравнение с транзисторной версией — сколько деталей сэкономили.</p><p class="see"><b>Игрок видит:</b> ровное мигание, частота крутится потенциометром.</p></div></li>
+    <li><span class="dot"></span><div><h3>Свет в подъезде</h3><p>555 как одновибратор: нажал — горит 10 секунд, потом гаснет сам.</p><p class="see"><b>Игрок видит:</b> таймер обратного отсчёта рядом с LED.</p></div></li>
+    <li><span class="dot"></span><div><h3>Логические вентили 74HC</h3><p>И, ИЛИ, И-НЕ, исключающее ИЛИ на готовых микросхемах с кнопками на входах.</p><p class="see"><b>Игрок видит:</b> LED на выходе и подсветку логических уровней на ножках.</p></div></li>
+    <li><span class="dot"></span><div><h3>Кнопка «вкл/выкл» на триггере</h3><p>RS-триггер из двух И-НЕ: одна кнопка включает, другая выключает. Схема впервые что-то запоминает.</p><p class="see"><b>Игрок видит:</b> LED остаётся гореть после отпускания кнопки.</p></div></li>
+    <li><span class="dot"></span><div><h3>Антидребезг</h3><p>Почему одна механическая кнопка даёт десяток нажатий и как это починить конденсатором и триггером Шмитта.</p><p class="see"><b>Игрок видит:</b> осциллограмму с «дребезгом» до и чистый импульс после.</p></div></li>
+    <li><span class="dot"></span><div><h3>Термостат на компараторе</h3><p>LM393 сравнивает термистор с заданным порогом и включает «обогреватель».</p><p class="see"><b>Игрок видит:</b> термометр в игре, выход щёлкает при пересечении уставки.</p></div></li>
+    <li><span class="dot"></span><div><h3>Световой терменвокс</h3><p>555 генерирует звук, фоторезистор меняет высоту тона. Водишь рукой — меняется нота.</p><p class="see"><b>Игрок видит и слышит:</b> тон плывёт при движении «тени» над датчиком.</p></div></li>
+  </ul>
+</details>
+
+<!-- LEVEL 4 -->
+<details class="level" style="--band:var(--b4)" data-id="s11729">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><line x1="0" y1="16" x2="120" y2="16" stroke="var(--muted)" stroke-width="2"/><rect x="24" y="4" width="72" height="24" rx="10" fill="var(--body-res)"/><rect x="36" y="4" width="7" height="24" fill="var(--b4)"/><rect x="50" y="4" width="5" height="24" fill="#222"/><rect x="61" y="4" width="5" height="24" fill="#222"/><rect x="80" y="4" width="5" height="24" fill="#C9A227"/></svg>
+    <h2>Уровень 4. Счёт и индикация</h2><span class="count">9</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Несколько микросхем в одной схеме: счётчики, дешифраторы, семисегментники, усилители. Появляются игрушки, которые хочется собрать вживую.</p></summary>
+  <ul class="items">
+    <li><span class="dot"></span><div><h3>Бегущие огни</h3><p>555 даёт такты, счётчик 4017 зажигает десять LED по очереди. Классика всех наборов.</p><p class="see"><b>Игрок видит:</b> огонёк бежит по линейке, скорость регулируется.</p></div></li>
+    <li><span class="dot"></span><div><h3>Электронный кубик</h3><p>Кнопка крутит быстрый счётчик, отпустил — выпадает число от 1 до 6, выложенное точками как на кубике.</p><p class="see"><b>Игрок видит:</b> мелькание точек и остановку на случайной грани.</p></div></li>
+    <li><span class="dot"></span><div><h3>Счётчик нажатий до 99</h3><p>Два десятичных счётчика и семисегментные индикаторы. Каждое нажатие прибавляет единицу.</p><p class="see"><b>Игрок видит:</b> цифры на индикаторе, перенос в десятки на 9→10.</p></div></li>
+    <li><span class="dot"></span><div><h3>Двоичный счётчик</h3><p>74HC393 считает такты, четыре-восемь LED показывают число в двоичном виде.</p><p class="see"><b>Игрок видит:</b> как «тикают» биты, а рядом то же число в десятичном.</p></div></li>
+    <li><span class="dot"></span><div><h3>Сдвиговый регистр вручную</h3><p>74HC595 с двумя кнопками: «бит» и «такт». Игрок сам вдвигает узор в строку из восьми LED.</p><p class="see"><b>Игрок видит:</b> биты «переезжают» по линейке с каждым тактом.</p></div></li>
+    <li><span class="dot"></span><div><h3>Игра на реакцию</h3><p>Два игрока, две кнопки, триггеры с блокировкой: кто нажал первым, того LED горит, второй уже не может.</p><p class="see"><b>Игрок видит:</b> мини-игру в игре, можно играть с другом за одной клавиатурой.</p></div></li>
+    <li><span class="dot"></span><div><h3>Индикатор уровня звука</h3><p>LM3914 превращает напряжение в столбик из десяти LED, как на старых магнитофонах.</p><p class="see"><b>Игрок видит:</b> прыгающий столбик под громкость сигнала.</p></div></li>
+    <li><span class="dot"></span><div><h3>Усилитель на LM386</h3><p>Маленький усилитель мощности: слабый сигнал становится громким в динамике.</p><p class="see"><b>Игрок видит и слышит:</b> громкость растёт, на осциллографе видно ограничение при перегрузе.</p></div></li>
+    <li><span class="dot"></span><div><h3>Шумелка из двух 555</h3><p>Два таймера модулируют друг друга и дают грязный 8-битный звук. Идеально ложится в стиль игры.</p><p class="see"><b>Игрок видит и слышит:</b> ретро-звуки, две ручки меняют тембр.</p></div></li>
+  </ul>
+</details>
+
+<!-- LEVEL 5 -->
+<details class="level" style="--band:var(--b5)" data-id="s12246">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><line x1="0" y1="16" x2="120" y2="16" stroke="var(--muted)" stroke-width="2"/><rect x="24" y="4" width="72" height="24" rx="10" fill="var(--body-res)"/><rect x="36" y="4" width="7" height="24" fill="var(--b5)"/><rect x="50" y="4" width="5" height="24" fill="#222"/><rect x="61" y="4" width="5" height="24" fill="#222"/><rect x="80" y="4" width="5" height="24" fill="#C9A227"/></svg>
+    <h2>Уровень 5. Системы</h2><span class="count">8</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Большие сборки на несколько плат, где схема состоит из модулей, собранных на прошлых уровнях. Каждая — многошаговый проект.</p></summary>
+  <ul class="items">
+    <li><span class="dot"></span><div><h3>4-битный сумматор</h3><p>Складывает два числа, введённых DIP-переключателями. Сначала на вентилях, потом на 74HC283 для сравнения.</p><p class="see"><b>Игрок видит:</b> «5 + 9 = 14» в LED и на индикаторе, с битом переноса.</p></div></li>
+    <li><span class="dot"></span><div><h3>Сумматор-вычитатель</h3><p>Тот же сумматор плюс исключающее ИЛИ: одним переключателем превращается в вычитатель. Прообраз АЛУ.</p><p class="see"><b>Игрок видит:</b> переключение режима и отрицательные числа в дополнительном коде.</p></div></li>
+    <li><span class="dot"></span><div><h3>Светофор с кнопкой пешехода</h3><p>Конечный автомат на счётчике и диодной матрице: фазы, жёлтый, запрос перехода.</p><p class="see"><b>Игрок видит:</b> анимированный перекрёсток, который управляется собранной схемой.</p></div></li>
+    <li><span class="dot"></span><div><h3>Кодовый замок</h3><p>Открывается только правильной последовательностью кнопок. Ошибка сбрасывает всё. Триггеры и логика, без памяти программы.</p><p class="see"><b>Игрок видит:</b> дверцу, которая открывается при верном коде.</p></div></li>
+    <li><span class="dot"></span><div><h3>Цифровой секундомер</h3><p>Кварц и делитель дают точные сотые доли, цепочка счётчиков ведёт четыре индикатора. Старт, стоп, сброс.</p><p class="see"><b>Игрок видит:</b> бегущие цифры 00:00, можно замерить своё время прохождения уровня.</p></div></li>
+    <li><span class="dot"></span><div><h3>Цифровые часы</h3><p>Часы, минуты, секунды на шести индикаторах, сброс на 24 и 60, кнопки установки времени.</p><p class="see"><b>Игрок видит:</b> реальные часы, собранные своими руками, в углу мастерской.</p></div></li>
+    <li><span class="dot"></span><div><h3>Шаговый секвенсор-синтезатор</h3><p>Счётчик 4017 перебирает восемь шагов, у каждого своя ручка высоты тона. Генератор играет мелодию по кругу.</p><p class="see"><b>Игрок видит и слышит:</b> бегущий шаг и повторяющийся мотив, который настраивается ручками.</p></div></li>
+    <li class="boss"><span class="dot"></span><div><h3>Компьютер на рассыпной логике</h3><p>Финальный проект: тактовый генератор, регистры, АЛУ, счётчик команд и маленькая память. Программа вводится DIP-переключателями, бит за битом, как на машинах 70-х.</p><p class="see"><b>Игрок видит:</b> шину, регистры и такты вживую; в итоге компьютер считает до 255 или складывает числа по введённой программе.</p></div></li>
+  </ul>
+</details>
+
+<h2 class="group">Тематические отделы</h2>
+<!-- SOUND -->
+<details class="level" data-x="sound" style="--band:linear-gradient(90deg,var(--b1),var(--b2),var(--b3),var(--b4),var(--b5))" data-id="s15581">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><path d="M0 16 Q7.5 2 15 16 T30 16 T45 16 T60 16 T75 16 T90 16 T105 16 T120 16" fill="none" stroke="var(--rail-blue)" stroke-width="3"/></svg>
+    <h2>Отдел звука</h2><span class="count">13</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Отдельная ветка, где результат слышно. Схемы разной сложности, цвет метки показывает уровень. Сирена, терменвокс и шумелка из основных уровней тоже входят сюда.</p></summary>
+  <ul class="items">
+    <li style="--band:var(--b1)" class="tagged"><span class="dot"></span><div><h3>Активная и пассивная пищалка</h3><p>Одна пищит сама от батарейки, второй нужен генератор. Учит, почему звук — это колебания, а не просто ток.</p><p class="see"><b>Игрок слышит:</b> писк от одной и тишину от другой при том же подключении.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Сверчок</h3><p>Мультивибратор, который включает генератор короткими очередями. Получается стрекотание.</p><p class="see"><b>Игрок слышит:</b> ритмичное «цвирк-цвирк», темп меняется ручкой.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Электронное пианино</h3><p>555 и лесенка резисторов на восемь кнопок: каждая кнопка — своя нота.</p><p class="see"><b>Игрок слышит:</b> октаву и может сыграть простую мелодию на клавиатуре.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Метроном</h3><p>555 даёт короткие щелчки с настраиваемым темпом. Полезная вещь, которую реально собрать для себя.</p><p class="see"><b>Игрок слышит:</b> щелчки, рядом мигает LED и показывается темп в ударах в минуту.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Дверной звонок «динь-дон»</h3><p>Два тона и затухание через конденсатор, чтобы звук не обрывался резко.</p><p class="see"><b>Игрок слышит:</b> звонок с плавным хвостом, на осциллографе видна огибающая.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Генератор шума</h3><p>Транзистор в пробое даёт белый шум. Основа для прибоя, ветра и барабанов.</p><p class="see"><b>Игрок слышит:</b> шипение, на экране хаотичный сигнал.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Фузз для гитары</h3><p>Два транзистора перегружают сигнал и срезают его верхушки. Так звучит рок.</p><p class="see"><b>Игрок слышит:</b> чистый аккорд и его грязную версию, ручка крутит степень искажения.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Полицейская сирена</h3><p>Медленный 555 плавно гоняет частоту быстрого: звук взлетает и падает.</p><p class="see"><b>Игрок слышит:</b> узнаваемый вой, переключатель меняет его на «кряк».</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Тремоло</h3><p>Медленный генератор качает громкость через транзистор. Первый звуковой эффект с модуляцией.</p><p class="see"><b>Игрок слышит:</b> пульсирующую громкость, глубина и скорость на ручках.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Светомузыка</h3><p>Три фильтра делят звук на басы, середину и верха, каждая полоса зажигает свой цвет.</p><p class="see"><b>Игрок видит и слышит:</b> музыку и мигающие красный, зелёный и синий LED под неё.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Голос робота</h3><p>Кольцевой модулятор на четырёх диодах смешивает голос с тоном и делает его металлическим.</p><p class="see"><b>Игрок слышит:</b> фразу обычным голосом и её «роботизированную» версию.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Драм-машина</h3><p>Счётчик шагов, резонансные «бочка» и «хэт» на шуме, DIP-переключатели задают ритм.</p><p class="see"><b>Игрок слышит:</b> бит по кругу и меняет рисунок, щёлкая переключателями.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged boss"><span class="dot"></span><div><h3>Модульный синтезатор</h3><p>Генератор, управляемый напряжением, фильтр, огибающая и усилитель, соединённые перемычками. Можно подключить секвенсор из уровня 5.</p><p class="see"><b>Игрок слышит:</b> собственный синтезатор, звук которого меняется от каждой перемычки.</p></div></li>
+  </ul>
+</details>
+
+<!-- HOME TOOLS -->
+<details class="level" style="--band:var(--rail-red)" data-id="s5677">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><rect x="4" y="8" width="44" height="16" rx="3" fill="none" stroke="var(--rail-red)" stroke-width="3"/><line x1="48" y1="16" x2="116" y2="16" stroke="var(--muted)" stroke-width="3"/><circle cx="116" cy="16" r="3" fill="var(--rail-red)"/><rect x="12" y="13" width="8" height="6" fill="var(--rail-red)"/><rect x="26" y="13" width="14" height="6" fill="var(--muted)"/></svg>
+    <h2>Домашние инструменты</h2><span class="count">15</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Полезные вещи для мастерской и быта, которые после игры хочется собрать вживую. Всё питается от батареек или безопасных 5–12 В, без сети 220 В. Цвет метки — уровень сложности.</p></summary>
+  <ul class="items">
+    <li style="--band:var(--b1)" class="tagged"><span class="dot"></span><div><h3>Прозвонка проводов</h3><p>Батарейка, пищалка и два щупа. Находит обрыв в проводе, гирлянде или наушниках.</p><p class="see"><b>Игрок видит:</b> набор «сломанных» проводов, пищит только целый.</p></div></li>
+    <li style="--band:var(--b1)" class="tagged"><span class="dot"></span><div><h3>Проверка светодиодов и диодов</h3><p>Гнездо, куда вставляешь неизвестную деталь: горит — рабочая, и сразу видна полярность.</p><p class="see"><b>Игрок видит:</b> ящик с деталями, среди которых надо найти бракованные.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Тестер батареек</h3><p>Стабилитрон и два LED: зелёный — батарейка живая, красный — пора менять.</p><p class="see"><b>Игрок видит:</b> батарейки с разным зарядом и сортирует их.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Тестер транзисторов</h3><p>Показывает, NPN перед тобой или PNP, и не пробит ли он. Спасает при разборе старых плат.</p><p class="see"><b>Игрок видит:</b> какой из двух LED загорелся при вставке транзистора.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Питание 5 В от батарейки</h3><p>Стабилизатор 7805 делает ровные 5 В из 9–12 В. Можно подзарядить гаджет или запитать другие схемы.</p><p class="see"><b>Игрок видит:</b> вольтметр держит 5 В, хотя батарейка садится.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Регулируемый блок питания</h3><p>LM317 и ручка: любое напряжение от 1,25 до 10 В для экспериментов. Главный прибор мастерской.</p><p class="see"><b>Игрок видит:</b> стрелку вольтметра, которая следует за ручкой.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Логический пробник</h3><p>Щуп показывает на ножке «0», «1» или импульсы. Незаменим при отладке цифровых схем.</p><p class="see"><b>Игрок видит:</b> красный, зелёный или мигающий LED; дальше в игре пробник становится инструментом.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Генератор импульсов</h3><p>555 с переключателем частот: даёт такты для проверки счётчиков и других самоделок.</p><p class="see"><b>Игрок видит:</b> импульсы на осциллографе и LED, частоту выбирает галетником.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Сторож холодильника</h3><p>Геркон на дверце и таймер: если дверь открыта дольше 30 секунд, начинает пищать.</p><p class="see"><b>Игрок видит:</b> холодильник с дверцей и отсчёт до сигнала.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Таймер на две минуты</h3><p>Для чистки зубов, заварки чая или планки. Нажал — через заданное время пискнет.</p><p class="see"><b>Игрок видит:</b> песочные часы, которые пересыпаются вместе с таймером.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Лазерная растяжка</h3><p>Луч лазерной указки на фоторезистор. Кто-то прошёл — сигнал звучит, пока не нажмёшь «сброс».</p><p class="see"><b>Игрок видит:</b> луч через комнату, персонаж пересекает его и включается тревога.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Тестер сетевых кабелей</h3><p>Счётчик по очереди подаёт ток на каждую из восьми жил, на втором конце загораются LED. Сразу видно обрыв или перепутанные пары.</p><p class="see"><b>Игрок видит:</b> две линейки LED, у бракованного кабеля порядок сбивается.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Шкала заряда аккумулятора</h3><p>LM3914 показывает напряжение аккумулятора столбиком из десяти LED. Для шуруповёрта, фонаря или самоката.</p><p class="see"><b>Игрок видит:</b> столбик падает по мере разряда.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Измеритель ёмкости</h3><p>Конденсатор задаёт длительность импульса, счётчик переводит её в число на индикаторах. Проверяет безымянные конденсаторы.</p><p class="see"><b>Игрок видит:</b> ёмкость в микрофарадах на индикаторе.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged boss"><span class="dot"></span><div><h3>Цифровой частотомер</h3><p>Кварцевая секунда открывает окно, счётчики считают импульсы, четыре индикатора показывают частоту. Лабораторный прибор своими руками.</p><p class="see"><b>Игрок видит:</b> частоту любой своей схемы; после сборки частотомер доступен как инструмент во всех уровнях.</p></div></li>
+  </ul>
+</details>
+
+<!-- MOTORS -->
+<details class="level" style="--band:var(--rail-blue)" data-id="s73147">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><circle cx="30" cy="16" r="12" fill="none" stroke="var(--rail-blue)" stroke-width="3"/><circle cx="30" cy="16" r="3" fill="var(--rail-blue)"/><line x1="30" y1="16" x2="112" y2="16" stroke="var(--muted)" stroke-width="3"/><rect x="100" y="6" width="6" height="20" rx="2" fill="var(--rail-blue)"/><rect x="92" y="10" width="4" height="12" rx="1" fill="var(--rail-blue)"/></svg>
+    <h2>Моторы и движение</h2><span class="count">19</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Коллекторные моторы, сервоприводы и шаговики. От вращения по кнопке до робота, который сам ездит по полу. Цвет метки — уровень сложности.</p></summary>
+  <ul class="items">
+    <li style="--band:var(--b1)" class="tagged"><span class="dot"></span><div><h3>Мотор с выключателем</h3><p>Батарейка, тумблер, моторчик. Первое, что крутится, а не светится.</p><p class="see"><b>Игрок видит:</b> вращающийся вал с пропеллером, скорость зависит от батарейки.</p></div></li>
+    <li style="--band:var(--b1)" class="tagged"><span class="dot"></span><div><h3>Мотор-генератор</h3><p>Крутишь вал рукой — загорается LED. Показывает, что мотор и генератор это одно и то же.</p><p class="see"><b>Игрок видит:</b> чем быстрее тянешь мышью ручку, тем ярче LED.</p></div></li>
+    <li style="--band:var(--b1)" class="tagged"><span class="dot"></span><div><h3>Реверс переключателем</h3><p>Двухполюсный тумблер меняет полярность и направление вращения.</p><p class="see"><b>Игрок видит:</b> стрелку направления на валу, которая разворачивается.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Мотор через транзистор</h3><p>Кнопка управляет мотором через ключ, а защитный диод гасит выброс. Без диода транзистор сгорает.</p><p class="see"><b>Игрок видит:</b> всплеск напряжения на осциллографе и сгоревший транзистор, если диода нет.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Вибробот</h3><p>Мотор с грузиком на валу трясёт корпус из зубной щётки, и тот ползёт сам.</p><p class="see"><b>Игрок видит:</b> жучка, который хаотично бегает по столу.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Регулятор скорости на 555</h3><p>ШИМ: мотор включается и выключается тысячи раз в секунду, ручка меняет долю времени «вкл».</p><p class="see"><b>Игрок видит:</b> скорость вала и прямоугольные импульсы разной ширины.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Сервопривод без контроллера</h3><p>555 выдаёт импульсы нужной длины, потенциометр задаёт угол сервы от 0 до 180°.</p><p class="see"><b>Игрок видит:</b> качалку сервы, которая повторяет поворот ручки.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Вентилятор с термостатом</h3><p>Компаратор и термистор: стало жарко — вентилятор включился. Для корпуса с электроникой или 3D-принтера.</p><p class="see"><b>Игрок видит:</b> термометр и вентилятор, который включается на пороге.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Шторка с концевиками</h3><p>Кнопка запускает мотор, концевой выключатель сам останавливает его в крайнем положении.</p><p class="see"><b>Игрок видит:</b> занавеску, которая доезжает до края и замирает.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>H-мост на транзисторах</h3><p>Четыре транзистора: вперёд, назад и тормоз двумя кнопками. Главное — не открыть оба плеча сразу.</p><p class="see"><b>Игрок видит:</b> ток в плечах моста и короткое замыкание, если нажать не то.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Тележка на L293D</h3><p>Готовый драйвер на два мотора и четыре кнопки: пульт на проводе для игрушечной машинки.</p><p class="see"><b>Игрок видит:</b> тележку на арене, которой управляет кнопками своей схемы.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Шаговый двигатель</h3><p>555 даёт такты, счётчик и ULN2003 по очереди включают обмотки. Вал поворачивается точными шагами.</p><p class="see"><b>Игрок видит:</b> подсветку активной обмотки и вал, щёлкающий по шагам.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Робот-светолюб</h3><p>Два фоторезистора управляют двумя моторами крест-накрест, и робот едет на свет фонарика.</p><p class="see"><b>Игрок видит:</b> робота, который гонится за пятном света от курсора.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Робот по линии</h3><p>Два датчика отражения держат робота на чёрной линии. Чистая аналоговая логика, без кода.</p><p class="see"><b>Игрок видит:</b> трассу, по которой робот едет сам; можно рисовать свои трассы.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Солнечный двигатель</h3><p>Схема BEAM копит энергию от маленькой солнечной панели в конденсаторе и отдаёт мотору рывком.</p><p class="see"><b>Игрок видит:</b> шкалу заряда и толчок мотора, когда она заполняется.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Робот с бампером</h3><p>Упёрся в стену — одновибратор включает задний ход и поворот на пару секунд, потом снова вперёд.</p><p class="see"><b>Игрок видит:</b> робота, который сам выбирается из лабиринта комнаты.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Поворотный стол</h3><p>Шаговик с регулировкой скорости, направления и остановкой через заданное число шагов. Для съёмки предметов по кругу.</p><p class="see"><b>Игрок видит:</b> предмет на столике и счётчик шагов на индикаторе.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Тахометр</h3><p>Оптопара считает обороты через прорезь на диске, счётчики показывают обороты в минуту.</p><p class="see"><b>Игрок видит:</b> цифры на индикаторе, которые меняются вместе со скоростью мотора.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged boss"><span class="dot"></span><div><h3>Автономный робот</h3><p>Собирает всё вместе: едет по линии, объезжает препятствия бампером, при потере линии ищет свет. Режимы переключаются логикой.</p><p class="see"><b>Игрок видит:</b> робота на сложной арене и может устраивать заезды на время.</p></div></li>
+  </ul>
+</details>
+
+<!-- HARDWARE LOGIC + MODULES -->
+<details class="level" style="--band:var(--ink)" data-id="s38055">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><rect x="36" y="4" width="48" height="24" rx="3" fill="var(--ink)"/><circle cx="42" cy="10" r="2" fill="var(--board)"/><g fill="var(--muted)"><rect x="40" y="0" width="3" height="4"/><rect x="50" y="0" width="3" height="4"/><rect x="60" y="0" width="3" height="4"/><rect x="70" y="0" width="3" height="4"/><rect x="40" y="28" width="3" height="4"/><rect x="50" y="28" width="3" height="4"/><rect x="60" y="28" width="3" height="4"/><rect x="70" y="28" width="3" height="4"/></g><line x1="0" y1="16" x2="36" y2="16" stroke="var(--muted)" stroke-width="3"/><line x1="84" y1="16" x2="120" y2="16" stroke="var(--muted)" stroke-width="3"/></svg>
+    <h2>Аппаратная логика и модули</h2><span class="count">19</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Большие устройства, где вся «умность» сделана триггерами, счётчиками и готовыми модулями. Правило простое: модуль можно, если его не нужно прошивать и не нужно слать ему команды по шине. PIR-датчик, ИК-приёмник, радиопара 433 МГц с шифратором на перемычках, модуль записи голоса, реле, датчики газа и звука подходят. Цвет метки — уровень сложности.</p></summary>
+  <ul class="items">
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Горячая проволока</h3><p>Проведи кольцо вдоль изогнутой проволоки и не коснись. Каждое касание пищит и прибавляется на счётчике.</p><p class="see"><b>Игрок видит:</b> мини-игру на ловкость курсора и счёт ошибок.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Говорящая открытка</h3><p>Модуль записи голоса ISD1820 и концевик: открыл коробку — прозвучало твоё сообщение.</p><p class="see"><b>Игрок слышит:</b> запись, которую сам наговорил в микрофон.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Телеграф на двоих</h3><p>Две станции на проводе: ключ, пищалка, LED. Азбука Морзе между комнатами.</p><p class="see"><b>Игрок видит:</b> две платы, передаёт слово и видит его расшифровку.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Хлопковый выключатель</h3><p>Модуль звука и Т-триггер 4013: хлопнул — свет включился, ещё раз — выключился.</p><p class="see"><b>Игрок видит:</b> лампу, которая щёлкает от хлопка в микрофон или по кнопке.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Свет от любого пульта</h3><p>ИК-приёмник и триггер: любая кнопка старого телевизионного пульта переключает лампу.</p><p class="see"><b>Игрок видит:</b> пульт в игре, вспышки ИК и переключение света.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Приветствие у двери</h3><p>PIR-датчик видит человека, одновибратор запускает модуль голоса один раз, а не по кругу.</p><p class="see"><b>Игрок видит и слышит:</b> персонаж входит, звучит «Привет!», повтор только через паузу.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Беспроводной звонок</h3><p>Радиопара 433 МГц с шифратором: кнопка у двери, звонок на кухне. Адрес задаётся перемычками.</p><p class="see"><b>Игрок видит:</b> две платы в разных комнатах и соседа с другим адресом, чей звонок не сработает.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Датчик газа</h3><p>Модуль MQ-2 и компаратор с порогом: утечка — сирена и мигание.</p><p class="see"><b>Игрок видит:</b> облако газа на кухне и срабатывание тревоги.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Кнопки для викторины</h3><p>Четыре игрока и ведущий. Кто нажал первым, тот блокирует остальных, ведущий сбрасывает.</p><p class="see"><b>Игрок видит:</b> номер победителя на индикаторе, можно играть компанией.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Шахматные часы</h3><p>Два счётчика времени, триггер решает, чей идёт. Нажал свою кнопку — пошли часы соперника.</p><p class="see"><b>Игрок видит:</b> два табло и флажок у того, кто просрочил.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Табло счёта</h3><p>Два двузначных счёта для пинг-понга, кнопки «+1», «−1» и общий сброс.</p><p class="see"><b>Игрок видит:</b> табло, которое реально можно поставить у стола.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Машинка на радиоуправлении</h3><p>Пульт с шифратором PT2262, на машинке дешифратор PT2272 и драйвер моторов. Четыре кнопки — четыре направления.</p><p class="see"><b>Игрок видит:</b> машинку на арене, которой рулит собранным пультом.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Колесо фортуны</h3><p>Кольцо из LED раскручивается по кнопке и плавно замедляется, пока не остановится на секторе.</p><p class="see"><b>Игрок видит:</b> огонёк, который бежит всё медленнее и замирает.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Однорукий бандит</h3><p>Три барабана на счётчиках, три кнопки стоп, логика сравнения ищет три одинаковых цифры.</p><p class="see"><b>Игрок видит:</b> крутящиеся цифры и фанфары при выигрыше.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Охранная сигнализация</h3><p>Постановка на охрану с задержкой, время на вход, сирена с автоотключением, датчики двери и движения. Конечный автомат на триггерах и таймерах.</p><p class="see"><b>Игрок видит:</b> план квартиры, персонажа-вора и все состояния системы.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Парковочный радар</h3><p>Ультразвуковой модуль отдаёт импульс, длина которого равна расстоянию. Счётчик переводит её в шкалу, писк учащается ближе к стене.</p><p class="see"><b>Игрок видит:</b> машину, которая сдаёт назад, и шкалу из LED.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Модель лифта</h3><p>Три этажа, кнопки вызова, датчики этажей, мотор и дверь. Логика запоминает вызовы и решает, куда ехать.</p><p class="see"><b>Игрок видит:</b> шахту с кабиной и пассажиров, которые ждут на этажах.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Двоичные часы</h3><p>Часы, минуты и секунды столбиками LED в двоичном коде. Кварц, делители, счётчики и никакой прошивки.</p><p class="see"><b>Игрок видит:</b> гиковские часы на стене мастерской.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged boss"><span class="dot"></span><div><h3>Пинг-понг без процессора</h3><p>Как первый аркадный Pong 1972 года: положение мяча хранят счётчики, ракетки — потенциометры, отскоки считает логика. Экран — матрица LED 8×8.</p><p class="see"><b>Игрок видит:</b> игру внутри игры, в которую можно сыграть вдвоём.</p></div></li>
+  </ul>
+</details>
+
+<!-- POWER -->
+<details class="level" style="--band:var(--b4)" data-id="s24521">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><rect x="20" y="6" width="70" height="20" rx="4" fill="none" stroke="var(--b4)" stroke-width="3"/><rect x="90" y="11" width="6" height="10" fill="var(--b4)"/><rect x="25" y="11" width="18" height="10" fill="var(--b4)"/><rect x="46" y="11" width="18" height="10" fill="var(--b4)"/></svg>
+    <h2>Питание и энергия</h2><span class="count">9</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Откуда берётся энергия, как её запасать и преобразовывать. Всё низковольтное.</p></summary>
+  <ul class="items">
+    <li style="--band:var(--b1)" class="tagged"><span class="dot"></span><div><h3>Лимонная батарейка</h3><p>Медь и цинк в лимонах. Сколько лимонов нужно, чтобы зажечь LED.</p><p class="see"><b>Игрок видит:</b> вольтметр растёт с каждым лимоном в цепочке.</p></div></li>
+    <li style="--band:var(--b1)" class="tagged"><span class="dot"></span><div><h3>Батарейки последовательно и параллельно</h3><p>Одно соединение даёт больше вольт, другое — больше времени работы.</p><p class="see"><b>Игрок видит:</b> напряжение и шкалу «сколько проработает».</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Выпрямитель</h3><p>Диодный мост и конденсатор делают постоянный ток из переменного 9 В от безопасного адаптера.</p><p class="see"><b>Игрок видит:</b> синусоиду, затем «горбы» и почти ровную линию на осциллографе.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Джоуль-вор</h3><p>Транзистор и самодельный дроссель зажигают LED от «севшей» батарейки на 0,8 В.</p><p class="see"><b>Игрок видит:</b> LED горит от батарейки, которую тестер назвал пустой.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Фонарик на суперконденсаторе</h3><p>Заряжается за минуту, светит несколько минут, батарейки не нужны.</p><p class="see"><b>Игрок видит:</b> шкалу заряда и угасающую яркость.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Зарядка Li-ion</h3><p>Модуль TP4056 правильно заряжает аккумулятор 18650 от USB и показывает окончание.</p><p class="see"><b>Игрок видит:</b> красный LED «заряжается» и синий «готово».</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Повышающий преобразователь</h3><p>555, дроссель и диод делают 12 В из 3 В. Как устроены все павербанки.</p><p class="see"><b>Игрок видит:</b> на выходе напряжение больше, чем на входе.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Измеритель потребления</h3><p>Маленький шунт, ОУ и шкала показывают, сколько тока ест подключённая схема.</p><p class="see"><b>Игрок видит:</b> столбик растёт при включении мотора или LED.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged boss"><span class="dot"></span><div><h3>Солнечная станция</h3><p>Панель заряжает аккумулятор, защита отключает нагрузку при разряде, ночью сам включается свет.</p><p class="see"><b>Игрок видит:</b> смену дня и ночи и баланс энергии за сутки.</p></div></li>
+  </ul>
+</details>
+
+<!-- OPAMP -->
+<details class="level" style="--band:#7B4FD6" data-id="s58817">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><path d="M40 3 L40 29 L80 16 Z" fill="none" stroke="#7B4FD6" stroke-width="3" stroke-linejoin="round"/><line x1="10" y1="10" x2="40" y2="10" stroke="var(--muted)" stroke-width="3"/><line x1="10" y1="22" x2="40" y2="22" stroke="var(--muted)" stroke-width="3"/><line x1="80" y1="16" x2="112" y2="16" stroke="var(--muted)" stroke-width="3"/></svg>
+    <h2>Операционные усилители</h2><span class="count">8</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Универсальный аналоговый кирпичик: усиливает, фильтрует, генерирует, сравнивает.</p></summary>
+  <ul class="items">
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Усилитель в 10 раз</h3><p>Два резистора задают усиление. Главная формула аналоговой электроники на одном примере.</p><p class="see"><b>Игрок видит:</b> маленькую и большую синусоиду рядом.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Микрофонный предусилитель</h3><p>Делает из слабого сигнала микрофона уровень, который можно подать на усилитель или шкалу.</p><p class="see"><b>Игрок видит:</b> как голос превращается в заметный сигнал.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Оконный компаратор</h3><p>Два порога: «холодно», «норма», «жарко». Три LED вместо одного.</p><p class="see"><b>Игрок видит:</b> термометр с тремя зонами.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Активный фильтр</h3><p>Отрезает басы или верха. Основа эквалайзеров и сабвуферов.</p><p class="see"><b>Игрок слышит:</b> музыку «из-за стены» или «из телефона».</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Генератор синуса</h3><p>Мост Вина даёт чистый тон без гудения, как у камертона.</p><p class="see"><b>Игрок видит и слышит:</b> ровную синусоиду и мягкий звук.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Интегратор</h3><p>Из прямоугольника делает треугольник: накапливает сигнал во времени.</p><p class="see"><b>Игрок видит:</b> две формы сигнала на осциллографе.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Эквалайзер на три полосы</h3><p>Басы, середина и верха, каждая полоса со своей ручкой.</p><p class="see"><b>Игрок слышит:</b> как меняется характер одной и той же мелодии.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged boss"><span class="dot"></span><div><h3>Функциональный генератор</h3><p>Прямоугольник, треугольник и синус с регулировкой частоты. После сборки становится прибором мастерской.</p><p class="see"><b>Игрок видит:</b> переключатель форм и сигнал, который можно подать в любую схему.</p></div></li>
+  </ul>
+</details>
+
+<!-- DAC ADC -->
+<details class="level" style="--band:var(--b3)" data-id="s17101">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><path d="M4 28 H20 V22 H36 V16 H52 V10 H68 V4 H84" fill="none" stroke="var(--b3)" stroke-width="3"/><path d="M84 28 Q100 -4 116 28" fill="none" stroke="var(--muted)" stroke-width="3"/></svg>
+    <h2>Цифра ↔ аналог</h2><span class="count">7</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Мост между нулями-единицами и плавным напряжением. Без этого не было бы ни звука в компьютере, ни цифровых приборов.</p></summary>
+  <ul class="items">
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>ЦАП на резисторах</h3><p>Лесенка R-2R и четыре переключателя: двоичное число становится напряжением.</p><p class="see"><b>Игрок видит:</b> «1011» на переключателях и 11 ступенек на вольтметре.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>ШИМ в напряжение</h3><p>RC-фильтр сглаживает импульсы 555 в ровное напряжение, зависящее от ширины импульса.</p><p class="see"><b>Игрок видит:</b> импульсы на входе и плавную линию на выходе.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Генератор пилы и ступенек</h3><p>Счётчик гоняет ЦАП по кругу: получается пилообразный сигнал.</p><p class="see"><b>Игрок видит и слышит:</b> лесенку на осциллографе и жужжащий звук.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>АЦП на восемь LED</h3><p>ADC0804 работает без кода: покрутил потенциометр — LED показывают число от 0 до 255.</p><p class="see"><b>Игрок видит:</b> двоичное число, которое меняется вместе с ручкой.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Цифровой люксметр</h3><p>Фоторезистор и АЦП: освещённость числом на LED или индикаторе.</p><p class="see"><b>Игрок видит:</b> цифры меняются при движении «лампы».</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Цифровой вольтметр</h3><p>ICL7107 сам ведёт индикаторы на 3½ разряда. Настоящий прибор без единой строчки кода.</p><p class="see"><b>Игрок видит:</b> «4.87» на табло при измерении батарейки.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged boss"><span class="dot"></span><div><h3>Синтез формы из диодного ПЗУ</h3><p>Счётчик перебирает адреса, диодная матрица хранит отсчёты синуса, ЦАП выдаёт волну. Форму меняешь, переставляя диоды.</p><p class="see"><b>Игрок видит и слышит:</b> собственную форму волны и её звучание.</p></div></li>
+  </ul>
+</details>
+
+<!-- BIO SCIENCE -->
+<details class="level" style="--band:#D6457A" data-id="s51172">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><path d="M0 18 H30 L38 18 L44 4 L52 30 L58 12 L62 18 H120" fill="none" stroke="#D6457A" stroke-width="3" stroke-linejoin="round"/></svg>
+    <h2>Биосигналы и наука</h2><span class="count">7</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Схемы, которые меряют человека и окружающий мир. Только от батареек, как требует техника безопасности для датчиков на коже.</p></summary>
+  <ul class="items">
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Электроскоп</h3><p>Полевой транзистор чувствует статический заряд от расчёски или шарика.</p><p class="see"><b>Игрок видит:</b> LED загорается, когда «наэлектризованный» предмет подносят к антенне.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Детектор лжи</h3><p>Меряет сопротивление кожи: волнение — ладони потеют, тон пищалки растёт.</p><p class="see"><b>Игрок слышит:</b> тон, который меняется по реакции персонажа на вопросы.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Сейсмограф</h3><p>Пьезодатчик на столе ловит удары и шаги, шкала показывает силу толчка.</p><p class="see"><b>Игрок видит:</b> ленту самописца со всплесками от стуков.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Магнитометр</h3><p>Датчик Холла показывает силу и полюс магнита.</p><p class="see"><b>Игрок видит:</b> стрелку «север/юг», когда подносит магнит.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Пульсометр</h3><p>LED и фотодатчик просвечивают палец, ОУ выделяет удары сердца.</p><p class="see"><b>Игрок видит:</b> мигание в такт пульсу и кривую сердцебиения.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Измеритель реакции</h3><p>Случайная пауза, вспышка, нажатие: счётчик показывает время в миллисекундах.</p><p class="see"><b>Игрок видит:</b> своё время реакции и таблицу рекордов.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged boss"><span class="dot"></span><div><h3>Датчик мышц</h3><p>Инструментальный усилитель ловит электрическую активность мышцы через электроды. Сжал кулак — загорелась шкала.</p><p class="see"><b>Игрок видит:</b> шкалу силы сжатия; дальше можно управлять мотором или клешнёй.</p></div></li>
+  </ul>
+</details>
+
+<!-- LIGHT FX -->
+<details class="level" style="--band:#E36BD1" data-id="s62020">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><g><circle cx="16" cy="16" r="7" fill="var(--b2)"/><circle cx="40" cy="16" r="7" fill="var(--b3)"/><circle cx="64" cy="16" r="7" fill="var(--b4)"/><circle cx="88" cy="16" r="7" fill="var(--b5)"/><circle cx="112" cy="16" r="7" fill="var(--rail-blue)"/></g></svg>
+    <h2>Свет и эффекты</h2><span class="count">8</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Красиво, празднично и отлично смотрится на скриншотах. Эффекты с быстрыми вспышками идут с предупреждением о светочувствительности.</p></summary>
+  <ul class="items">
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Свеча-мерцалка</h3><p>Два генератора с разной частотой дают неровное «живое» мерцание.</p><p class="see"><b>Игрок видит:</b> тёплый LED, который дрожит как пламя.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>RGB-переливы</h3><p>Три медленных генератора плавно смешивают красный, зелёный и синий.</p><p class="see"><b>Игрок видит:</b> лампу, которая сама проходит все цвета.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Стробоскоп</h3><p>Короткие яркие вспышки с регулировкой частоты. Можно «остановить» вращение вентилятора.</p><p class="see"><b>Игрок видит:</b> замершие лопасти, когда частота совпала.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Огонь туда-обратно</h3><p>4017 и диоды заставляют огонёк бегать по линейке и возвращаться, как у машины из сериала 80-х.</p><p class="see"><b>Игрок видит:</b> огонёк, который качается из стороны в сторону.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Гирлянда с режимами</h3><p>Кнопка переключает режимы: все горят, бегут, мигают по очереди, плавно дышат.</p><p class="see"><b>Игрок видит:</b> ёлку в мастерской со своей гирляндой.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>LED-куб 3×3×3</h3><p>27 светодиодов, счётчики перебирают слои и столбцы. Объёмные анимации без кода.</p><p class="see"><b>Игрок видит:</b> вращающийся куб с бегущими плоскостями.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Бегущая строка</h3><p>Матрица 8×8, диодное ПЗУ хранит буквы, счётчик сдвигает их по экрану.</p><p class="see"><b>Игрок видит:</b> своё имя, «зашитое» расстановкой диодов.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged boss"><span class="dot"></span><div><h3>POV-дисплей</h3><p>Линейка LED на моторе рисует картинку в воздухе за счёт инерции зрения. Датчик Холла синхронизирует оборот.</p><p class="see"><b>Игрок видит:</b> висящую в воздухе надпись, которая появляется только на скорости.</p></div></li>
+  </ul>
+</details>
+
+<!-- RELAY -->
+<details class="level" style="--band:#8A8F98" data-id="s77617">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><rect x="10" y="6" width="40" height="20" rx="2" fill="none" stroke="#8A8F98" stroke-width="3"/><path d="M16 16 q4 -8 8 0 t8 0 t8 0" fill="none" stroke="#8A8F98" stroke-width="2"/><line x1="64" y1="22" x2="100" y2="10" stroke="var(--ink)" stroke-width="3"/><circle cx="64" cy="22" r="3" fill="var(--ink)"/><circle cx="106" cy="10" r="3" fill="var(--ink)"/></svg>
+    <h2>Релейная логика</h2><span class="count">7</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Логика, которую слышно. Так работали первые компьютеры и до сих пор работают станки и лифты.</p></summary>
+  <ul class="items">
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Реле как выключатель</h3><p>Маленькая кнопка через катушку щёлкает мощным контактом. Урок про развязку цепей.</p><p class="see"><b>Игрок видит и слышит:</b> щелчок и замкнувшийся контакт.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Пуск и стоп как на станке</h3><p>Реле держит само себя: «пуск» включает, «стоп» выключает. Схема самоподхвата.</p><p class="see"><b>Игрок видит:</b> станок, который работает после отпускания кнопки.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Зуммер на реле</h3><p>Реле размыкает собственное питание и дребезжит, как старый звонок.</p><p class="see"><b>Игрок слышит:</b> частое клацанье.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Вентили на реле</h3><p>И, ИЛИ, НЕ на контактах. Сравнение с транзисторными и микросхемными версиями.</p><p class="see"><b>Игрок видит:</b> контакты, которые физически двигаются при смене логики.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Счётчик на реле</h3><p>Цепочка триггеров на реле считает нажатия в двоичном коде.</p><p class="see"><b>Игрок слышит:</b> каскад щелчков при переносе разряда.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Сумматор на реле</h3><p>Складывает два бита с переносом. По этой схеме работал Z1 Цузе.</p><p class="see"><b>Игрок видит:</b> сумму и перенос на лампочках.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged boss"><span class="dot"></span><div><h3>Клацающий калькулятор</h3><p>Четырёхбитный сумматор на двух десятках реле. Медленно, громко и завораживающе.</p><p class="see"><b>Игрок видит и слышит:</b> волну переключений, бегущую по разрядам.</p></div></li>
+  </ul>
+</details>
+
+<!-- ANALOG COMPUTER -->
+<details class="level" style="--band:#1F9E9A" data-id="s59328">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><path d="M4 28 Q16 2 28 28 Q38 10 48 28 Q55 18 62 28 Q66 23 70 28 H116" fill="none" stroke="#1F9E9A" stroke-width="3"/></svg>
+    <h2>Аналоговый компьютер</h2><span class="count">6</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">ОУ складывают, умножают и интегрируют напряжения. Физика решается «в реальном времени» и рисуется на осциллографе.</p></summary>
+  <ul class="items">
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Сумматор напряжений</h3><p>Складывает и масштабирует сигналы. Первая «операция» аналоговой машины.</p><p class="see"><b>Игрок видит:</b> 2 В + 1,5 В = 3,5 В на вольтметре.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Бак с водой</h3><p>Интегратор моделирует наполнение: вход — кран, выход — уровень.</p><p class="see"><b>Игрок видит:</b> анимированный бак, уровнем которого управляет схема.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Прыгающий мяч</h3><p>Два интегратора и компаратор решают уравнение падения с отскоком.</p><p class="see"><b>Игрок видит:</b> затухающие прыжки мяча на осциллографе.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Маятник на пружине</h3><p>Колебания с трением: ручки задают массу, жёсткость и затухание.</p><p class="see"><b>Игрок видит:</b> качающийся груз рядом с графиком.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Хищники и жертвы</h3><p>Аналоговые умножители AD633 моделируют волков и зайцев. Популяции колеблются по кругу.</p><p class="see"><b>Игрок видит:</b> два графика, которые догоняют друг друга.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged boss"><span class="dot"></span><div><h3>Аттрактор Лоренца</h3><p>Три интегратора и два умножателя рисуют знаменитую «бабочку» хаоса.</p><p class="see"><b>Игрок видит:</b> завораживающую фигуру на экране осциллографа в режиме XY.</p></div></li>
+  </ul>
+</details>
+
+<!-- LIGHT COMMS -->
+<details class="level" style="--band:#E08A1E" data-id="s3343">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><rect x="4" y="10" width="16" height="12" rx="2" fill="#E08A1E"/><line x1="20" y1="16" x2="96" y2="16" stroke="#E08A1E" stroke-width="2" stroke-dasharray="6 4"/><circle cx="104" cy="16" r="8" fill="none" stroke="var(--ink)" stroke-width="3"/></svg>
+    <h2>Связь светом</h2><span class="count">7</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Передача данных и звука через луч. Радио сознательно не входит: мегагерцы трудно честно моделировать и собирать на бредборде.</p></summary>
+  <ul class="items">
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Морзе фонариком</h3><p>Кнопка и яркий LED на одной плате, фотодатчик и пищалка на другой.</p><p class="see"><b>Игрок видит:</b> мигание через комнату и расшифровку на приёмнике.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>ИК-барьер</h3><p>Невидимый луч между излучателем и приёмником. Сработал — зажёгся сигнал.</p><p class="see"><b>Игрок видит:</b> луч в режиме «ИК-камеры» и его пересечение.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Оптопара</h3><p>Две схемы общаются светом внутри корпуса и не связаны электрически.</p><p class="see"><b>Игрок видит:</b> две раздельные «земли» и сигнал, проходящий между ними.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Свой ИК-пульт</h3><p>555 модулирует LED на 38 кГц, приёмник TSOP реагирует только на него.</p><p class="see"><b>Игрок видит:</b> пульт, который работает, и пульт с неправильной частотой, который нет.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Световод</h3><p>Сигнал через оптоволокно или прозрачную леску за угол.</p><p class="see"><b>Игрок видит:</b> свет, который идёт по изгибу провода.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Звук лазером</h3><p>Музыка модулирует лазерную указку, фотодатчик и усилитель на другом конце комнаты воспроизводят её.</p><p class="see"><b>Игрок слышит:</b> музыку, которая пропадает, если перекрыть луч рукой.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged boss"><span class="dot"></span><div><h3>Передача числа по лучу</h3><p>Сдвиговые регистры на обоих концах и два луча, данные и такт, передают восемь бит.</p><p class="see"><b>Игрок видит:</b> число, набранное на одной плате, появляется на другой.</p></div></li>
+  </ul>
+</details>
+
+<!-- HACKS -->
+<details class="level" style="--band:repeating-linear-gradient(-45deg,var(--b4) 0 8px,var(--ink) 8px 16px)">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><path d="M10 26 L30 6 L38 14 L18 34" fill="none" stroke="var(--b4)" stroke-width="3"/><path d="M50 26 q10 -20 20 0 t20 0" fill="none" stroke="var(--muted)" stroke-width="3"/><circle cx="104" cy="16" r="6" fill="none" stroke="var(--ink)" stroke-width="3"/><line x1="104" y1="4" x2="104" y2="10" stroke="var(--ink)" stroke-width="3"/></svg>
+    <h2>Хаки и трюки</h2><span class="count">16</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Детали не по назначению, самодельные компоненты из подручного и переделка чужих устройств. То, за что любят мейкерскую культуру. Цвет метки — уровень сложности.</p></summary>
+  <ul class="items">
+    <li style="--band:var(--b1)" class="tagged"><span class="dot"></span><div><h3>Резистор из карандаша</h3><p>Линия графита на бумаге проводит ток. Чем длиннее и тоньше линия, тем больше сопротивление.</p><p class="see"><b>Игрок видит:</b> рисует линию мышью, и LED меняет яркость.</p></div></li>
+    <li style="--band:var(--b1)" class="tagged"><span class="dot"></span><div><h3>Кнопка из фольги и скрепки</h3><p>Две полоски фольги под картонкой — уже выключатель. Можно сделать коврик-датчик под дверь.</p><p class="see"><b>Игрок видит:</b> персонаж наступает на коврик, звучит звонок.</p></div></li>
+    <li style="--band:var(--b1)" class="tagged"><span class="dot"></span><div><h3>Индикатор полярности на двух LED</h3><p>Красный и зелёный LED встречно: сразу видно, где плюс, а при переменном токе горят оба.</p><p class="see"><b>Игрок видит:</b> какой цвет загорелся на неизвестном проводе.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Светодиод как датчик света</h3><p>LED работает наоборот и выдаёт крошечное напряжение на свету. Фоторезистор не обязателен.</p><p class="see"><b>Игрок видит:</b> вольтметр реагирует на фонарик, светящий в LED.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Динамик как микрофон</h3><p>Динамик тоже работает наоборот: говоришь в него, и после усилителя слышен голос.</p><p class="see"><b>Игрок видит:</b> сигнал от динамика на осциллографе при звуке.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Мигающий LED как генератор</h3><p>В самомигающем LED уже есть микросхема. Его мигание можно использовать как такт для транзистора и пищалки.</p><p class="see"><b>Игрок видит:</b> ритм без 555 и конденсаторов.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Логика на диодах</h3><p>И и ИЛИ из двух диодов и резистора, без микросхем и питания логики.</p><p class="see"><b>Игрок видит:</b> рабочий вентиль из трёх копеечных деталей.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Банановая клавиатура</h3><p>Сенсор касания и фрукты: касаешься банана — звучит нота. Работает с любыми проводящими предметами.</p><p class="see"><b>Игрок слышит:</b> мелодию, сыгранную на фруктах в игре.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Самодельная оптопара</h3><p>LED и фоторезистор в термоусадке. Так же работает настоящая оптопара и старые компрессоры для гитары.</p><p class="see"><b>Игрок видит:</b> два раздельных контура, связанных только светом.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Генератор на одном вентиле</h3><p>Один триггер Шмитта из 74HC14, резистор и конденсатор. В корпусе шесть таких генераторов.</p><p class="see"><b>Игрок видит:</b> шесть независимых мигалок на одной микросхеме.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Переделка говорящей игрушки</h3><p>Circuit bending: резистор тактирования в игрушке меняется на потенциометр, и голос становится то басом, то писком.</p><p class="see"><b>Игрок слышит:</b> искажённый голос игрушки при повороте ручки.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Клавиатура на одном проводе</h3><p>Лесенка резисторов: каждая кнопка даёт своё напряжение на одной линии, компаратор или АЦП понимает, какая нажата.</p><p class="see"><b>Игрок видит:</b> восемь кнопок, один провод и номер кнопки на индикаторе.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Логический инвертор как усилитель</h3><p>74HCU04 с резистором обратной связи работает как аналоговый усилитель. Из этого делают гитарные перегрузы.</p><p class="see"><b>Игрок слышит:</b> тёплое искажение из цифровой микросхемы.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>555 не по назначению</h3><p>Таймер как триггер Шмитта, компаратор или инвертор. Одна микросхема вместо трёх.</p><p class="see"><b>Игрок видит:</b> 555 без единого конденсатора, решающий чужую задачу.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Электричество из чашки чая</h3><p>Элемент Пельтье между горячим и холодным даёт доли вольта, повышающий преобразователь зажигает LED.</p><p class="see"><b>Игрок видит:</b> LED светит, пока чай остывает.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged boss"><span class="dot"></span><div><h3>Донор</h3><p>Старый CD-привод, принтер и игрушка разбираются на моторы, шаговики, динамики и датчики, и из них собирается новое устройство.</p><p class="see"><b>Игрок видит:</b> разбор хлама как игровую механику: детали из донора пополняют ящик.</p></div></li>
+  </ul>
+</details>
+
+<h2 class="group">Режим игры</h2>
+<!-- WORLD TASKS -->
+<details class="level" style="--band:var(--b5)">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><rect x="6" y="18" width="8" height="12" fill="var(--ink)"/><line x1="10" y1="20" x2="70" y2="6" stroke="var(--b2)" stroke-width="4"/><line x1="24" y1="17" x2="30" y2="15" stroke="var(--board)" stroke-width="4"/><line x1="44" y1="12" x2="50" y2="11" stroke="var(--board)" stroke-width="4"/><rect x="84" y="14" width="30" height="12" rx="3" fill="var(--b5)"/><circle cx="92" cy="28" r="3" fill="var(--ink)"/><circle cx="106" cy="28" r="3" fill="var(--ink)"/></svg>
+    <h2>Задачи в игровом мире</h2><span class="count">22</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Игрок получает объект в мире и условие, собирает схему, и схема управляет анимацией. Каждую задачу можно повторить вживую с моторчиком, сервой и датчиками. Цвет метки — уровень сложности.</p></summary>
+  <ul class="items">
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Маяк</h3><p>Условие: в темноте маяк сам включается и мигает с заданным ритмом, днём выключен.</p><p class="see"><b>Игрок видит:</b> смену дня и ночи и корабль, который находит берег по огню.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Фонарь в парке</h3><p>Условие: горит только ночью и только когда рядом кто-то идёт, через 20 секунд гаснет.</p><p class="see"><b>Игрок видит:</b> прохожих и счётчик сэкономленной энергии.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Кран-манипулятор</h3><p>Условие: две сервы на ручках, перенести ящик с палубы на причал.</p><p class="see"><b>Игрок видит:</b> стрелу крана, которая повторяет повороты ручек.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Посадочные огни</h3><p>Условие: по кнопке диспетчера огни бегут в сторону полосы, пока самолёт не сядет.</p><p class="see"><b>Игрок видит:</b> самолёт в тумане, который садится только по огням.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Грелка для хомяка</h3><p>Условие: держать в клетке температуру в коридоре, не перегреть и не заморозить.</p><p class="see"><b>Игрок видит:</b> хомяка, который спит в зелёной зоне и мечется в красной.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Шлагбаум на парковке</h3><p>Условие: машина подъехала — шлагбаум поднимается, не опускается, пока машина под ним, закрывается через пару секунд после проезда.</p><p class="see"><b>Игрок видит:</b> очередь машин; ошибка в логике заканчивается ударом шлагбаума по крыше.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Подъёмник на два этажа</h3><p>Условие: кнопка на каждом этаже вызывает платформу, концевики останавливают её точно на уровне пола.</p><p class="see"><b>Игрок видит:</b> грузы, которые надо поднять на склад, и платформу, проскочившую этаж, если концевик не сработал.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Железнодорожный переезд</h3><p>Условие: поезд приближается — два красных фонаря мигают попеременно, звенит звонок, опускается шлагбаум. Поезд ушёл — всё открывается.</p><p class="see"><b>Игрок видит:</b> поезд, машины у переезда и полное совпадение с настоящим переездом.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Автоматические двери</h3><p>Условие: открываются при подходе, остаются открытыми, пока в проёме кто-то есть, закрываются плавно до концевика.</p><p class="see"><b>Игрок видит:</b> вход в магазин и покупателей, которых нельзя прищемить.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Водонапорная башня</h3><p>Условие: насос включается при низком уровне и выключается при полном, без частого дёрганья между порогами.</p><p class="see"><b>Игрок видит:</b> бак, дома, потребляющие воду, и счётчик включений насоса.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Автомат с жвачкой</h3><p>Условие: монета падает на датчик, мотор делает ровно один оборот и выдаёт одну жвачку.</p><p class="see"><b>Игрок видит:</b> монеты, шарики и довольного или обманутого покупателя.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Кормушка для кота</h3><p>Условие: раз в заданное время серва открывает заслонку на несколько секунд.</p><p class="see"><b>Игрок видит:</b> кота, который ждёт у миски, и ускоренное время.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Запуск ракеты</h3><p>Условие: кнопка старта запускает обратный отсчёт от 10 на индикаторе, на нуле включается двигатель. Кнопка отмены работает до нуля.</p><p class="see"><b>Игрок видит:</b> стартовый стол, отсчёт и взлёт.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Карусель</h3><p>Условие: плавный разгон, 30 секунд катания, плавная остановка и звонок.</p><p class="see"><b>Игрок видит:</b> детей на карусели, которые падают при резком старте.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Прожектор на сцене</h3><p>Условие: прожектор на серве сам следит за актёром со световой меткой.</p><p class="see"><b>Игрок видит:</b> сцену и луч, который догоняет бегущего актёра.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Гаражные ворота</h3><p>Условие: открываются радиопультом, останавливаются в крайних точках, а при пересечении фотобарьера во время закрытия поднимаются обратно.</p><p class="see"><b>Игрок видит:</b> машину, кошку и велосипед, которые норовят оказаться под воротами.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Разводной мост</h3><p>Условие: корабль подал сигнал — для машин загорается красный, мост поднимается только когда проезд пуст, опускается после прохода судна.</p><p class="see"><b>Игрок видит:</b> реку и дорогу одновременно, ошибка — машина в воде.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Сортировочный конвейер</h3><p>Условие: светлые коробки едут дальше, тёмные сталкиваются толкателем в брак.</p><p class="see"><b>Игрок видит:</b> ленту, коробки и процент правильной сортировки.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Счётчик посетителей</h3><p>Условие: два луча на входе определяют направление, счётчик прибавляет на входе и убавляет на выходе. Музей полон — горит «мест нет».</p><p class="see"><b>Игрок видит:</b> поток людей и табло с числом внутри.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Пожарная тревога</h3><p>Условие: датчик температуры или дыма включает сирену, мигалки и разблокирует выходы. Сброс только ключом.</p><p class="see"><b>Игрок видит:</b> здание, эвакуацию и открытые двери.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged"><span class="dot"></span><div><h3>Шлюз для корабля</h3><p>Условие: две пары ворот и насос. Нельзя открыть ворота, пока уровни не сравнялись, и нельзя открыть обе пары сразу.</p><p class="see"><b>Игрок видит:</b> корабль, поднимающийся по ступенькам воды.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged boss"><span class="dot"></span><div><h3>Мини-город</h3><p>Финальная задача: переезд, разводной мост, светофор и фонари работают одновременно и не мешают друг другу. Схемы из прошлых задач соединяются в одну систему.</p><p class="see"><b>Игрок видит:</b> живой пиксельный город, где всё движется благодаря его схемам.</p></div></li>
+  </ul>
+</details>
+
+<!-- FIND THE BUG -->
+<details class="level" style="--band:var(--rail-red)" data-id="s48205">
+  <summary><div class="lv-head">
+    <svg viewBox="0 0 120 32" aria-hidden="true"><circle cx="50" cy="14" r="10" fill="none" stroke="var(--rail-red)" stroke-width="3"/><line x1="57" y1="21" x2="70" y2="30" stroke="var(--rail-red)" stroke-width="4" stroke-linecap="round"/><line x1="44" y1="8" x2="56" y2="20" stroke="var(--ink)" stroke-width="2"/><line x1="56" y1="8" x2="44" y2="20" stroke="var(--ink)" stroke-width="2"/></svg>
+    <h2>Найди ошибку</h2><span class="count">12</span><span class="chev" aria-hidden="true"></span>
+  </div>
+  <p class="lv-sub">Отдельный режим: игроку дают готовую сборку из любого отдела, которая не работает. Ошибки — те, на которых новички реально спотыкаются вживую.</p></summary>
+  <ul class="items">
+    <li style="--band:var(--b1)" class="tagged"><span class="dot"></span><div><h3>Перевёрнутый светодиод</h3><p>Всё собрано правильно, кроме полярности одной детали.</p><p class="see"><b>Игрок видит:</b> тёмный LED и должен найти, почему.</p></div></li>
+    <li style="--band:var(--b1)" class="tagged"><span class="dot"></span><div><h3>Разорванная шина питания</h3><p>На длинной плате шина разделена посередине, и половина схемы без питания.</p><p class="see"><b>Игрок видит:</b> работающую левую половину и мёртвую правую.</p></div></li>
+    <li style="--band:var(--b1)" class="tagged"><span class="dot"></span><div><h3>Не тот ряд</h3><p>Ножка стоит на соседнем ряду, соединения нет.</p><p class="see"><b>Игрок видит:</b> подсветку рядов, где одной связи не хватает.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Перепутанные полосы</h3><p>Вместо 220 Ом стоит 22 кОм: LED еле светится.</p><p class="see"><b>Игрок видит:</b> тусклый LED и должен прочитать маркировку.</p></div></li>
+    <li style="--band:var(--b2)" class="tagged"><span class="dot"></span><div><h3>Транзистор не той ножкой</h3><p>Перепутаны эмиттер и коллектор, ключ работает плохо или никак.</p><p class="see"><b>Игрок видит:</b> почти не работающую схему и распиновку, которую надо сверить.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Перевёрнутая микросхема</h3><p>Ключ на корпусе смотрит не туда. Микросхема греется.</p><p class="see"><b>Игрок видит:</b> индикатор перегрева на корпусе.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Висящий вход</h3><p>Неподключённый вход КМОП ловит наводки, LED мигает сам по себе.</p><p class="see"><b>Игрок видит:</b> случайное поведение, которое прекращается, если коснуться схемы.</p></div></li>
+    <li style="--band:var(--b3)" class="tagged"><span class="dot"></span><div><h3>Забытый диод у мотора</h3><p>Выброс от катушки раз за разом убивает транзистор.</p><p class="see"><b>Игрок видит:</b> схему, которая работает пару секунд и сгорает.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Нет блокировочного конденсатора</h3><p>Счётчик иногда сбивается, когда включается мотор или пищалка.</p><p class="see"><b>Игрок видит:</b> случайные лишние отсчёты и помехи на осциллографе.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Дребезг кнопки</h3><p>Одно нажатие прибавляет три-четыре единицы.</p><p class="see"><b>Игрок видит:</b> счётчик прыгает через числа.</p></div></li>
+    <li style="--band:var(--b4)" class="tagged"><span class="dot"></span><div><h3>Нет общей земли</h3><p>Две платы с разным питанием соединены сигналом, но не землёй.</p><p class="see"><b>Игрок видит:</b> сигнал, который «не доходит», хотя провод есть.</p></div></li>
+    <li style="--band:var(--b5)" class="tagged boss"><span class="dot"></span><div><h3>Сломанный проект</h3><p>Большая схема из уровня 5 с двумя-тремя ошибками одновременно. Нужен пробник, осциллограф и терпение.</p><p class="see"><b>Игрок видит:</b> почти работающее устройство и должен найти все неисправности.</p></div></li>
+  </ul>
+</details>
+
+<footer>
+  <p>Кодовый замок, часы и компьютер можно дробить на серию уровней: сначала модуль, потом модули вместе. Так финальный проект собирается из того, что игрок уже построил.</p>
+</footer>
+
+</div>
+<script>
+(function(){
+  var KEY="catalog-open";
+  var all=[].slice.call(document.querySelectorAll("details.level"));
+  var search=document.getElementById("catalogSearch");
+  var status=document.getElementById("searchStatus");
+  function id(d){return d.querySelector("h2").textContent.trim();}
+  var saved=[];
+  try{saved=JSON.parse(localStorage.getItem(KEY)||"[]")||[];}catch(e){saved=[];}
+  all.forEach(function(d){ if(saved.indexOf(id(d))>-1) d.open=true; });
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(all.filter(function(d){return d.open;}).map(id)));}catch(e){}}
+  all.forEach(function(d){d.addEventListener("toggle",save);});
+  document.getElementById("openAll").onclick=function(){all.forEach(function(d){d.open=true;});save();};
+  document.getElementById("closeAll").onclick=function(){all.forEach(function(d){d.open=false;});save();};
+  function normalize(value){return value.toLocaleLowerCase();}
+  function applySearch(){
+    var query=normalize(search.value.trim());
+    var sections=0, circuits=0;
+    all.forEach(function(d){
+      var summary=normalize(d.querySelector("summary").textContent);
+      var matched=false;
+      [].slice.call(d.querySelectorAll(".items li")).forEach(function(item){
+        var visible=!query || summary.indexOf(query)>-1 || normalize(item.textContent).indexOf(query)>-1;
+        item.hidden=!visible;
+        if(visible){matched=true; circuits++;}
+      });
+      d.hidden=Boolean(query) && !matched;
+      if(matched){sections++; if(query)d.open=true;}
+    });
+    status.textContent=query ? circuits+" схем в "+sections+" разделах" : "212 схем в 20 разделах";
+  }
+  search.addEventListener("input",applySearch);
+  applySearch();
+})();
+</script>
+</body>
+</html>

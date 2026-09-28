@@ -100,6 +100,14 @@ Excluded from this task: anything needing programming or protocol behavior
 new physics beyond a simple two- or three-terminal model (motors, relays,
 speakers). Those need their own specifications.
 
+## Planned expansion for the imported circuit catalog
+
+[CATALOG-EXPANSION-PLAN.md](CATALOG-EXPANSION-PLAN.md) lists the sprite and
+board-level design gaps needed to eventually draw the parts named in
+`breadboard-circuits/spec/catalog.json` (IC bodies, relays, motors,
+displays, ready-made modules, and more). It is a plan only: nothing in it
+has an approved design or a golden reference yet.
+
 ## Adding a component sprite
 
 1. Create `crates/app/src/sprites/<part>.rs` with a unit struct implementing

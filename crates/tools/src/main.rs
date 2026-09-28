@@ -58,6 +58,38 @@ fn run() -> Result<(), String> {
                 }
             }
         }
+        Some("validate-catalog") => {
+            let catalog_path = args.next().ok_or(
+                "usage: bredboard-tools validate-catalog <catalog.json> [catalog.schema.json]",
+            )?;
+            let schema_path = args
+                .next()
+                .unwrap_or_else(|| "breadboard-circuits/spec/catalog.schema.json".into());
+            let catalog = read_value(&catalog_path)?;
+            let schema = read_value(&schema_path)?;
+            let validator = jsonschema::validator_for(&schema)
+                .map_err(|e| format!("cannot construct catalog schema: {e}"))?;
+            let errors = validator.iter_errors(&catalog).collect::<Vec<_>>();
+            if !errors.is_empty() {
+                for error in errors {
+                    eprintln!("schema: {error}");
+                }
+                return Err("catalog does not match its schema".into());
+            }
+            let sections = catalog.as_array().ok_or("catalog root must be an array")?;
+            let circuits = sections
+                .iter()
+                .filter_map(serde_json::Value::as_object)
+                .filter_map(|section| section.get("circuits"))
+                .filter_map(serde_json::Value::as_array)
+                .map(Vec::len)
+                .sum::<usize>();
+            println!(
+                "valid catalog: {} sections, {} schematics",
+                sections.len(),
+                circuits
+            );
+        }
         Some("solve") => {
             let path = args
                 .next()
@@ -208,7 +240,7 @@ fn run() -> Result<(), String> {
         Some("verify-native") => native_verify::run()?,
         _ => {
             return Err(
-                "usage: bredboard-tools <schema|validate|solve|simulate|snapshot|validate-snapshot|replay|verify-native ...>".into(),
+                "usage: bredboard-tools <schema|validate|validate-catalog|solve|simulate|snapshot|validate-snapshot|replay|verify-native ...>".into(),
             );
         }
     }
@@ -240,5 +272,24 @@ fn main() {
     if let Err(error) = run() {
         eprintln!("{error}");
         process::exit(1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn imported_schematic_catalog_matches_its_schema() {
+        let catalog: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../breadboard-circuits/spec/catalog.json"
+        ))
+        .expect("catalog JSON");
+        let schema: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../breadboard-circuits/spec/catalog.schema.json"
+        ))
+        .expect("catalog schema JSON");
+        let validator = jsonschema::validator_for(&schema).expect("catalog schema compiles");
+        let errors = validator.iter_errors(&catalog).collect::<Vec<_>>();
+        assert!(errors.is_empty(), "catalog schema errors: {errors:?}");
+        assert_eq!(catalog.as_array().unwrap().len(), 20);
     }
 }

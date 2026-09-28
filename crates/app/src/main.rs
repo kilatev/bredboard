@@ -1,3 +1,4 @@
+mod exercise_catalog;
 mod sprites;
 mod text;
 
@@ -98,6 +99,7 @@ struct DialSpec {
     component: &'static str,
 }
 impl Circuit {
+    #[cfg(test)]
     fn all() -> [Self; 33] {
         [
             Self::Led,
@@ -557,18 +559,65 @@ struct MenuScroll {
     offset: f32,
 }
 
+#[derive(Resource, Default)]
+struct MenuFilter {
+    query: String,
+}
+
+#[derive(Resource)]
+struct MenuCollapsed {
+    sections: [bool; 4],
+}
+
+impl Default for MenuCollapsed {
+    fn default() -> Self {
+        // Keep the short MVP section open; the longer practice groups start
+        // collapsed so the menu is useful without scrolling immediately.
+        Self {
+            sections: [false, true, true, true],
+        }
+    }
+}
+
+impl MenuCollapsed {
+    #[cfg(test)]
+    fn all_expanded() -> Self {
+        Self {
+            sections: [false; 4],
+        }
+    }
+
+    fn index(section: exercise_catalog::Section) -> usize {
+        match section {
+            exercise_catalog::Section::Mvp => 0,
+            exercise_catalog::Section::Foundations => 1,
+            exercise_catalog::Section::SwitchingAndTiming => 2,
+            exercise_catalog::Section::Advanced => 3,
+        }
+    }
+
+    fn is_collapsed(&self, section: exercise_catalog::Section) -> bool {
+        self.sections[Self::index(section)]
+    }
+
+    fn toggle(&mut self, section: exercise_catalog::Section) {
+        let index = Self::index(section);
+        self.sections[index] = !self.sections[index];
+    }
+}
+
 /// Top/bottom of the menu's scrollable viewport in world space, and the
 /// vertical spacing between entries. The header (title/subtitle) sits above
 /// `MENU_TOP`; the footer hint sits below `MENU_BOTTOM`.
 const MENU_TOP: f32 = 155.0;
 const MENU_BOTTOM: f32 = -220.0;
-const MENU_ENTRY_HEIGHT: f32 = 105.0;
-const MENU_ENTRY_SIZE: Vec2 = Vec2::new(520.0, 74.0);
+const MENU_ENTRY_HEIGHT: f32 = 52.0;
+const MENU_ENTRY_SIZE: Vec2 = Vec2::new(520.0, 42.0);
 
 /// World-space Y of a menu entry at rest (scroll offset zero). Index 0 is the
 /// first entry; matches the original fixed 3-entry layout exactly.
 fn menu_entry_base_y(index: usize) -> f32 {
-    100.0 - index as f32 * MENU_ENTRY_HEIGHT
+    125.0 - index as f32 * MENU_ENTRY_HEIGHT
 }
 
 /// Largest scroll offset that still keeps the last entry's bottom edge at or
@@ -583,13 +632,43 @@ fn menu_max_scroll(entry_count: usize) -> f32 {
     (content_height - (MENU_TOP - MENU_BOTTOM)).max(0.0)
 }
 
+/// Returns the catalog indices that occupy rows right now. Collapsed groups
+/// still reveal a matching exercise while the search field is active.
+fn menu_layout_indices(filter: &MenuFilter, collapsed: &MenuCollapsed) -> Vec<usize> {
+    let query = filter.query.to_ascii_lowercase();
+    let mut section = exercise_catalog::Section::Mvp;
+    let mut indices = Vec::new();
+    for (index, item) in exercise_catalog::items().into_iter().enumerate() {
+        match item {
+            exercise_catalog::Item::Section(value) => {
+                section = value;
+                indices.push(index);
+            }
+            exercise_catalog::Item::Circuit(circuit) => {
+                let matches =
+                    query.is_empty() || circuit.label().to_ascii_lowercase().contains(&query);
+                if matches
+                    && (query.is_empty() && !collapsed.is_collapsed(section) || !query.is_empty())
+                {
+                    indices.push(index);
+                }
+            }
+        }
+    }
+    indices
+}
+
 #[derive(Component)]
 struct SceneEntity;
-/// Marks an entity as one of the N scrollable menu entries, keyed by its
-/// index in `Circuit::all()`. A single index is shared by an entry's button
+/// Marks an entity as one of the catalog rows, keyed by its index in
+/// `exercise_catalog::items()`. A single index is shared by an entry's button
 /// rect and its label so both move and hide together.
 #[derive(Component, Clone, Copy)]
 struct MenuEntry(usize);
+#[derive(Component)]
+struct SearchLabel;
+#[derive(Component, Clone, Copy)]
+struct MenuSectionLabel(exercise_catalog::Section);
 #[derive(Component, Clone, Copy)]
 struct ClickTarget(Control, Vec2);
 /// A draggable track for a continuous dial/slider control.
@@ -624,6 +703,7 @@ fn dial_layout(index: usize, count: usize) -> (Vec2, Vec2) {
 #[derive(Clone, Copy)]
 enum Control {
     Select(Circuit),
+    ToggleSection(exercise_catalog::Section),
     Back,
     RunPause,
     Reset,
@@ -668,15 +748,20 @@ fn main() {
             ..default()
         }))
         .insert_resource(MenuScroll::default())
+        .insert_resource(MenuFilter::default())
+        .insert_resource(MenuCollapsed::default())
         .add_systems(Startup, setup)
         .add_systems(FixedUpdate, fixed_step)
         .add_systems(
             Update,
             (
                 handle_scroll,
+                handle_menu_search,
                 scroll_menu,
                 handle_mouse,
+                update_section_labels,
                 handle_keyboard,
+                update_search_label,
                 handle_dial,
                 update_dial_handle,
                 update_view,
@@ -734,8 +819,8 @@ fn button(commands: &mut Commands, value: &str, point: Vec2, size: Vec2, control
     label(commands, value, point, 21.0, Color::srgb(0.94, 0.97, 0.96));
 }
 
-/// A scrollable menu entry: a selectable button tagged with `MenuEntry(index)`
-/// on both its rect and label so `scroll_menu` can move and hide them together.
+/// A fixed-size menu row tagged with `MenuEntry(index)` on both its rect and
+/// label so `scroll_menu` can move and hide them together.
 fn menu_entry_button(commands: &mut Commands, value: &str, index: usize, control: Control) {
     let point = Vec2::new(0.0, menu_entry_base_y(index));
     let rect_entity = rect(
@@ -750,6 +835,31 @@ fn menu_entry_button(commands: &mut Commands, value: &str, index: usize, control
         .insert((ClickTarget(control, MENU_ENTRY_SIZE), MenuEntry(index)));
     let label_entity = label(commands, value, point, 21.0, Color::srgb(0.94, 0.97, 0.96));
     commands.entity(label_entity).insert(MenuEntry(index));
+}
+
+fn menu_section_label(commands: &mut Commands, section: exercise_catalog::Section, index: usize) {
+    let point = Vec2::new(0.0, menu_entry_base_y(index));
+    let rect_entity = rect(
+        commands,
+        point,
+        MENU_ENTRY_SIZE,
+        Color::srgb(0.10, 0.24, 0.27),
+        1.0,
+    );
+    commands.entity(rect_entity).insert((
+        ClickTarget(Control::ToggleSection(section), MENU_ENTRY_SIZE),
+        MenuEntry(index),
+    ));
+    let entity = label(
+        commands,
+        section.label(),
+        point,
+        18.0,
+        Color::srgb(0.42, 0.91, 0.76),
+    );
+    commands
+        .entity(entity)
+        .insert((MenuEntry(index), MenuSectionLabel(section)));
 }
 
 fn spawn_menu(commands: &mut Commands) {
@@ -774,8 +884,23 @@ fn spawn_menu(commands: &mut Commands) {
         23.0,
         Color::srgb(0.77, 0.84, 0.83),
     );
-    for (index, circuit) in Circuit::all().into_iter().enumerate() {
-        menu_entry_button(commands, circuit.label(), index, Control::Select(circuit));
+    let search = label(
+        commands,
+        "FILTER: type an exercise name or number",
+        Vec2::new(0.0, 180.0),
+        17.0,
+        Color::srgb(0.58, 0.68, 0.68),
+    );
+    commands.entity(search).insert(SearchLabel);
+    for (index, item) in exercise_catalog::items().into_iter().enumerate() {
+        match item {
+            exercise_catalog::Item::Section(section) => {
+                menu_section_label(commands, section, index)
+            }
+            exercise_catalog::Item::Circuit(circuit) => {
+                menu_entry_button(commands, circuit.label(), index, Control::Select(circuit))
+            }
+        }
     }
     label(
         commands,
@@ -1300,9 +1425,10 @@ fn cursor_world(window: &Window) -> Option<Vec2> {
 fn handle_scroll(
     mut wheel: MessageReader<MouseWheel>,
     mut scroll: ResMut<MenuScroll>,
-    entries: Query<&MenuEntry>,
+    filter: Res<MenuFilter>,
+    collapsed: Res<MenuCollapsed>,
 ) {
-    let entry_count = entries.iter().map(|entry| entry.0 + 1).max().unwrap_or(0);
+    let entry_count = menu_layout_indices(&filter, &collapsed).len();
     if entry_count == 0 {
         wheel.clear();
         return;
@@ -1317,16 +1443,60 @@ fn handle_scroll(
     }
 }
 
+fn handle_menu_search(
+    keys: Res<ButtonInput<KeyCode>>,
+    session: Res<Session>,
+    mut filter: ResMut<MenuFilter>,
+    mut scroll: ResMut<MenuScroll>,
+) {
+    if session.bench.is_some() {
+        return;
+    }
+    let old_query = filter.query.clone();
+    for key in keys.get_just_pressed() {
+        match key {
+            KeyCode::Backspace => {
+                filter.query.pop();
+            }
+            KeyCode::Escape => filter.query.clear(),
+            KeyCode::Space => filter.query.push(' '),
+            _ => {
+                let name = format!("{key:?}");
+                if let Some(letter) = name.strip_prefix("Key").and_then(|s| {
+                    (s.len() == 1).then(|| s.chars().next().unwrap().to_ascii_lowercase())
+                }) {
+                    filter.query.push(letter);
+                } else if let Some(digit) = name.strip_prefix("Digit")
+                    && digit.len() == 1
+                {
+                    filter.query.push(digit.chars().next().unwrap());
+                }
+            }
+        }
+    }
+    if filter.query != old_query {
+        scroll.offset = 0.0;
+    }
+}
+
 /// Moves each menu entry to its scrolled position and hides entries that
 /// fall outside the menu's visible viewport so they cannot overlap the
 /// header or footer, and are not clickable while off-screen.
 fn scroll_menu(
-    scroll: Res<MenuScroll>,
+    mut scroll: ResMut<MenuScroll>,
+    filter: Res<MenuFilter>,
+    collapsed: Res<MenuCollapsed>,
     mut entries: Query<(&MenuEntry, &mut Transform, &mut Visibility)>,
 ) {
+    let layout = menu_layout_indices(&filter, &collapsed);
+    scroll.offset = scroll.offset.clamp(0.0, menu_max_scroll(layout.len()));
     let half_height = MENU_ENTRY_SIZE.y * 0.5;
     for (entry, mut transform, mut visibility) in &mut entries {
-        let y = menu_entry_base_y(entry.0) + scroll.offset;
+        let Some(position) = layout.iter().position(|index| *index == entry.0) else {
+            *visibility = Visibility::Hidden;
+            continue;
+        };
+        let y = menu_entry_base_y(position) + scroll.offset;
         transform.translation.y = y;
         *visibility = if y + half_height < MENU_BOTTOM || y - half_height > MENU_TOP {
             Visibility::Hidden
@@ -1336,12 +1506,41 @@ fn scroll_menu(
     }
 }
 
+fn update_section_labels(
+    collapsed: Res<MenuCollapsed>,
+    mut labels: Query<(&MenuSectionLabel, &mut Text2d)>,
+) {
+    for (label, mut text) in &mut labels {
+        let marker = if collapsed.is_collapsed(label.0) {
+            "▸"
+        } else {
+            "▾"
+        };
+        text.0 = format!("{marker} {}", label.0.label());
+    }
+}
+
+fn update_search_label(filter: Res<MenuFilter>, mut labels: Query<&mut Text2d, With<SearchLabel>>) {
+    let value = if filter.query.is_empty() {
+        "FILTER: type an exercise name or number".to_owned()
+    } else {
+        format!(
+            "FILTER: {}  (Backspace removes, Escape clears)",
+            filter.query
+        )
+    };
+    for mut label in &mut labels {
+        label.0.clone_from(&value);
+    }
+}
+
 /// Bundles the two menu/bench presentation resources so `handle_mouse` stays
 /// under Clippy's argument-count limit.
 #[derive(bevy::ecs::system::SystemParam)]
 struct MenuState<'w> {
     session: ResMut<'w, Session>,
     scroll: ResMut<'w, MenuScroll>,
+    collapsed: ResMut<'w, MenuCollapsed>,
 }
 
 /// Drag-driven continuous control: while the left mouse button is held over
@@ -1430,6 +1629,10 @@ fn handle_mouse(
             let bench = Bench::new(circuit);
             spawn_bench(&mut commands, &mut images, &bench);
             state.session.bench = Some(bench);
+        }
+        Some(Control::ToggleSection(section)) => {
+            state.collapsed.toggle(section);
+            state.scroll.offset = 0.0;
         }
         Some(Control::Back) => {
             clear_scene(&mut commands, &scene);
@@ -1753,6 +1956,8 @@ mod tests {
         let mut app = App::new();
         app.insert_resource(Session::default())
             .insert_resource(MenuScroll::default())
+            .insert_resource(MenuFilter::default())
+            .insert_resource(MenuCollapsed::all_expanded())
             .insert_resource(ButtonInput::<MouseButton>::default())
             .init_resource::<Assets<Image>>()
             .add_systems(Startup, setup)
@@ -1765,9 +1970,12 @@ mod tests {
             })
             .id();
         app.update();
-        let entries = Circuit::all();
+        let entries = exercise_catalog::items();
         let max_scroll = menu_max_scroll(entries.len());
-        for (index, circuit) in entries.into_iter().enumerate() {
+        for (index, item) in entries.into_iter().enumerate() {
+            let exercise_catalog::Item::Circuit(circuit) = item else {
+                continue;
+            };
             let offset = (menu_entry_base_y(0) - menu_entry_base_y(index)).clamp(0.0, max_scroll);
             app.world_mut().resource_mut::<MenuScroll>().offset = offset;
             let y = menu_entry_base_y(index) + offset;
@@ -1787,6 +1995,74 @@ mod tests {
             // Return to the menu for the next iteration.
             click(&mut app, window, Vec2::new(185.0, -328.0));
         }
+    }
+
+    #[test]
+    fn exercise_catalog_keeps_search_groups_and_circuits_separate() {
+        let items = exercise_catalog::items();
+        assert_eq!(
+            items
+                .iter()
+                .filter(|item| matches!(item, exercise_catalog::Item::Section(_)))
+                .count(),
+            4
+        );
+        assert_eq!(
+            items
+                .iter()
+                .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
+                .count(),
+            33
+        );
+        assert!(matches!(
+            items[0],
+            exercise_catalog::Item::Section(exercise_catalog::Section::Mvp)
+        ));
+        assert!(matches!(
+            items[4],
+            exercise_catalog::Item::Section(exercise_catalog::Section::Foundations)
+        ));
+    }
+
+    #[test]
+    fn menu_filter_keeps_only_matching_exercises_clickable() {
+        let filter = MenuFilter {
+            query: "e27".into(),
+        };
+        let visible: Vec<_> = menu_layout_indices(&filter, &MenuCollapsed::all_expanded())
+            .into_iter()
+            .filter_map(|index| match exercise_catalog::items()[index] {
+                exercise_catalog::Item::Circuit(circuit) => {
+                    Some(circuit.label().to_ascii_lowercase())
+                }
+                exercise_catalog::Item::Section(_) => None,
+            })
+            .collect();
+        assert_eq!(visible, vec!["e27: shared brightness control"]);
+    }
+
+    #[test]
+    fn keyboard_search_builds_an_exercise_query_and_escape_clears_it() {
+        let mut app = App::new();
+        app.insert_resource(MenuFilter::default())
+            .insert_resource(MenuScroll::default())
+            .insert_resource(Session::default())
+            .insert_resource(ButtonInput::<KeyCode>::default())
+            .add_systems(Update, handle_menu_search);
+
+        for key in [KeyCode::KeyE, KeyCode::Digit2, KeyCode::Digit7] {
+            let mut input = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
+            input.clear();
+            input.press(key);
+            app.update();
+        }
+        assert_eq!(app.world().resource::<MenuFilter>().query, "e27");
+
+        let mut input = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
+        input.clear();
+        input.press(KeyCode::Escape);
+        app.update();
+        assert!(app.world().resource::<MenuFilter>().query.is_empty());
     }
 
     #[test]
@@ -1953,6 +2229,8 @@ mod tests {
         let mut app = App::new();
         app.insert_resource(Session::default())
             .insert_resource(MenuScroll::default())
+            .insert_resource(MenuFilter::default())
+            .insert_resource(MenuCollapsed::all_expanded())
             .insert_resource(ButtonInput::<MouseButton>::default())
             .init_resource::<Assets<Image>>()
             .add_systems(Startup, setup)
@@ -1965,7 +2243,9 @@ mod tests {
             })
             .id();
         app.update();
-        click(&mut app, window, Vec2::new(0.0, 100.0));
+        // The first menu slot is the catalog header; the first circuit is
+        // immediately below it.
+        click(&mut app, window, Vec2::new(0.0, menu_entry_base_y(1)));
         assert_eq!(
             app.world()
                 .resource::<Session>()
@@ -2013,7 +2293,7 @@ mod tests {
             .unwrap()
             .resolution
             .set(828.0, 1054.0);
-        click(&mut app, window, Vec2::new(0.0, -5.0));
+        click(&mut app, window, Vec2::new(0.0, menu_entry_base_y(2)));
         assert_eq!(
             app.world()
                 .resource::<Session>()
@@ -2180,6 +2460,8 @@ mod tests {
     fn thirteen_stub_entries_are_all_reachable_by_scrolling_without_overlap() {
         let mut app = App::new();
         app.insert_resource(MenuScroll::default())
+            .insert_resource(MenuFilter::default())
+            .insert_resource(MenuCollapsed::all_expanded())
             .init_resource::<Assets<Image>>()
             .add_systems(Update, scroll_menu);
         app.world_mut()
@@ -2192,8 +2474,10 @@ mod tests {
         app.update();
         let mut seen = BTreeSet::new();
         seen.extend(visible_entries(&mut app));
-        let max_scroll = menu_max_scroll(13);
-        assert!(max_scroll > 0.0, "13 entries must overflow the viewport");
+        let max_scroll = menu_max_scroll(
+            menu_layout_indices(&MenuFilter::default(), &MenuCollapsed::all_expanded()).len(),
+        );
+        assert!(max_scroll > 0.0, "stub entries must overflow the viewport");
         let steps = 20;
         for step in 0..=steps {
             app.world_mut().resource_mut::<MenuScroll>().offset =
@@ -2223,6 +2507,8 @@ mod tests {
     fn scroll_offset_is_clamped_to_first_and_last_entry() {
         let mut app = App::new();
         app.insert_resource(MenuScroll::default())
+            .insert_resource(MenuFilter::default())
+            .insert_resource(MenuCollapsed::all_expanded())
             .init_resource::<Assets<Image>>()
             .add_message::<MouseWheel>()
             .add_systems(Update, handle_scroll);
@@ -2233,7 +2519,9 @@ mod tests {
                 spawn_stub_menu(&mut commands, 13);
                 queue.apply(world);
             });
-        let max_scroll = menu_max_scroll(13);
+        let max_scroll = menu_max_scroll(
+            menu_layout_indices(&MenuFilter::default(), &MenuCollapsed::all_expanded()).len(),
+        );
         // A huge downward scroll must clamp at the last entry, not overshoot.
         app.world_mut().write_message(MouseWheel {
             unit: MouseScrollUnit::Pixel,
@@ -2258,10 +2546,74 @@ mod tests {
 
     #[test]
     fn existing_three_entry_menu_layout_is_unchanged() {
+        assert_eq!(
+            menu_entry_base_y(0) - menu_entry_base_y(1),
+            MENU_ENTRY_HEIGHT
+        );
+        assert_eq!(
+            menu_entry_base_y(1) - menu_entry_base_y(2),
+            MENU_ENTRY_HEIGHT
+        );
         assert_eq!(menu_max_scroll(3), 0.0);
-        assert_eq!(menu_entry_base_y(0), 100.0);
-        assert_eq!(menu_entry_base_y(1), -5.0);
-        assert_eq!(menu_entry_base_y(2), -110.0);
+    }
+
+    #[test]
+    fn menu_groups_collapse_and_search_reveals_matching_exercises() {
+        let filter = MenuFilter::default();
+        let collapsed = MenuCollapsed::default();
+        assert_eq!(menu_layout_indices(&filter, &collapsed).len(), 7);
+
+        let mut expanded = MenuCollapsed::default();
+        expanded.toggle(exercise_catalog::Section::Advanced);
+        assert!(menu_layout_indices(&filter, &expanded).len() > 7);
+
+        let filter = MenuFilter {
+            query: "e27".into(),
+        };
+        assert_eq!(menu_layout_indices(&filter, &collapsed).len(), 5);
+    }
+
+    #[test]
+    fn clicking_a_group_header_toggles_its_exercises() {
+        let mut app = App::new();
+        app.insert_resource(Session::default())
+            .insert_resource(MenuScroll::default())
+            .insert_resource(MenuFilter::default())
+            .insert_resource(MenuCollapsed::default())
+            .insert_resource(ButtonInput::<MouseButton>::default())
+            .init_resource::<Assets<Image>>()
+            .add_systems(Startup, setup)
+            .add_systems(Update, (scroll_menu, handle_mouse).chain());
+        let window = app
+            .world_mut()
+            .spawn(Window {
+                resolution: (1200, 760).into(),
+                ..default()
+            })
+            .id();
+        app.update();
+
+        let foundation = exercise_catalog::Section::Foundations;
+        let header_index = exercise_catalog::items()
+            .iter()
+            .position(|item| matches!(item, exercise_catalog::Item::Section(value) if *value == foundation))
+            .unwrap();
+        let row = menu_layout_indices(&MenuFilter::default(), &MenuCollapsed::default())
+            .iter()
+            .position(|index| *index == header_index)
+            .unwrap();
+        click(&mut app, window, Vec2::new(0.0, menu_entry_base_y(row)));
+        assert!(
+            !app.world()
+                .resource::<MenuCollapsed>()
+                .is_collapsed(foundation)
+        );
+        click(&mut app, window, Vec2::new(0.0, menu_entry_base_y(row)));
+        assert!(
+            app.world()
+                .resource::<MenuCollapsed>()
+                .is_collapsed(foundation)
+        );
     }
 
     #[test]

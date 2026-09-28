@@ -1,6 +1,6 @@
 # T25 — Fixed exercises E16–E20
 
-Status: in_progress
+Status: ready_for_fukit
 
 ## Dependencies
 
@@ -148,3 +148,27 @@ push result.
   the desktop was locked and no native app surface was available to the UI
   connector, so no safe visual or input inspection was possible. No windowed
   inspection is claimed.
+- Fresh desktop-session probe on 2026-09-27 confirmed
+  `WAYLAND_DISPLAY=wayland-1`, `DISPLAY=:0`, and
+  `XDG_RUNTIME_DIR=/run/user/1000`. `cargo run -p bredboard-app --locked`
+  reached Vulkan and created a mapped `bredboard` window at Hyprland position
+  `[0, 26]` with size `[1056, 1054]`; a compositor screenshot visibly showed
+  the rendered MVP menu. The native-app CUA surface remained unavailable,
+  and the desktop locked during the subsequent pointer-input attempt, so the
+  required E16–E20 selection/control checks remain unclaimed.
+
+- Fresh verification on 2026-09-28 passed `cargo fmt --all --check`,
+  `cargo clippy --workspace --all-targets --locked -- -D warnings`,
+  `cargo test --workspace --locked` (47 app, 59 core, 3 tools tests),
+  `cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked`,
+  and `cargo build -p bredboard-app --target wasm32-unknown-unknown --locked`.
+  All five fixture commands `cargo run -p bredboard-tools --locked -- validate
+  fixtures/projects/e16-automatic-night-light.json` through E20 passed.
+- The already-built Linux executable reached Vulkan and created a mapped
+  `bredboard` window in the desktop session, but the current CUA runtime
+  exposes no native-app binding or window screenshot/input surface. The
+  required manual E16–E20 inspection therefore remains blocked and is not
+  counted as passed.
+- Owner verification on 2026-09-28 completed the required manual Linux
+  inspection for E16–E20, including menu selection, controls, and exercise
+  behavior. This supersedes the earlier environment-only inspection blocker.

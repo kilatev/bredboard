@@ -30,11 +30,25 @@ cargo build -p bredboard-app --target wasm32-unknown-unknown --locked
 
 Run the Linux app with `cargo run -p bredboard-app --locked`. The core can be checked alone with `cargo test -p bredboard-core --locked`; inspect its dependencies with `cargo tree -p bredboard-core --locked`.
 
-Select one of three circuits in the menu. Each bench has Run/Pause, Reset, and its switch or press/release control. Hover over a hole to read its exact ID and any plugged component pin or wire. The shown 5 V source connects to the rail holes. The board remains fixed; component placement and file controls are future work.
+Select a circuit from the grouped menu: MVP benches, foundation exercises
+E1–E10, switching/timing exercises E11–E20, or advanced exercises E21–E30.
+Click a group header to collapse or expand its exercises; long groups start
+collapsed so the menu shows as many fixed-height rows as possible at once.
+Type letters or digits while the menu is open to filter the catalog; Backspace
+removes the last character and Escape clears the filter.
+Each bench has Run/Pause, Reset, and its switch or press/release control.
+Hover over a hole to read its exact ID and any plugged component pin or wire.
+The shown 5 V source connects to the rail holes. The board remains fixed;
+component placement and file controls are future work.
 
 The core uses exact 100 microsecond electrical steps. The app advances 1,000 such steps per wall-clock second, so the RC change is easy to watch; solver results never depend on rendering frame rate.
 
 Generate the Project JSON Schema with `cargo run -p bredboard-tools --locked -- schema`; validate a project with `cargo run -p bredboard-tools --locked -- validate path/to/project.json`. See [the project format guide](docs/PROJECT-FORMAT.md) for the board contact model and authoring example.
+
+Validate the imported reference-schematic catalog and its separate schema with
+`cargo run -p bredboard-tools --locked -- validate-catalog
+breadboard-circuits/spec/catalog.json`. The catalog is reference content; its
+schematics are not yet runnable fixtures in the app.
 
 Run the resistive DC solver headlessly with `cargo run -p bredboard-tools --locked -- solve path/to/project.json`.
 

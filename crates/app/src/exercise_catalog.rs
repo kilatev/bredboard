@@ -1,0 +1,73 @@
+use super::Circuit;
+
+/// Searchable groups for the fixed exercise catalog.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Section {
+    Mvp,
+    Foundations,
+    SwitchingAndTiming,
+    Advanced,
+}
+
+impl Section {
+    pub(crate) const fn label(self) -> &'static str {
+        match self {
+            Self::Mvp => "MVP BENCHES",
+            Self::Foundations => "FOUNDATIONS · E1–E10",
+            Self::SwitchingAndTiming => "SWITCHING & TIMING · E11–E20",
+            Self::Advanced => "ADVANCED · E21–E30",
+        }
+    }
+}
+
+/// Presentation-only menu schema. Headers are separate entries so scrolling
+/// keeps each group attached to its exercises.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Item {
+    Section(Section),
+    Circuit(Circuit),
+}
+
+pub(crate) fn items() -> Vec<Item> {
+    use Circuit::*;
+
+    vec![
+        Item::Section(Section::Mvp),
+        Item::Circuit(Led),
+        Item::Circuit(Rc),
+        Item::Circuit(Transistor),
+        Item::Section(Section::Foundations),
+        Item::Circuit(E1),
+        Item::Circuit(E2),
+        Item::Circuit(E3),
+        Item::Circuit(E4),
+        Item::Circuit(E5),
+        Item::Circuit(E6),
+        Item::Circuit(E7),
+        Item::Circuit(E8),
+        Item::Circuit(E9),
+        Item::Circuit(E10),
+        Item::Section(Section::SwitchingAndTiming),
+        Item::Circuit(E11),
+        Item::Circuit(E12),
+        Item::Circuit(E13),
+        Item::Circuit(E14),
+        Item::Circuit(E15),
+        Item::Circuit(E16),
+        Item::Circuit(E17),
+        Item::Circuit(E18),
+        Item::Circuit(E19),
+        Item::Circuit(E20),
+        Item::Section(Section::Advanced),
+        Item::Circuit(E21),
+        Item::Circuit(E22),
+        Item::Circuit(E23),
+        Item::Circuit(E24),
+        Item::Circuit(E25),
+        Item::Circuit(E26),
+        Item::Circuit(E27),
+        Item::Circuit(E28),
+        Item::Circuit(E29),
+        Item::Circuit(E30),
+    ]
+}

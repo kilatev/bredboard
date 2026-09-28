@@ -48,3 +48,13 @@ Support gates, flip-flops, counters, and shift registers without firmware or use
 [T18 — Readable automatic breadboard layout](../tasks/T18-readable-layout.md) adds a deterministic readability-focused placement heuristic for existing projects. It changes placements while preserving the same board topology; it does not add an editor or a schematic view.
 
 Isometric rendering may become another projection of the same board model. Additional localizations may reuse separated English UI and lesson strings. Neither is a prerequisite for the phases above.
+
+## Imported circuit catalog
+
+`breadboard-circuits/spec/` holds a 212-circuit, 20-section source corpus
+(schematics, BOMs, and a machine-readable `catalog.json`) that is far larger
+than the E11–E30 slice above and does not fit the fixed-exercise pattern by
+itself. [docs/roadmap/CIRCUIT-CATALOG.md](CIRCUIT-CATALOG.md) specifies how
+its sections map onto phases 1/3/4 above plus new phases those don't cover
+yet (electromechanical/motors, ready-made behavioral modules, power/energy
+expansion). It is a specification only; no phase in it is an active card.

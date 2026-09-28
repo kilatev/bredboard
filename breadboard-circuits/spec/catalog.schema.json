@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "catalog.schema.json",
+  "title": "Bredboard reference schematic catalog",
+  "description": "A sectioned catalog of buildable breadboard schematics and their bill of materials.",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "$ref": "#/$defs/section"
+  },
+  "$defs": {
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "title", "description", "circuits"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "pattern": "^[0-9]{2}-[a-z0-9-]+\\.md$",
+          "description": "Repository-relative Markdown source filename for the section."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable section title."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Short explanation of the section's learning focus."
+        },
+        "circuits": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/circuit"
+          },
+          "description": "Schematics in display order within the section."
+        }
+      }
+    },
+    "circuit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "level",
+        "final",
+        "description",
+        "in_game",
+        "note",
+        "schematic",
+        "bom"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Circuit title in the source language."
+        },
+        "level": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "maximum": 5,
+          "description": "Suggested learning difficulty from 1 to 5, or null when the source section does not assign one."
+        },
+        "final": {
+          "type": "boolean",
+          "description": "Whether the circuit is marked as a final or capstone activity."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Circuit behavior and learning objective."
+        },
+        "in_game": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Intended player-facing result or observation."
+        },
+        "note": {
+          "type": ["string", "null"],
+          "description": "Implementation note, or null when no special note is needed."
+        },
+        "schematic": {
+          "type": "string",
+          "pattern": "^svg/[0-9]{2}-[a-z0-9-]+/[0-9]+\\.svg$",
+          "description": "Repository-relative SVG schematic path."
+        },
+        "bom": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "description": "Part name as written in the source catalog."
+              },
+              {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Required quantity."
+              }
+            ],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Bill of materials entries represented as [part name, quantity]."
+        }
+      }
+    }
+  }
+}
