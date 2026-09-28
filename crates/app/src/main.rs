@@ -106,6 +106,8 @@ const C03_S05_05_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s05-05-digital-stopwatch.json");
 const C03_S05_06_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s05-06-digital-clock.json");
+const C03_S05_07_JSON: &str =
+    include_str!("../../../fixtures/projects/c03-s05-07-step-sequencer.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -173,6 +175,7 @@ enum Circuit {
     C03S05_04,
     C03S05_05,
     C03S05_06,
+    C03S05_07,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -190,7 +193,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 64] {
+    fn all() -> [Self; 65] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -223,6 +226,7 @@ impl Circuit {
             Self::C03S05_04,
             Self::C03S05_05,
             Self::C03S05_06,
+            Self::C03S05_07,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -324,6 +328,7 @@ impl Circuit {
             Self::C03S05_04 => C03_S05_04_JSON,
             Self::C03S05_05 => C03_S05_05_JSON,
             Self::C03S05_06 => C03_S05_06_JSON,
+            Self::C03S05_07 => C03_S05_07_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -392,6 +397,7 @@ impl Circuit {
             Self::C03S05_04 => "C03-S05-04: CODE LOCK",
             Self::C03S05_05 => "C03-S05-05: DIGITAL STOPWATCH",
             Self::C03S05_06 => "C03-S05-06: DIGITAL CLOCK CORE",
+            Self::C03S05_07 => "C03-S05-07: STEP SEQUENCER",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -524,6 +530,10 @@ impl Circuit {
             Self::C03S05_06 => (
                 "Six calculated decimal counter stages form a bounded clock core with four visible seven-segment digits. The source crystal, six-digit presentation, and three-board layout remain explicit discrepancies.",
                 "Task: switch RUN on, press STEP repeatedly, and inspect the calculated carry chain through the visible clock digits; use the bench reset to clear all stages.",
+            ),
+            Self::C03S05_07 => (
+                "An eight-step calculated sequencer advances on electrical STEP edges, selects one of eight potentiometer control voltages, drives the selected output load, and lights the active step LED. The source 555 audio-frequency readout is bounded to a calculated control-voltage path.",
+                "Task: adjust the eight dials, press STEP repeatedly, and compare the active LED with the selected control-voltage output.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -970,6 +980,11 @@ impl Circuit {
                     is_switch: false,
                 },
             ],
+            Self::C03S05_07 => &[ControlSpec {
+                label: "STEP: PRESS / RELEASE",
+                component: "STEP",
+                is_switch: false,
+            }],
             Self::C03S04_06 => &[
                 ControlSpec {
                     label: "RED PLAYER",
@@ -1078,6 +1093,40 @@ impl Circuit {
                 DialSpec {
                     label: "RV2: OUTPUT TONE - drag left/right",
                     component: "RV2",
+                },
+            ],
+            Self::C03S05_07 => &[
+                DialSpec {
+                    label: "RV1: STEP 1 CONTROL - drag left/right",
+                    component: "RV1",
+                },
+                DialSpec {
+                    label: "RV2: STEP 2 CONTROL - drag left/right",
+                    component: "RV2",
+                },
+                DialSpec {
+                    label: "RV3: STEP 3 CONTROL - drag left/right",
+                    component: "RV3",
+                },
+                DialSpec {
+                    label: "RV4: STEP 4 CONTROL - drag left/right",
+                    component: "RV4",
+                },
+                DialSpec {
+                    label: "RV5: STEP 5 CONTROL - drag left/right",
+                    component: "RV5",
+                },
+                DialSpec {
+                    label: "RV6: STEP 6 CONTROL - drag left/right",
+                    component: "RV6",
+                },
+                DialSpec {
+                    label: "RV7: STEP 7 CONTROL - drag left/right",
+                    component: "RV7",
+                },
+                DialSpec {
+                    label: "RV8: STEP 8 CONTROL - drag left/right",
+                    component: "RV8",
                 },
             ],
             Self::E27 => &[DialSpec {
@@ -1911,6 +1960,7 @@ fn component_summary(component: &Component) -> String {
         ComponentKind::FourBitAdder => format!("{id}  four-bit adder  A/B → SUM/CARRY"),
         ComponentKind::BargraphDisplay => format!("{id}  ten-segment level bargraph"),
         ComponentKind::AudioAmplifier => format!("{id}  bounded audio amplifier"),
+        ComponentKind::StepSequencer => format!("{id}  bounded eight-step sequencer"),
     }
 }
 
@@ -2713,7 +2763,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            64
+            65
         );
         assert!(matches!(
             items[0],

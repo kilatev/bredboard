@@ -122,7 +122,8 @@ impl SimulationState {
                 }
                 ComponentKind::DFlipFlop
                 | ComponentKind::DigitalCounter
-                | ComponentKind::ShiftRegister => {
+                | ComponentKind::ShiftRegister
+                | ComponentKind::StepSequencer => {
                     digital_states.insert(component.id.clone(), 0);
                 }
                 _ => {}
@@ -351,7 +352,8 @@ fn update_digital_states(
         let entry = match component.kind {
             ComponentKind::DFlipFlop
             | ComponentKind::DigitalCounter
-            | ComponentKind::ShiftRegister => states.entry(component.id.clone()).or_default(),
+            | ComponentKind::ShiftRegister
+            | ComponentKind::StepSequencer => states.entry(component.id.clone()).or_default(),
             _ => continue,
         };
         let supply = voltage(&component.id, "vcc").max(1e-6);
@@ -402,6 +404,11 @@ fn update_digital_states(
                     | u32::from(clock_high) << 16
                     | u32::from(latch_high) << 17;
                 *entry = value;
+            }
+            ComponentKind::StepSequencer => {
+                let stage = *entry & 0xff;
+                let next = if rising { (stage + 1) % 8 } else { stage };
+                *entry = next | u32::from(clock_high) << 16;
             }
             _ => {}
         }
@@ -1248,6 +1255,69 @@ mod tests {
                 .values()
                 .all(|value| value & 0x3ff == 0)
         );
+    }
+
+    #[test]
+    fn c03_step_sequencer_advances_led_and_control_selection() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c03-s05-07-step-sequencer.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("STEP".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::SingleStep,
+            ],
+        );
+        assert_eq!(
+            state.digital_states[&ComponentId("SEQ1".into())] & 0xff,
+            1,
+            "states={:?} diagnostics={:?} clock_voltage={:?}",
+            state.digital_states,
+            state.diagnostics,
+            state.last_valid.as_ref().and_then(|result| {
+                result.node_voltages.iter().find_map(|node| {
+                    node.contacts
+                        .contains(&crate::Contact::ComponentPin(
+                            ComponentId("SEQ1".into()),
+                            crate::PinId("clock".into()),
+                        ))
+                        .then_some(node.voltage)
+                })
+            })
+        );
+        let solved = state.last_valid.as_ref().unwrap();
+        assert!(solved.led_currents[&ComponentId("LED2".into())] > 0.001);
+        assert!(solved.led_currents[&ComponentId("LED1".into())] < 1e-6);
+
+        for _ in 0..7 {
+            apply_actions(
+                &mut project,
+                &baseline,
+                &mut state,
+                &[
+                    Action::SetControl {
+                        component: ComponentId("STEP".into()),
+                        state: ControlState::ButtonReleased,
+                    },
+                    Action::SingleStep,
+                    Action::SetControl {
+                        component: ComponentId("STEP".into()),
+                        state: ControlState::ButtonPressed,
+                    },
+                    Action::SingleStep,
+                ],
+            );
+        }
+        assert_eq!(state.digital_states[&ComponentId("SEQ1".into())] & 0xff, 0);
     }
 
     #[test]

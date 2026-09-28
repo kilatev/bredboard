@@ -209,6 +209,7 @@ pub fn restore_snapshot(
                 ComponentKind::DFlipFlop
                     | ComponentKind::DigitalCounter
                     | ComponentKind::ShiftRegister
+                    | ComponentKind::StepSequencer
             )
         })
         .map(|c| c.id.clone())

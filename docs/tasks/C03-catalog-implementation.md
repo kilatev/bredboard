@@ -2,7 +2,7 @@
 
 Status: in_progress; the Section 04 and Section 05 source review is recorded
 and implementation is proceeding in bounded capability slices. Nine Section 04
-and six Section 05 fixtures are admitted; the remaining two entries and all
+and seven Section 05 fixtures are admitted; the remaining one entry and all
 manual evidence remain open.
 
 ## Scope
@@ -37,9 +37,9 @@ electrical behavior.
   source microphone/LM358/LM3914 path remains an explicit discrepancy. S04-08
   is admitted with a bounded gain-transfer amplifier; the source LM386 and
   input-jack contracts remain explicit discrepancies.
-- S04-09 and S05-07 reuse 555 timing but require multiple timers and a
-  calculated control-voltage path; speaker frequency is a readout contract,
-  not a wall-clock or audio-script result.
+- S04-09 reuses 555 timing, while S05-07 is covered by a bounded eight-step
+  control-voltage sequencer; speaker frequency is a readout contract, not a
+  wall-clock or audio-script result.
 - S05-03, S05-05, and S05-06 contain state machines, clock division, or
   crystal assumptions. Educational bounded timing is admissible only when the
   observable state is calculated from pins and fixed simulation steps.
@@ -84,12 +84,13 @@ electrical behavior.
 
 The current slice adds calculated `digital_counter`, `shift_register`,
 `seven_segment_display`, `four_bit_adder`, and stateful edge-triggered
-`d_flip_flop`, `bargraph_display`, and `audio_amplifier` contracts, nine embedded Section 04 fixtures, six embedded
+`d_flip_flop`, `bargraph_display`, `audio_amplifier`, and `step_sequencer` contracts, nine embedded Section 04 fixtures, seven embedded
 Section 05 fixtures, menu entries, and fixed-step regressions for rising-edge
 counting, cascaded decimal carry, BCD segment decoding, serial shifting,
-output latching, binary addition, ordered code entry, and reset.
+output latching, binary addition, ordered code entry, sequencer selection, and
+reset.
 
-Section 05 is reconciled in the ledger as six fixtures plus two blocked
+Section 05 is reconciled in the ledger as seven fixtures plus one blocked
 records: the remaining entries require DIP input banks, arithmetic and bus contracts, stronger
 state-machine timing, crystal dividers, SRAM, or multi-board supply and
 presentation behavior that the current core does not provide.
@@ -122,6 +123,8 @@ cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s05-05-d
 cargo test -p bredboard-core c03_stopwatch_cascades_clock_carry_and_reset --locked — passed
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s05-06-digital-clock.json — passed; 15 components, 0 wires, 61 derived nodes
 cargo test -p bredboard-core c03_clock_core_cascades_six_calculated_stages --locked — passed
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s05-07-step-sequencer.json — passed; 37 components, 0 wires, 28 derived nodes
+cargo test -p bredboard-core c03_step_sequencer_advances_led_and_control_selection --locked — passed
 cargo test -p bredboard-core digital_counter_advances_once_per_calculated_rising_edge --locked — passed
 cargo test -p bredboard-core c03_counter_fixture_drives_a_calculated_display_digit --locked — passed
 cargo test -p bredboard-core c03_shift_register_calculates_shift_then_latch --locked — passed
@@ -129,7 +132,7 @@ cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes 
 cargo test -p bredboard-app each_circuit_uses_core_controls_and_reset --locked — passed
 cargo fmt --all --check — passed after `cargo fmt --all`
 cargo clippy --workspace --all-targets --locked -- -D warnings — passed
-cargo test --workspace --locked — passed (49 app, 87 core, 3 tools, 0 doc-tests)
+cargo test --workspace --locked — passed (49 app, 88 core, 3 tools, 0 doc-tests)
 cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked — passed
 cargo build -p bredboard-app --target wasm32-unknown-unknown --locked — passed
 cargo run -p bredboard-tools --locked -- validate-catalog breadboard-circuits/spec/catalog.json breadboard-circuits/spec/catalog.schema.json — passed; 20 sections, 212 schematics

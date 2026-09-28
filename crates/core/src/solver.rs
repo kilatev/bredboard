@@ -156,6 +156,16 @@ enum NonlinearElement {
         resistance: f64,
         state: u32,
     },
+    StepSequencer {
+        clock: usize,
+        controls: [usize; 8],
+        output: usize,
+        steps: [usize; 8],
+        vcc: usize,
+        gnd: usize,
+        resistance: f64,
+        state: u32,
+    },
     ShiftRegister {
         clock: usize,
         data: usize,
@@ -427,6 +437,20 @@ fn solve_internal(
                     (*gnd, outputs[0]),
                 ];
                 pairs.extend(outputs.windows(2).map(|pair| (pair[0], pair[1])));
+                pairs
+            }
+            NonlinearElement::StepSequencer {
+                clock,
+                controls,
+                output,
+                steps,
+                vcc,
+                gnd,
+                ..
+            } => {
+                let mut pairs = vec![(*clock, *output), (*vcc, *output), (*gnd, *output)];
+                pairs.extend(controls.iter().map(|control| (*control, *output)));
+                pairs.extend(steps.iter().map(|step| (*step, *output)));
                 pairs
             }
             NonlinearElement::ShiftRegister {
@@ -762,6 +786,7 @@ fn solve_internal(
             | NonlinearElement::Timer555 { .. }
             | NonlinearElement::DFlipFlop { .. }
             | NonlinearElement::DigitalCounter { .. }
+            | NonlinearElement::StepSequencer { .. }
             | NonlinearElement::ShiftRegister { .. }
             | NonlinearElement::SevenSegmentDisplay { .. }
             | NonlinearElement::FourBitAdder { .. }
@@ -1012,6 +1037,42 @@ fn make_branches(
                     gnd,
                     mode: component.parameters["output_mode"] as u8,
                     modulus: component.parameters["modulus"] as u8,
+                    resistance: component.parameters["output_resistance"],
+                    state: digital_states
+                        .get(&component.id)
+                        .copied()
+                        .unwrap_or_default(),
+                });
+                continue;
+            }
+            ComponentKind::StepSequencer => {
+                let clock = node("clock")?;
+                let controls: [Result<usize, ElectricalError>; 8] = [
+                    "control0", "control1", "control2", "control3", "control4", "control5",
+                    "control6", "control7",
+                ]
+                .map(node);
+                let controls = controls.into_iter().collect::<Result<Vec<_>, _>>()?;
+                let controls: [usize; 8] = controls.try_into().expect("eight sequencer controls");
+                let output = node("output")?;
+                let steps: [Result<usize, ElectricalError>; 8] = [
+                    "step0", "step1", "step2", "step3", "step4", "step5", "step6", "step7",
+                ]
+                .map(node);
+                let steps = steps.into_iter().collect::<Result<Vec<_>, _>>()?;
+                let steps: [usize; 8] = steps.try_into().expect("eight sequencer outputs");
+                let vcc = node("vcc")?;
+                let gnd = node("gnd")?;
+                active.extend([clock, output, vcc, gnd]);
+                active.extend(controls);
+                active.extend(steps);
+                nonlinear.push(NonlinearElement::StepSequencer {
+                    clock,
+                    controls,
+                    output,
+                    steps,
+                    vcc,
+                    gnd,
                     resistance: component.parameters["output_resistance"],
                     state: digital_states
                         .get(&component.id)
@@ -1762,6 +1823,44 @@ fn stamp_element(
                 *gnd,
                 !reset_high && value + 1 >= u32::from(*modulus),
                 *resistance,
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
+        NonlinearElement::StepSequencer {
+            controls,
+            output,
+            steps,
+            vcc,
+            gnd,
+            resistance,
+            state,
+            ..
+        } => {
+            let stage = (*state & 0xff).min(7) as usize;
+            for (index, step) in steps.iter().enumerate() {
+                stamp_logic_output(
+                    *step,
+                    *vcc,
+                    *gnd,
+                    index == stage,
+                    *resistance,
+                    guess,
+                    vars,
+                    matrix,
+                    rhs,
+                );
+            }
+            let conductance = 1.0 / *resistance;
+            let selected = controls[stage];
+            let current =
+                conductance * (voltage(guess, vars, *output) - voltage(guess, vars, selected));
+            stamp_current(
+                (*output, *gnd),
+                current,
+                &[(*output, conductance), (selected, -conductance)],
                 guess,
                 vars,
                 matrix,
