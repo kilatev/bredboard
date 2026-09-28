@@ -25,7 +25,7 @@ pub enum Action {
         component: ComponentId,
         state: ControlState,
     },
-    /// Sets a potentiometer's or photoresistor's continuous control ratio
+    /// Sets a variable resistor's continuous control ratio
     /// (0.0..=1.0). Routed through the same ordered action reduction as
     /// `SetControl`, so two ratio changes between steps apply in order and
     /// do not depend on frame rate.
@@ -48,7 +48,7 @@ pub struct SimulationState {
     pub running: bool,
     pub capacitor_voltages: BTreeMap<ComponentId, f64>,
     pub controls: BTreeMap<ComponentId, ControlState>,
-    /// Continuous 0.0..=1.0 control ratio per potentiometer/photoresistor.
+    /// Continuous 0.0..=1.0 control ratio per variable resistor.
     #[serde(default)]
     pub control_ratios: BTreeMap<ComponentId, f64>,
     pub last_valid: Option<SolveResult>,
@@ -102,7 +102,9 @@ impl SimulationState {
                             .unwrap_or(ControlState::SwitchNormallyClosed),
                     );
                 }
-                ComponentKind::Potentiometer | ComponentKind::Photoresistor => {
+                ComponentKind::Potentiometer
+                | ComponentKind::Photoresistor
+                | ComponentKind::Thermistor => {
                     control_ratios.insert(
                         component.id.clone(),
                         project
@@ -216,7 +218,11 @@ pub fn apply_actions(
                     .map(|c| c.kind);
                 let valid = matches!(
                     kind,
-                    Some(ComponentKind::Potentiometer | ComponentKind::Photoresistor)
+                    Some(
+                        ComponentKind::Potentiometer
+                            | ComponentKind::Photoresistor
+                            | ComponentKind::Thermistor,
+                    )
                 ) && ratio.is_finite()
                     && (0.0..=1.0).contains(ratio);
                 if valid {
@@ -226,7 +232,7 @@ pub fn apply_actions(
                     state.diagnostics = vec![SimulationDiagnostic {
                         code: "invalid_control_ratio".into(),
                         path: format!("components.{}", component.0),
-                        message: "control ratio must be finite, in 0.0..=1.0, and match a potentiometer or photoresistor component".into(),
+                        message: "control ratio must be finite, in 0.0..=1.0, and match a variable-resistor component".into(),
                     }];
                 }
             }

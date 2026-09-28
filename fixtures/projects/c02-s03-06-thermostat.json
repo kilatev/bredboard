@@ -1,0 +1,26 @@
+{
+  "format_version": 1,
+  "title": "C02-S03-06: Comparator Thermostat",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "U1", "kind": "comparator", "pins": { "gnd": "TP-:2", "inverting": "H10", "non_inverting": "G8", "output": "F12", "vcc": "TP+:3" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "TH1", "kind": "thermistor", "pins": { "a": "C5", "b": "C8" }, "parameters": { "min_resistance": 1000.0, "max_resistance": 100000.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "D8", "b": "D12" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "RV1", "kind": "potentiometer", "pins": { "a": "C9", "b": "D10" }, "parameters": { "min_resistance": 1.0, "max_resistance": 10000.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "E10", "b": "E14" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "G12", "b": "G14" }, "parameters": { "resistance": 1000000.0 } },
+    { "id": "R4", "kind": "resistor", "pins": { "a": "H12", "b": "H16" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "I16", "cathode": "I17" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "E5", "to": "TP+:5" },
+    { "id": "W2", "from": "E9", "to": "TP+:9" },
+    { "id": "W3", "from": "E12", "to": "TP-:12" },
+    { "id": "W4", "from": "D14", "to": "TP-:14" },
+    { "id": "W5", "from": "J17", "to": "TP-:17" },
+    { "id": "W6", "from": "E8", "to": "F8" },
+    { "id": "W7", "from": "B10", "to": "F10" }
+  ],
+  "initial_conditions": { "control_ratios": { "RV1": 0.5, "TH1": 0.0 } }
+}

@@ -116,6 +116,9 @@ pub enum ComponentKind {
     /// min_resistance)`, so ratio 0.0 (darkest) is `max_resistance` and
     /// ratio 1.0 (brightest) is `min_resistance`.
     Photoresistor,
+    /// Two-terminal NTC thermistor whose resistance falls as the temperature
+    /// control ratio rises.
+    Thermistor,
     /// Fixed-resistance two-terminal load with a current-derived "sounding"
     /// presentation state. The app plays a fixed tone while sounding; the
     /// pitch is a presentation choice, not a calculated electrical result.
@@ -125,6 +128,19 @@ pub enum ComponentKind {
     /// rather than a piezo buzzer, with its own sprite and a lower, fuller
     /// tone while sounding.
     Speaker,
+    /// Two-input digital gate with a voltage-derived output.
+    LogicGate,
+    /// Voltage-threshold inverting buffer with hysteresis-free educational behavior.
+    SchmittInverter,
+    /// Open-loop comparator represented as a bounded voltage-output device.
+    Comparator,
+    /// NE555-compatible timer primitive whose output and discharge pins are
+    /// driven from its threshold, trigger, reset, and supply pins.
+    #[serde(rename = "timer_555")]
+    Timer555,
+    /// D-type flip-flop primitive. Its stateful edge contract is completed by
+    /// the simulation layer; the pin contract is validated here.
+    DFlipFlop,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Wire {
@@ -321,7 +337,7 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
         }
         if matches!(
             c.kind,
-            ComponentKind::Potentiometer | ComponentKind::Photoresistor
+            ComponentKind::Potentiometer | ComponentKind::Photoresistor | ComponentKind::Thermistor
         ) && let (Some(min), Some(max)) = (
             c.parameters.get("min_resistance"),
             c.parameters.get("max_resistance"),
@@ -376,7 +392,9 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
             Some(c)
                 if matches!(
                     c.kind,
-                    ComponentKind::Potentiometer | ComponentKind::Photoresistor
+                    ComponentKind::Potentiometer
+                        | ComponentKind::Photoresistor
+                        | ComponentKind::Thermistor
                 ) =>
             {
                 if !ratio.is_finite() || !(0.0..=1.0).contains(ratio) {
@@ -390,7 +408,7 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
             _ => errors.push(Diagnostic::new(
                 "invalid_initial_control_ratio",
                 format!("initial_conditions.control_ratios.{}", id.0),
-                "control ratio must refer to a potentiometer or photoresistor component",
+                "control ratio must refer to a variable-resistor component",
             )),
         }
     }
@@ -466,8 +484,24 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
         }
         ComponentKind::MomentaryButton => &["a", "b"],
         ComponentKind::ChangeoverSwitch => &["common", "normally_closed", "normally_open"],
-        ComponentKind::Potentiometer | ComponentKind::Photoresistor => &["a", "b"],
+        ComponentKind::Potentiometer | ComponentKind::Photoresistor | ComponentKind::Thermistor => {
+            &["a", "b"]
+        }
         ComponentKind::Buzzer | ComponentKind::Speaker => &["positive", "negative"],
+        ComponentKind::LogicGate => &["gnd", "input_a", "input_b", "output", "vcc"],
+        ComponentKind::SchmittInverter => &["gnd", "input", "output", "vcc"],
+        ComponentKind::Comparator => &["gnd", "inverting", "non_inverting", "output", "vcc"],
+        ComponentKind::Timer555 => &[
+            "control",
+            "discharge",
+            "gnd",
+            "output",
+            "reset",
+            "threshold",
+            "trigger",
+            "vcc",
+        ],
+        ComponentKind::DFlipFlop => &["clock", "data", "gnd", "not_q", "q", "reset", "set", "vcc"],
     }
 }
 fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
@@ -480,10 +514,15 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
             &["beta", "saturation_current"]
         }
         ComponentKind::MomentaryButton | ComponentKind::ChangeoverSwitch => &[],
-        ComponentKind::Potentiometer | ComponentKind::Photoresistor => {
+        ComponentKind::Potentiometer | ComponentKind::Photoresistor | ComponentKind::Thermistor => {
             &["min_resistance", "max_resistance"]
         }
         ComponentKind::Buzzer | ComponentKind::Speaker => &["resistance"],
+        ComponentKind::LogicGate => &["operation", "output_resistance"],
+        ComponentKind::SchmittInverter => &["output_resistance"],
+        ComponentKind::Comparator => &["output_resistance"],
+        ComponentKind::Timer555 => &["output_resistance", "discharge_resistance"],
+        ComponentKind::DFlipFlop => &["output_resistance"],
     }
 }
 fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
@@ -500,13 +539,23 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
             Some((1e-16, 1e-12))
         }
         (
-            ComponentKind::Potentiometer | ComponentKind::Photoresistor,
+            ComponentKind::Potentiometer | ComponentKind::Photoresistor | ComponentKind::Thermistor,
             "min_resistance" | "max_resistance",
         ) => Some((1.0, 1e7)),
         (ComponentKind::Buzzer, "resistance") => Some((1.0, 1e7)),
         // Dynamic speakers are low-impedance voice coils (typically 4-32
         // ohms), unlike the piezo buzzer's much wider practical range.
         (ComponentKind::Speaker, "resistance") => Some((1.0, 100.0)),
+        (ComponentKind::LogicGate, "operation") => Some((0.0, 3.0)),
+        (
+            ComponentKind::LogicGate
+            | ComponentKind::SchmittInverter
+            | ComponentKind::Comparator
+            | ComponentKind::Timer555
+            | ComponentKind::DFlipFlop,
+            "output_resistance",
+        ) => Some((1.0, 1e7)),
+        (ComponentKind::Timer555, "discharge_resistance") => Some((1.0, 1e7)),
         _ => None,
     }
 }
@@ -803,8 +852,12 @@ mod tests {
     }
 
     #[test]
-    fn potentiometer_and_photoresistor_are_valid_kinds_with_documented_ranges() {
-        for kind in [ComponentKind::Potentiometer, ComponentKind::Photoresistor] {
+    fn variable_resistor_kinds_have_documented_ranges() {
+        for kind in [
+            ComponentKind::Potentiometer,
+            ComponentKind::Photoresistor,
+            ComponentKind::Thermistor,
+        ] {
             let mut p = project();
             p.components = vec![variable_resistor(kind)];
             p.wires.clear();
@@ -820,6 +873,7 @@ mod tests {
             let expected = match kind {
                 ComponentKind::Potentiometer => "\"potentiometer\"",
                 ComponentKind::Photoresistor => "\"photoresistor\"",
+                ComponentKind::Thermistor => "\"thermistor\"",
                 _ => unreachable!(),
             };
             assert!(text.contains(expected), "schema missing {expected}");

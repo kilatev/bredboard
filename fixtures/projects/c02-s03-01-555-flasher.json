@@ -1,0 +1,23 @@
+{
+  "format_version": 1,
+  "title": "C02-S03-01: 555 Flasher",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "U1", "kind": "timer_555", "pins": { "control": "A20", "discharge": "A7", "gnd": "TP-:2", "output": "F5", "reset": "TP+:3", "threshold": "A10", "trigger": "B10", "vcc": "TP+:4" }, "parameters": { "output_resistance": 50.0, "discharge_resistance": 100.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "C5", "b": "C7" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "D7", "b": "D10" }, "parameters": { "resistance": 47000.0 } },
+    { "id": "RV1", "kind": "potentiometer", "pins": { "a": "E7", "b": "E10" }, "parameters": { "min_resistance": 1.0, "max_resistance": 100000.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "negative": "C12", "positive": "C10" }, "parameters": { "capacitance": 0.00001 } },
+    { "id": "C2", "kind": "capacitor", "pins": { "negative": "C22", "positive": "C20" }, "parameters": { "capacitance": 0.00000001 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "G5", "b": "G7" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "H7", "cathode": "H8" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "D12", "to": "TP-:12" },
+    { "id": "W2", "from": "D22", "to": "TP-:22" },
+    { "id": "W3", "from": "E5", "to": "TP+:5" },
+    { "id": "W4", "from": "I8", "to": "TP-:8" }
+  ],
+  "initial_conditions": { "control_ratios": { "RV1": 0.25 } }
+}

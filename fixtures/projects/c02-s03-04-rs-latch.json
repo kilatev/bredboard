@@ -1,0 +1,35 @@
+{
+  "format_version": 1,
+  "title": "C02-S03-04: 74HC00 Set Reset Latch",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 4.5 } },
+    { "id": "S_SET", "kind": "momentary_button", "pins": { "a": "A8", "b": "A12" }, "parameters": {} },
+    { "id": "S_RESET", "kind": "momentary_button", "pins": { "a": "A9", "b": "A13" }, "parameters": {} },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "C8", "b": "C6" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "C9", "b": "C7" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "G1", "kind": "logic_gate", "pins": { "gnd": "TP-:10", "input_a": "G8", "input_b": "J16", "output": "G15", "vcc": "TP+:10" }, "parameters": { "operation": 2.0, "output_resistance": 1000.0 } },
+    { "id": "G2", "kind": "logic_gate", "pins": { "gnd": "TP-:11", "input_a": "G9", "input_b": "I15", "output": "H16", "vcc": "TP+:11" }, "parameters": { "operation": 2.0, "output_resistance": 1000.0 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "H15", "b": "F17" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "G17", "cathode": "G18" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "negative": "C20", "positive": "C15" }, "parameters": { "capacitance": 0.00000001 } },
+    { "id": "C2", "kind": "capacitor", "pins": { "negative": "C21", "positive": "C16" }, "parameters": { "capacitance": 0.00000001 } },
+    { "id": "C3", "kind": "capacitor", "pins": { "negative": "C22", "positive": "C23" }, "parameters": { "capacitance": 0.0000001 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "B12", "to": "TP-:12" },
+    { "id": "W2", "from": "B13", "to": "TP-:13" },
+    { "id": "W3", "from": "D6", "to": "TP+:6" },
+    { "id": "W4", "from": "D7", "to": "TP+:7" },
+    { "id": "W5", "from": "I18", "to": "TP-:18" },
+    { "id": "W6", "from": "D20", "to": "TP-:20" },
+    { "id": "W7", "from": "D21", "to": "TP-:21" },
+    { "id": "W8", "from": "D22", "to": "TP-:22" },
+    { "id": "W9", "from": "E15", "to": "F15" },
+    { "id": "W10", "from": "E16", "to": "F16" },
+    { "id": "W11", "from": "E23", "to": "TP+:23" },
+    { "id": "W12", "from": "E8", "to": "F8" },
+    { "id": "W13", "from": "E9", "to": "F9" }
+  ],
+  "initial_conditions": { "controls": { "S_SET": "button_released", "S_RESET": "button_released" } }
+}

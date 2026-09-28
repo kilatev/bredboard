@@ -1,0 +1,27 @@
+{
+  "format_version": 1,
+  "title": "C02-S03-05: Schmitt Debounce",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 4.5 } },
+    { "id": "S1", "kind": "momentary_button", "pins": { "a": "A5", "b": "A8" }, "parameters": {} },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "D8", "b": "D12" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "negative": "C10", "positive": "C8" }, "parameters": { "capacitance": 0.000001 } },
+    { "id": "U1", "kind": "schmitt_inverter", "pins": { "gnd": "TP-:2", "input": "B8", "output": "D16", "vcc": "TP+:3" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "U2", "kind": "d_flip_flop", "pins": { "clock": "G8", "data": "E16", "gnd": "TP-:4", "not_q": "I19", "q": "H18", "reset": "TP-:5", "set": "TP-:6", "vcc": "TP+:7" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "C2", "kind": "capacitor", "pins": { "negative": "J20", "positive": "G18" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "C4", "kind": "capacitor", "pins": { "negative": "I20", "positive": "J19" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "H19", "b": "I22" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "J22", "cathode": "J23" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "C3", "kind": "capacitor", "pins": { "negative": "TP-:8", "positive": "TP+:8" }, "parameters": { "capacitance": 0.0000001 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "E5", "to": "TP+:5" },
+    { "id": "W2", "from": "E8", "to": "F8" },
+    { "id": "W3", "from": "D10", "to": "TP-:10" },
+    { "id": "W4", "from": "E12", "to": "TP-:12" },
+    { "id": "W5", "from": "H20", "to": "TP-:20" },
+    { "id": "W6", "from": "F23", "to": "TP-:23" }
+  ],
+  "initial_conditions": { "controls": { "S1": "button_released" } }
+}

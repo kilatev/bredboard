@@ -74,11 +74,45 @@ scripted outputs.
 
 ## Current blockers
 
-- No IC component kind or pin contract exists in the core model.
-- The current simulation state has capacitor internals but no general
-  sequential IC state contract for an RS latch or D flip-flop.
+- The D flip-flop primitive is intentionally bounded to a capacitor-backed
+  level-sensitive educational approximation; a full edge-triggered state
+  contract remains a follow-up before this row can be release-ready.
 - The source describes analog timing and audio behavior that must be bounded
-  before fixture acceptance.
+  before fixture acceptance; the current fixtures expose calculated node and
+  transition readouts, while audio remains presentation-only.
+
+## Implementation evidence
+
+The current implementation adds calculated `logic_gate`, `schmitt_inverter`,
+`comparator`, `timer_555`, `d_flip_flop`, and `thermistor` contracts, a shared
+IC sprite, seven embedded fixtures, menu entries, and model regressions. The
+fixtures use the source SVGs as layout references while keeping connectivity
+derived from their hole-level pins and wires.
+
+```text
+cargo fmt --all --check — passed
+cargo test -p bredboard-core --locked — passed (73 tests)
+cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
+cargo test -p bredboard-app each_circuit_uses_core_controls_and_reset --locked — passed
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c02-s03-01-555-flasher.json — passed; 9 components, 4 wires, 7 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c02-s03-02-555-monostable.json — passed; 9 components, 6 wires, 7 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c02-s03-03-logic-gates.json — passed; 21 components, 10 wires, 12 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c02-s03-04-rs-latch.json — passed; 12 components, 13 wires, 7 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c02-s03-05-debounce.json — passed; 11 components, 6 wires, 7 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c02-s03-06-thermostat.json — passed; 9 components, 7 wires, 7 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c02-s03-07-light-theremin.json — passed; 9 components, 6 wires, 7 derived nodes
+cargo test -p bredboard-core c02_555_fixture_produces_calculated_led_cycles --locked — passed
+cargo test -p bredboard-core c02_555_monostable_changes_output_from_button_and_rc_state --locked — passed
+cargo test -p bredboard-core c02_logic_gate_fixture_matches_all_four_input_combinations --locked — passed
+cargo test -p bredboard-core c02_rs_latch_retains_calculated_output_after_set_release --locked — passed
+cargo test -p bredboard-core c02_schmitt_debounce_fixture_produces_a_calculated_output --locked — passed
+cargo test -p bredboard-core c02_comparator_thermistor_crosses_the_calculated_threshold --locked — passed
+cargo test -p bredboard-core c02_light_theremin_changes_calculated_timer_frequency_with_light --locked — passed
+```
+
+The batch is not `ready_for_fukit` until the full baseline gates, manual Linux
+interaction, representative breadboard evidence, and the D flip-flop/audio
+release decisions are recorded.
 
 ## Completion and fukit handoff
 

@@ -12,6 +12,7 @@ mod capacitor;
 mod diode;
 #[cfg(test)]
 mod future;
+mod ic;
 mod led;
 pub mod palette;
 mod photoresistor;
@@ -76,8 +77,14 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
         ComponentKind::DcVoltageSource => Some(&source::Source),
         ComponentKind::Potentiometer => Some(&potentiometer::Potentiometer),
         ComponentKind::Photoresistor => Some(&photoresistor::Photoresistor),
+        ComponentKind::Thermistor => Some(&photoresistor::Photoresistor),
         ComponentKind::Buzzer => Some(&buzzer::Buzzer),
         ComponentKind::Speaker => Some(&speaker::Speaker),
+        ComponentKind::LogicGate
+        | ComponentKind::SchmittInverter
+        | ComponentKind::Comparator
+        | ComponentKind::Timer555
+        | ComponentKind::DFlipFlop => Some(&ic::IntegratedCircuit),
     }
 }
 

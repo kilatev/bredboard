@@ -1,0 +1,40 @@
+{
+  "format_version": 1,
+  "title": "C02-S03-03: 74HC Logic Gates",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 4.5 } },
+    { "id": "S1", "kind": "momentary_button", "pins": { "a": "A5", "b": "A8" }, "parameters": {} },
+    { "id": "S2", "kind": "momentary_button", "pins": { "a": "A6", "b": "A9" }, "parameters": {} },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "C8", "b": "C18" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "C9", "b": "C17" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "G1", "kind": "logic_gate", "pins": { "gnd": "TP-:10", "input_a": "G8", "input_b": "G9", "output": "G12", "vcc": "TP+:10" }, "parameters": { "operation": 0.0, "output_resistance": 100.0 } },
+    { "id": "G2", "kind": "logic_gate", "pins": { "gnd": "TP-:11", "input_a": "H8", "input_b": "H9", "output": "H13", "vcc": "TP+:11" }, "parameters": { "operation": 1.0, "output_resistance": 100.0 } },
+    { "id": "G3", "kind": "logic_gate", "pins": { "gnd": "TP-:12", "input_a": "I8", "input_b": "I9", "output": "I14", "vcc": "TP+:12" }, "parameters": { "operation": 2.0, "output_resistance": 100.0 } },
+    { "id": "G4", "kind": "logic_gate", "pins": { "gnd": "TP-:13", "input_a": "J8", "input_b": "J9", "output": "J15", "vcc": "TP+:13" }, "parameters": { "operation": 3.0, "output_resistance": 100.0 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "H12", "b": "H18" }, "parameters": { "resistance": 330.0 } },
+    { "id": "R4", "kind": "resistor", "pins": { "a": "I13", "b": "I20" }, "parameters": { "resistance": 330.0 } },
+    { "id": "R5", "kind": "resistor", "pins": { "a": "J14", "b": "J22" }, "parameters": { "resistance": 330.0 } },
+    { "id": "R6", "kind": "resistor", "pins": { "a": "F15", "b": "F24" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "I18", "cathode": "I19" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "D2", "kind": "led", "pins": { "anode": "J20", "cathode": "J21" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "D3", "kind": "led", "pins": { "anode": "F22", "cathode": "F23" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "D4", "kind": "led", "pins": { "anode": "G24", "cathode": "G25" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "negative": "TP-:2", "positive": "TP+:2" }, "parameters": { "capacitance": 1e-7 } },
+    { "id": "C2", "kind": "capacitor", "pins": { "negative": "TP-:3", "positive": "TP+:3" }, "parameters": { "capacitance": 1e-7 } },
+    { "id": "C3", "kind": "capacitor", "pins": { "negative": "TP-:4", "positive": "TP+:4" }, "parameters": { "capacitance": 1e-7 } },
+    { "id": "C4", "kind": "capacitor", "pins": { "negative": "TP-:5", "positive": "TP+:5" }, "parameters": { "capacitance": 1e-7 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "E8", "to": "F8" },
+    { "id": "W2", "from": "E9", "to": "F9" },
+    { "id": "W3", "from": "C5", "to": "TP+:6" },
+    { "id": "W4", "from": "C6", "to": "TP+:7" },
+    { "id": "W5", "from": "D17", "to": "TP-:17" },
+    { "id": "W6", "from": "D18", "to": "TP-:18" },
+    { "id": "W7", "from": "J19", "to": "TP-:19" },
+    { "id": "W8", "from": "F21", "to": "TP-:21" },
+    { "id": "W9", "from": "G23", "to": "TP-:23" },
+    { "id": "W10", "from": "H25", "to": "TP-:25" }
+  ]
+}

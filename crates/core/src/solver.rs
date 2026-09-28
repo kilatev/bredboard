@@ -95,6 +95,53 @@ enum NonlinearElement {
         beta: f64,
         saturation: f64,
     },
+    LogicGate {
+        input_a: usize,
+        input_b: usize,
+        output: usize,
+        vcc: usize,
+        gnd: usize,
+        operation: u8,
+        resistance: f64,
+    },
+    SchmittInverter {
+        input: usize,
+        output: usize,
+        vcc: usize,
+        gnd: usize,
+        resistance: f64,
+    },
+    Comparator {
+        inverting: usize,
+        non_inverting: usize,
+        output: usize,
+        vcc: usize,
+        gnd: usize,
+        resistance: f64,
+    },
+    Timer555 {
+        control: usize,
+        discharge: usize,
+        output: usize,
+        reset: usize,
+        threshold: usize,
+        trigger: usize,
+        vcc: usize,
+        gnd: usize,
+        output_resistance: f64,
+        discharge_resistance: f64,
+    },
+    DFlipFlop {
+        clock: usize,
+        data: usize,
+        not_q: usize,
+        q: usize,
+        reset: usize,
+        set: usize,
+        vcc: usize,
+        gnd: usize,
+        resistance: f64,
+    },
 }
 
 pub const FIXED_STEP_SECONDS: f64 = 100e-6;
@@ -214,27 +261,96 @@ fn solve_internal(
         adjacency[branch.b].push(branch.a);
     }
     for element in &nonlinear {
-        let (a, b, c) = match element {
+        let pairs: Vec<(usize, usize)> = match element {
             NonlinearElement::Led { anode, cathode, .. }
-            | NonlinearElement::Diode { anode, cathode, .. } => (*anode, *cathode, None),
+            | NonlinearElement::Diode { anode, cathode, .. } => vec![(*anode, *cathode)],
             NonlinearElement::Npn {
                 base,
                 collector,
                 emitter,
                 ..
-            } => (*base, *emitter, Some(*collector)),
-            NonlinearElement::Pnp {
+            }
+            | NonlinearElement::Pnp {
                 base,
                 collector,
                 emitter,
                 ..
-            } => (*base, *emitter, Some(*collector)),
+            } => vec![(*base, *emitter), (*collector, *emitter)],
+            NonlinearElement::LogicGate {
+                input_a,
+                input_b,
+                output,
+                vcc,
+                gnd,
+                ..
+            } => vec![
+                (*input_a, *output),
+                (*input_b, *output),
+                (*vcc, *output),
+                (*gnd, *output),
+            ],
+            NonlinearElement::SchmittInverter {
+                input,
+                output,
+                vcc,
+                gnd,
+                ..
+            } => vec![(*input, *output), (*vcc, *output), (*gnd, *output)],
+            NonlinearElement::Comparator {
+                inverting,
+                non_inverting,
+                output,
+                vcc,
+                gnd,
+                ..
+            } => vec![
+                (*inverting, *output),
+                (*non_inverting, *output),
+                (*vcc, *output),
+                (*gnd, *output),
+            ],
+            NonlinearElement::Timer555 {
+                control,
+                discharge,
+                output,
+                reset,
+                threshold,
+                trigger,
+                vcc,
+                gnd,
+                ..
+            } => vec![
+                (*control, *output),
+                (*discharge, *output),
+                (*reset, *output),
+                (*threshold, *output),
+                (*trigger, *output),
+                (*vcc, *output),
+                (*gnd, *output),
+            ],
+            NonlinearElement::DFlipFlop {
+                clock,
+                data,
+                not_q,
+                q,
+                reset,
+                set,
+                vcc,
+                gnd,
+                ..
+            } => vec![
+                (*clock, *q),
+                (*data, *q),
+                (*not_q, *q),
+                (*reset, *q),
+                (*set, *q),
+                (*vcc, *q),
+                (*gnd, *q),
+            ],
         };
-        adjacency[a].push(b);
-        adjacency[b].push(a);
-        if let Some(c) = c {
-            adjacency[c].push(b);
-            adjacency[b].push(c);
+        for (a, b) in pairs {
+            adjacency[a].push(b);
+            adjacency[b].push(a);
         }
     }
     let mut islands = Vec::new();
@@ -483,6 +599,11 @@ fn solve_internal(
                 pnp_collector_currents
                     .insert(id.clone(), -npn_currents(veb, vec, *beta, *saturation).1);
             }
+            NonlinearElement::LogicGate { .. }
+            | NonlinearElement::SchmittInverter { .. }
+            | NonlinearElement::Comparator { .. }
+            | NonlinearElement::Timer555 { .. }
+            | NonlinearElement::DFlipFlop { .. } => {}
         }
     }
     Ok(SolveResult {
@@ -598,6 +719,105 @@ fn make_branches(
                     emitter,
                     beta: component.parameters["beta"],
                     saturation: component.parameters["saturation_current"],
+                });
+                continue;
+            }
+            ComponentKind::LogicGate => {
+                let input_a = node("input_a")?;
+                let input_b = node("input_b")?;
+                let output = node("output")?;
+                let vcc = node("vcc")?;
+                let gnd = node("gnd")?;
+                active.extend([input_a, input_b, output, vcc, gnd]);
+                nonlinear.push(NonlinearElement::LogicGate {
+                    input_a,
+                    input_b,
+                    output,
+                    vcc,
+                    gnd,
+                    operation: component.parameters["operation"] as u8,
+                    resistance: component.parameters["output_resistance"],
+                });
+                continue;
+            }
+            ComponentKind::SchmittInverter => {
+                let input = node("input")?;
+                let output = node("output")?;
+                let vcc = node("vcc")?;
+                let gnd = node("gnd")?;
+                active.extend([input, output, vcc, gnd]);
+                nonlinear.push(NonlinearElement::SchmittInverter {
+                    input,
+                    output,
+                    vcc,
+                    gnd,
+                    resistance: component.parameters["output_resistance"],
+                });
+                continue;
+            }
+            ComponentKind::Comparator => {
+                let inverting = node("inverting")?;
+                let non_inverting = node("non_inverting")?;
+                let output = node("output")?;
+                let vcc = node("vcc")?;
+                let gnd = node("gnd")?;
+                active.extend([inverting, non_inverting, output, vcc, gnd]);
+                nonlinear.push(NonlinearElement::Comparator {
+                    inverting,
+                    non_inverting,
+                    output,
+                    vcc,
+                    gnd,
+                    resistance: component.parameters["output_resistance"],
+                });
+                continue;
+            }
+            ComponentKind::Timer555 => {
+                let control = node("control")?;
+                let discharge = node("discharge")?;
+                let output = node("output")?;
+                let reset = node("reset")?;
+                let threshold = node("threshold")?;
+                let trigger = node("trigger")?;
+                let vcc = node("vcc")?;
+                let gnd = node("gnd")?;
+                active.extend([
+                    control, discharge, output, reset, threshold, trigger, vcc, gnd,
+                ]);
+                nonlinear.push(NonlinearElement::Timer555 {
+                    control,
+                    discharge,
+                    output,
+                    reset,
+                    threshold,
+                    trigger,
+                    vcc,
+                    gnd,
+                    output_resistance: component.parameters["output_resistance"],
+                    discharge_resistance: component.parameters["discharge_resistance"],
+                });
+                continue;
+            }
+            ComponentKind::DFlipFlop => {
+                let clock = node("clock")?;
+                let data = node("data")?;
+                let not_q = node("not_q")?;
+                let q = node("q")?;
+                let reset = node("reset")?;
+                let set = node("set")?;
+                let vcc = node("vcc")?;
+                let gnd = node("gnd")?;
+                active.extend([clock, data, not_q, q, reset, set, vcc, gnd]);
+                nonlinear.push(NonlinearElement::DFlipFlop {
+                    clock,
+                    data,
+                    not_q,
+                    q,
+                    reset,
+                    set,
+                    vcc,
+                    gnd,
+                    resistance: component.parameters["output_resistance"],
                 });
                 continue;
             }
@@ -731,7 +951,7 @@ fn component_branch(
                 0.0,
             ))
         }
-        ComponentKind::Photoresistor => {
+        ComponentKind::Photoresistor | ComponentKind::Thermistor => {
             let min = value("min_resistance")?;
             let max = value("max_resistance")?;
             let ratio = ratios.get(&c.id).copied().unwrap_or(0.5).clamp(0.0, 1.0);
@@ -863,6 +1083,41 @@ fn stamp_current(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn stamp_logic_output(
+    output: usize,
+    vcc: usize,
+    gnd: usize,
+    high: bool,
+    resistance: f64,
+    guess: &[f64],
+    vars: &BTreeMap<usize, usize>,
+    matrix: &mut [Vec<f64>],
+    rhs: &mut [f64],
+) {
+    let conductance = 1.0 / resistance;
+    let target = if high {
+        voltage(guess, vars, vcc)
+    } else {
+        voltage(guess, vars, gnd)
+    };
+    let target_node = if high { vcc } else { gnd };
+    let current = conductance * (voltage(guess, vars, output) - target);
+    stamp_current(
+        (output, gnd),
+        current,
+        &[(output, conductance), (target_node, -conductance)],
+        guess,
+        vars,
+        matrix,
+        rhs,
+    );
+}
+
+fn logic_high(value: f64, supply: f64) -> bool {
+    value > supply * 0.5
+}
+
 fn stamp_element(
     element: &NonlinearElement,
     guess: &[f64],
@@ -968,6 +1223,182 @@ fn stamp_element(
                 (*emitter, *collector),
                 ic,
                 &[(*emitter, gm + go), (*base, -gm), (*collector, -go)],
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
+        NonlinearElement::LogicGate {
+            input_a,
+            input_b,
+            output,
+            vcc,
+            gnd,
+            operation,
+            resistance,
+            ..
+        } => {
+            let supply = voltage(guess, vars, *vcc);
+            let a = logic_high(voltage(guess, vars, *input_a), supply);
+            let b = logic_high(voltage(guess, vars, *input_b), supply);
+            let high = match operation {
+                0 => a && b,
+                1 => a || b,
+                2 => !(a && b),
+                3 => a ^ b,
+                _ => false,
+            };
+            stamp_logic_output(
+                *output,
+                *vcc,
+                *gnd,
+                high,
+                *resistance,
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
+        NonlinearElement::SchmittInverter {
+            input,
+            output,
+            vcc,
+            gnd,
+            resistance,
+            ..
+        } => {
+            let supply = voltage(guess, vars, *vcc);
+            let high = voltage(guess, vars, *input) < supply * 0.4;
+            stamp_logic_output(
+                *output,
+                *vcc,
+                *gnd,
+                high,
+                *resistance,
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
+        NonlinearElement::Comparator {
+            inverting,
+            non_inverting,
+            output,
+            vcc,
+            gnd,
+            resistance,
+            ..
+        } => {
+            let high = voltage(guess, vars, *non_inverting) <= voltage(guess, vars, *inverting);
+            stamp_logic_output(
+                *output,
+                *vcc,
+                *gnd,
+                high,
+                *resistance,
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
+        NonlinearElement::Timer555 {
+            control: _,
+            discharge,
+            output,
+            output_resistance,
+            discharge_resistance,
+            reset,
+            threshold,
+            trigger,
+            vcc,
+            gnd,
+            ..
+        } => {
+            let supply = voltage(guess, vars, *vcc).max(1e-6);
+            let reset_high = voltage(guess, vars, *reset) > supply * 0.4;
+            let threshold_high = voltage(guess, vars, *threshold) > supply * (2.0 / 3.0);
+            let trigger_low = voltage(guess, vars, *trigger) < supply / 3.0;
+            let output_high = if !reset_high {
+                false
+            } else if trigger_low {
+                true
+            } else if threshold_high {
+                false
+            } else {
+                voltage(guess, vars, *output) > supply * 0.5
+            };
+            stamp_logic_output(
+                *output,
+                *vcc,
+                *gnd,
+                output_high,
+                *output_resistance,
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+            if !output_high {
+                stamp_logic_output(
+                    *discharge,
+                    *vcc,
+                    *gnd,
+                    false,
+                    *discharge_resistance,
+                    guess,
+                    vars,
+                    matrix,
+                    rhs,
+                );
+            }
+        }
+        NonlinearElement::DFlipFlop {
+            clock,
+            data,
+            not_q,
+            q,
+            reset,
+            set,
+            vcc,
+            gnd,
+            resistance,
+            ..
+        } => {
+            let supply = voltage(guess, vars, *vcc);
+            let clock_high = voltage(guess, vars, *clock) > supply * 0.5;
+            let set_high = voltage(guess, vars, *set) > supply * 0.5;
+            let reset_high = voltage(guess, vars, *reset) > supply * 0.5;
+            if !clock_high && !set_high && !reset_high {
+                return;
+            }
+            let q_high = if reset_high {
+                false
+            } else if set_high {
+                true
+            } else {
+                logic_high(voltage(guess, vars, *data), supply)
+            };
+            stamp_logic_output(
+                *q,
+                *vcc,
+                *gnd,
+                q_high,
+                *resistance,
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+            stamp_logic_output(
+                *not_q,
+                *vcc,
+                *gnd,
+                !q_high,
+                *resistance,
                 guess,
                 vars,
                 matrix,
@@ -1671,6 +2102,13 @@ mod tests {
         fixture_json!(C01_S02_01, "c01-s02-01-transistor-key.json");
         fixture_json!(C01_S02_02, "c01-s02-02-dusk-night-light.json");
         fixture_json!(C01_S02_06, "c01-s02-06-transistor-logic.json");
+        fixture_json!(C02_S03_03, "c02-s03-03-logic-gates.json");
+        fixture_json!(C02_S03_01, "c02-s03-01-555-flasher.json");
+        fixture_json!(C02_S03_04, "c02-s03-04-rs-latch.json");
+        fixture_json!(C02_S03_06, "c02-s03-06-thermostat.json");
+        fixture_json!(C02_S03_05, "c02-s03-05-debounce.json");
+        fixture_json!(C02_S03_02, "c02-s03-02-555-monostable.json");
+        fixture_json!(C02_S03_07, "c02-s03-07-light-theremin.json");
 
         #[test]
         fn all_embedded_exercise_fixtures_have_valid_solvable_topology() {
@@ -1817,6 +2255,189 @@ mod tests {
                 assert_led("D2", or_on, "OR");
                 assert_led("D3", not_on, "NOT");
             }
+        }
+
+        #[test]
+        fn c02_logic_gate_fixture_matches_all_four_input_combinations() {
+            let project = fixture(C02_S03_03);
+            let inputs = [
+                (false, false, false, true, false),
+                (true, false, false, true, true),
+                (false, true, false, true, true),
+                (true, true, true, false, false),
+            ];
+            for (a_pressed, b_pressed, and_on, nand_on, xor_on) in inputs {
+                let mut controls = BTreeMap::new();
+                if a_pressed {
+                    controls.insert(ComponentId("S1".into()), ControlState::ButtonPressed);
+                }
+                if b_pressed {
+                    controls.insert(ComponentId("S2".into()), ControlState::ButtonPressed);
+                }
+                let result =
+                    solve_transient(&project, &controls, &BTreeMap::new(), &BTreeMap::new())
+                        .unwrap_or_else(|error| {
+                            panic!("solve failed for A={a_pressed}, B={b_pressed}: {error:?}")
+                        });
+                let assert_led = |id: &str, on: bool| {
+                    let current = result.led_currents[&ComponentId(id.into())];
+                    if on {
+                        assert!(
+                            current > 0.001,
+                            "{id} should be on for A={a_pressed}, B={b_pressed}"
+                        );
+                    } else {
+                        assert!(
+                            current < 1e-4,
+                            "{id} should be off for A={a_pressed}, B={b_pressed}"
+                        );
+                    }
+                };
+                assert_led("D1", and_on);
+                assert_led("D2", a_pressed || b_pressed);
+                assert_led("D3", nand_on);
+                assert_led("D4", xor_on);
+            }
+        }
+
+        #[test]
+        fn c02_555_fixture_produces_calculated_led_cycles() {
+            let project = fixture(C02_S03_01);
+            let mut capacitors = BTreeMap::new();
+            let mut previous_on = false;
+            let mut transitions = 0;
+            for _ in 0..2_000 {
+                let result =
+                    solve_transient(&project, &BTreeMap::new(), &capacitors, &BTreeMap::new())
+                        .unwrap();
+                capacitors.extend(result.capacitor_voltages.clone());
+                let on = result.led_currents[&ComponentId("D1".into())] > 0.001;
+                if on != previous_on {
+                    transitions += 1;
+                    previous_on = on;
+                }
+            }
+            assert!(
+                transitions >= 4,
+                "expected multiple 555 LED transitions, got {transitions}"
+            );
+        }
+
+        #[test]
+        fn c02_rs_latch_retains_calculated_output_after_set_release() {
+            let project = fixture(C02_S03_04);
+            let mut capacitors = BTreeMap::new();
+            let set = BTreeMap::from([(ComponentId("S_SET".into()), ControlState::ButtonPressed)]);
+            for _ in 0..100 {
+                let result =
+                    solve_transient(&project, &set, &capacitors, &BTreeMap::new()).unwrap();
+                capacitors.extend(result.capacitor_voltages);
+            }
+            let result =
+                solve_transient(&project, &BTreeMap::new(), &capacitors, &BTreeMap::new()).unwrap();
+            assert!(result.led_currents[&ComponentId("D1".into())] > 0.001);
+        }
+
+        #[test]
+        fn c02_comparator_thermistor_crosses_the_calculated_threshold() {
+            let project = fixture(C02_S03_06);
+            let cold = solve_dc(
+                &project,
+                &BTreeMap::new(),
+                &BTreeMap::from([(ComponentId("TH1".into()), 0.0)]),
+            )
+            .unwrap();
+            let hot = solve_dc(
+                &project,
+                &BTreeMap::new(),
+                &BTreeMap::from([(ComponentId("TH1".into()), 1.0)]),
+            )
+            .unwrap();
+            assert!(cold.led_currents[&ComponentId("D1".into())] > 0.001);
+            assert!(hot.led_currents[&ComponentId("D1".into())] < 1e-4);
+        }
+
+        #[test]
+        fn c02_schmitt_debounce_fixture_produces_a_calculated_output() {
+            let project = fixture(C02_S03_05);
+            let released = solve_transient(
+                &project,
+                &BTreeMap::new(),
+                &BTreeMap::new(),
+                &BTreeMap::new(),
+            )
+            .unwrap();
+            let pressed = BTreeMap::from([(ComponentId("S1".into()), ControlState::ButtonPressed)]);
+            let mut capacitors = released.capacitor_voltages.clone();
+            let mut result = released;
+            for _ in 0..100 {
+                result =
+                    solve_transient(&project, &pressed, &capacitors, &BTreeMap::new()).unwrap();
+                capacitors.extend(result.capacitor_voltages.clone());
+            }
+            assert!(result.led_currents[&ComponentId("D1".into())] > 0.001);
+        }
+
+        #[test]
+        fn c02_555_monostable_changes_output_from_button_and_rc_state() {
+            let project = fixture(C02_S03_02);
+            let pressed = BTreeMap::from([(ComponentId("S1".into()), ControlState::ButtonPressed)]);
+            let mut capacitors = BTreeMap::new();
+            let mut held = None;
+            for _ in 0..20 {
+                let result =
+                    solve_transient(&project, &pressed, &capacitors, &BTreeMap::new()).unwrap();
+                capacitors.extend(result.capacitor_voltages.clone());
+                held = Some(result);
+            }
+            assert!(held.unwrap().led_currents[&ComponentId("D1".into())] > 0.001);
+            let mut released = None;
+            for _ in 0..2_000 {
+                let result =
+                    solve_transient(&project, &BTreeMap::new(), &capacitors, &BTreeMap::new())
+                        .unwrap();
+                capacitors.extend(result.capacitor_voltages.clone());
+                released = Some(result);
+            }
+            assert!(released.unwrap().led_currents[&ComponentId("D1".into())] < 1e-4);
+        }
+
+        #[test]
+        fn c02_light_theremin_changes_calculated_timer_frequency_with_light() {
+            fn transitions(project: &Project, ratio: f64) -> usize {
+                let mut capacitors = BTreeMap::new();
+                let mut previous = false;
+                let mut count = 0;
+                for _ in 0..3_000 {
+                    let result = solve_transient(
+                        project,
+                        &BTreeMap::new(),
+                        &capacitors,
+                        &BTreeMap::from([(ComponentId("TH1".into()), ratio)]),
+                    )
+                    .unwrap();
+                    capacitors.extend(result.capacitor_voltages.clone());
+                    let high = result.node_voltages.iter().any(|node| {
+                        node.contacts.contains(&Contact::ComponentPin(
+                            ComponentId("U1".into()),
+                            crate::PinId("output".into()),
+                        )) && node.voltage > 2.5
+                    });
+                    if high != previous {
+                        count += 1;
+                        previous = high;
+                    }
+                }
+                count
+            }
+            let project = fixture(C02_S03_07);
+            let dark = transitions(&project, 0.0);
+            let bright = transitions(&project, 1.0);
+            assert!(dark >= 1 && bright >= 1, "dark={dark}, bright={bright}");
+            assert_ne!(
+                dark, bright,
+                "photoresistor must change calculated frequency"
+            );
         }
 
         #[test]

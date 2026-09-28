@@ -180,7 +180,9 @@ pub fn restore_snapshot(
         .filter(|c| {
             matches!(
                 c.kind,
-                ComponentKind::Potentiometer | ComponentKind::Photoresistor
+                ComponentKind::Potentiometer
+                    | ComponentKind::Photoresistor
+                    | ComponentKind::Thermistor
             )
         })
         .map(|c| c.id.clone())

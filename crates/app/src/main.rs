@@ -66,6 +66,17 @@ const C01_S02_02_JSON: &str =
     include_str!("../../../fixtures/projects/c01-s02-02-dusk-night-light.json");
 const C01_S02_06_JSON: &str =
     include_str!("../../../fixtures/projects/c01-s02-06-transistor-logic.json");
+const C02_S03_03_JSON: &str =
+    include_str!("../../../fixtures/projects/c02-s03-03-logic-gates.json");
+const C02_S03_01_JSON: &str =
+    include_str!("../../../fixtures/projects/c02-s03-01-555-flasher.json");
+const C02_S03_02_JSON: &str =
+    include_str!("../../../fixtures/projects/c02-s03-02-555-monostable.json");
+const C02_S03_04_JSON: &str = include_str!("../../../fixtures/projects/c02-s03-04-rs-latch.json");
+const C02_S03_05_JSON: &str = include_str!("../../../fixtures/projects/c02-s03-05-debounce.json");
+const C02_S03_06_JSON: &str = include_str!("../../../fixtures/projects/c02-s03-06-thermostat.json");
+const C02_S03_07_JSON: &str =
+    include_str!("../../../fixtures/projects/c02-s03-07-light-theremin.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -111,6 +122,13 @@ enum Circuit {
     C01S02_01,
     C01S02_02,
     C01S02_06,
+    C02S03_03,
+    C02S03_01,
+    C02S03_02,
+    C02S03_04,
+    C02S03_05,
+    C02S03_06,
+    C02S03_07,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -128,7 +146,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 42] {
+    fn all() -> [Self; 49] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -139,6 +157,13 @@ impl Circuit {
             Self::C01S02_01,
             Self::C01S02_02,
             Self::C01S02_06,
+            Self::C02S03_03,
+            Self::C02S03_01,
+            Self::C02S03_02,
+            Self::C02S03_04,
+            Self::C02S03_05,
+            Self::C02S03_06,
+            Self::C02S03_07,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -218,6 +243,13 @@ impl Circuit {
             Self::C01S02_01 => C01_S02_01_JSON,
             Self::C01S02_02 => C01_S02_02_JSON,
             Self::C01S02_06 => C01_S02_06_JSON,
+            Self::C02S03_03 => C02_S03_03_JSON,
+            Self::C02S03_01 => C02_S03_01_JSON,
+            Self::C02S03_02 => C02_S03_02_JSON,
+            Self::C02S03_04 => C02_S03_04_JSON,
+            Self::C02S03_05 => C02_S03_05_JSON,
+            Self::C02S03_06 => C02_S03_06_JSON,
+            Self::C02S03_07 => C02_S03_07_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -264,6 +296,13 @@ impl Circuit {
             Self::C01S02_01 => "C01-S02-01: BC547 TRANSISTOR KEY",
             Self::C01S02_02 => "C01-S02-02: DUSK NIGHT LIGHT",
             Self::C01S02_06 => "C01-S02-06: TRANSISTOR LOGIC",
+            Self::C02S03_03 => "C02-S03-03: 74HC LOGIC GATES",
+            Self::C02S03_01 => "C02-S03-01: 555 FLASHER",
+            Self::C02S03_02 => "C02-S03-02: 555 MONOSTABLE LIGHT",
+            Self::C02S03_04 => "C02-S03-04: 74HC00 RS LATCH",
+            Self::C02S03_05 => "C02-S03-05: SCHMITT DEBOUNCE",
+            Self::C02S03_06 => "C02-S03-06: COMPARATOR THERMOSTAT",
+            Self::C02S03_07 => "C02-S03-07: LIGHT THEREMIN",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -308,6 +347,34 @@ impl Circuit {
             Self::C01S02_06 => (
                 "Two button input rails drive five BC547 stages: two transistors form AND, two form OR, and the fifth is a calculated NOT output.",
                 "Task: test all four A/B button combinations and record the calculated AND, OR, and NOT LED states.",
+            ),
+            Self::C02S03_03 => (
+                "Four calculated 74HC-style gates show AND, OR, NAND, and XOR behavior from two button input rails.",
+                "Task: test all four A/B combinations and compare the four LED outputs with their truth tables.",
+            ),
+            Self::C02S03_01 => (
+                "An NE555 astable timer charges and discharges a capacitor so the LED flashes at a calculated fixed-step frequency.",
+                "Task: run the circuit and drag RV1; compare the calculated capacitor waveform and LED transitions.",
+            ),
+            Self::C02S03_02 => (
+                "A button triggers a calculated NE555 monostable pulse whose duration is set by the RC network.",
+                "Task: press and release S1, then observe the calculated LED pulse and capacitor voltage.",
+            ),
+            Self::C02S03_04 => (
+                "Two calculated NAND gates form a capacitor-backed RS latch that retains the set output after release.",
+                "Task: press SET, release it, and verify the LED remains on until RESET is pressed.",
+            ),
+            Self::C02S03_05 => (
+                "A calculated Schmitt inverter and D flip-flop turn a button's RC transition into a stable output.",
+                "Task: press S1 and compare the filtered capacitor and calculated LED output.",
+            ),
+            Self::C02S03_06 => (
+                "An LM393-style calculated comparator compares an NTC thermistor divider with an adjustable threshold.",
+                "Task: drag TH1 from cold to hot and adjust RV1; record where the calculated LED changes state.",
+            ),
+            Self::C02S03_07 => (
+                "An NE555 timer and photoresistor form a calculated light-controlled oscillator driving the speaker load.",
+                "Task: drag TH1 from dark to bright and compare the calculated timer transition rate.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -537,6 +604,21 @@ impl Circuit {
             Self::E25 => E25_BUTTONS,
             Self::E26 => E9_BUTTONS,
             Self::C01S02_06 => E9_BUTTONS,
+            Self::C02S03_03 => E9_BUTTONS,
+            Self::C02S03_02 => S1_BUTTON,
+            Self::C02S03_04 => &[
+                ControlSpec {
+                    label: "S_SET: PRESS / RELEASE",
+                    component: "S_SET",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "S_RESET: PRESS / RELEASE",
+                    component: "S_RESET",
+                    is_switch: false,
+                },
+            ],
+            Self::C02S03_05 => S1_BUTTON,
             Self::E28 => E24_SWITCH,
             Self::E29 => S1_BUTTON,
             Self::E1
@@ -556,6 +638,7 @@ impl Circuit {
             | Self::C01S01_04
             | Self::C01S01_05
             | Self::C01S02_02 => &[],
+            Self::C02S03_01 | Self::C02S03_06 | Self::C02S03_07 => &[],
         }
     }
     /// The continuous dial/slider control for variable-resistor exercises.
@@ -610,6 +693,24 @@ impl Circuit {
             Self::E23 => &[DialSpec {
                 label: "R3: AMBIENT LIGHT - drag left/right",
                 component: "R3",
+            }],
+            Self::C02S03_01 => &[DialSpec {
+                label: "RV1: FREQUENCY - drag left/right",
+                component: "RV1",
+            }],
+            Self::C02S03_06 => &[
+                DialSpec {
+                    label: "TH1: TEMPERATURE - drag left/right",
+                    component: "TH1",
+                },
+                DialSpec {
+                    label: "RV1: THRESHOLD - drag left/right",
+                    component: "RV1",
+                },
+            ],
+            Self::C02S03_07 => &[DialSpec {
+                label: "TH1: LIGHT - drag left/right",
+                component: "TH1",
             }],
             Self::E27 => &[DialSpec {
                 label: "RV1: SHARED BRIGHTNESS - drag left/right",
@@ -1394,6 +1495,13 @@ fn component_summary(component: &Component) -> String {
             component.pins[&bredboard_core::PinId("a".into())].0,
             component.pins[&bredboard_core::PinId("b".into())].0
         ),
+        ComponentKind::Thermistor => format!(
+            "{id}  NTC thermistor {:.0}-{:.0} ohm  {} / {}",
+            component.parameters["min_resistance"],
+            component.parameters["max_resistance"],
+            component.pins[&bredboard_core::PinId("a".into())].0,
+            component.pins[&bredboard_core::PinId("b".into())].0
+        ),
         ComponentKind::Buzzer => format!(
             "{id}  buzzer {:.0} ohm  + {} / - {}",
             component.parameters["resistance"],
@@ -1405,6 +1513,27 @@ fn component_summary(component: &Component) -> String {
             component.parameters["resistance"],
             component.pins[&bredboard_core::PinId("positive".into())].0,
             component.pins[&bredboard_core::PinId("negative".into())].0
+        ),
+        ComponentKind::LogicGate => format!(
+            "{id}  logic gate {}  OUT {}",
+            component.parameters["operation"],
+            component.pins[&bredboard_core::PinId("output".into())].0
+        ),
+        ComponentKind::SchmittInverter => format!(
+            "{id}  Schmitt inverter  OUT {}",
+            component.pins[&bredboard_core::PinId("output".into())].0
+        ),
+        ComponentKind::Comparator => format!(
+            "{id}  comparator  OUT {}",
+            component.pins[&bredboard_core::PinId("output".into())].0
+        ),
+        ComponentKind::Timer555 => format!(
+            "{id}  NE555  OUT {}",
+            component.pins[&bredboard_core::PinId("output".into())].0
+        ),
+        ComponentKind::DFlipFlop => format!(
+            "{id}  D flip-flop  Q {}",
+            component.pins[&bredboard_core::PinId("q".into())].0
         ),
     }
 }
@@ -2208,7 +2337,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            42
+            49
         );
         assert!(matches!(
             items[0],
