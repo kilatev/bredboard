@@ -18,6 +18,7 @@ mod motor;
 pub mod palette;
 mod photoresistor;
 mod potentiometer;
+mod relay;
 mod resistor;
 mod source;
 mod speaker;
@@ -43,6 +44,8 @@ pub struct PartContext {
     pub buzzer_current: f64,
     /// Calculated signed motor speed in RPM; 0 when readings are stale.
     pub motor_speed: f64,
+    /// Calculated relay coil state.
+    pub relay_energized: bool,
     pub control: Option<ControlState>,
 }
 
@@ -84,6 +87,7 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
         ComponentKind::Buzzer => Some(&buzzer::Buzzer),
         ComponentKind::Speaker => Some(&speaker::Speaker),
         ComponentKind::Motor => Some(&motor::Motor),
+        ComponentKind::Relay => Some(&relay::Relay),
         ComponentKind::LogicGate
         | ComponentKind::SchmittInverter
         | ComponentKind::Comparator

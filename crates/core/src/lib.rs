@@ -136,6 +136,10 @@ pub enum ComponentKind {
     /// Four-terminal optocoupler with a calculated LED input and
     /// light-controlled collector-emitter conductance.
     Optocoupler,
+    /// Five-terminal relay with a resistive coil and threshold-selected
+    /// common-to-NC/NO contact pair. Mechanical bounce and inductance are
+    /// outside this educational contract.
+    Relay,
     /// Two-input digital gate with a voltage-derived output.
     LogicGate,
     /// Voltage-threshold inverting buffer with hysteresis-free educational behavior.
@@ -515,6 +519,13 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
             &["positive", "negative"]
         }
         ComponentKind::Optocoupler => &["input_anode", "input_cathode", "collector", "emitter"],
+        ComponentKind::Relay => &[
+            "coil_positive",
+            "coil_negative",
+            "common",
+            "normally_closed",
+            "normally_open",
+        ],
         ComponentKind::LogicGate => &["gnd", "input_a", "input_b", "output", "vcc"],
         ComponentKind::SchmittInverter => &["gnd", "input", "output", "vcc"],
         ComponentKind::Comparator => &["gnd", "inverting", "non_inverting", "output", "vcc"],
@@ -599,6 +610,7 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
             "on_resistance",
             "off_resistance",
         ],
+        ComponentKind::Relay => &["coil_resistance", "pickup_voltage", "contact_resistance"],
         ComponentKind::LogicGate => &["operation", "output_resistance"],
         ComponentKind::SchmittInverter => &["output_resistance"],
         ComponentKind::Comparator => &["output_resistance"],
@@ -643,6 +655,9 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         (ComponentKind::Optocoupler, "transfer_gain") => Some((0.0, 1000.0)),
         (ComponentKind::Optocoupler, "on_resistance") => Some((1.0, 1e6)),
         (ComponentKind::Optocoupler, "off_resistance") => Some((1.0, 1e12)),
+        (ComponentKind::Relay, "coil_resistance") => Some((1.0, 1e7)),
+        (ComponentKind::Relay, "pickup_voltage") => Some((0.0, 12.0)),
+        (ComponentKind::Relay, "contact_resistance") => Some((0.01, 1e6)),
         (ComponentKind::LogicGate, "operation") => Some((0.0, 3.0)),
         (
             ComponentKind::LogicGate

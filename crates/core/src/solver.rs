@@ -49,6 +49,12 @@ pub struct SolveResult {
     /// Calculated LED-side current through each optocoupler input.
     #[serde(default)]
     pub optocoupler_input_currents: BTreeMap<ComponentId, f64>,
+    /// Relay coil current is positive from `coil_positive` to `coil_negative`.
+    #[serde(default)]
+    pub relay_coil_currents: BTreeMap<ComponentId, f64>,
+    /// Whether each relay's calculated coil voltage reaches its pickup voltage.
+    #[serde(default)]
+    pub relay_energized: BTreeMap<ComponentId, bool>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -102,6 +108,17 @@ enum NonlinearElement {
         transfer_gain: f64,
         on_resistance: f64,
         off_resistance: f64,
+    },
+    Relay {
+        id: ComponentId,
+        coil_positive: usize,
+        coil_negative: usize,
+        common: usize,
+        normally_closed: usize,
+        normally_open: usize,
+        coil_resistance: f64,
+        pickup_voltage: f64,
+        contact_resistance: f64,
     },
     Npn {
         id: ComponentId,
@@ -364,6 +381,8 @@ fn solve_internal(
             pnp_collector_currents: BTreeMap::new(),
             motor_speeds: BTreeMap::new(),
             optocoupler_input_currents: BTreeMap::new(),
+            relay_coil_currents: BTreeMap::new(),
+            relay_energized: BTreeMap::new(),
         });
     }
 
@@ -383,6 +402,18 @@ fn solve_internal(
                 emitter,
                 ..
             } => vec![(*input_anode, *input_cathode), (*collector, *emitter)],
+            NonlinearElement::Relay {
+                coil_positive,
+                coil_negative,
+                common,
+                normally_closed,
+                normally_open,
+                ..
+            } => vec![
+                (*coil_positive, *coil_negative),
+                (*common, *normally_closed),
+                (*common, *normally_open),
+            ],
             NonlinearElement::Npn {
                 base,
                 collector,
@@ -759,6 +790,8 @@ fn solve_internal(
     let mut pnp_collector_currents = BTreeMap::new();
     let mut motor_speeds = BTreeMap::new();
     let mut optocoupler_input_currents = BTreeMap::new();
+    let mut relay_coil_currents = BTreeMap::new();
+    let mut relay_energized = BTreeMap::new();
     for branch in &branches {
         let current = match branch.kind {
             BranchKind::Resistor | BranchKind::Motor => {
@@ -868,6 +901,19 @@ fn solve_internal(
                 optocoupler_input_currents
                     .insert(id.clone(), led_current(vin, *forward, *series_resistance).0);
             }
+            NonlinearElement::Relay {
+                id,
+                coil_positive,
+                coil_negative,
+                coil_resistance,
+                pickup_voltage,
+                ..
+            } => {
+                let coil_voltage = voltage(&solution, &voltage_vars, *coil_positive)
+                    - voltage(&solution, &voltage_vars, *coil_negative);
+                relay_coil_currents.insert(id.clone(), coil_voltage / coil_resistance);
+                relay_energized.insert(id.clone(), coil_voltage >= *pickup_voltage);
+            }
             NonlinearElement::LogicGate { .. }
             | NonlinearElement::SchmittInverter { .. }
             | NonlinearElement::Comparator { .. }
@@ -930,6 +976,8 @@ fn solve_internal(
         pnp_collector_currents,
         motor_speeds,
         optocoupler_input_currents,
+        relay_coil_currents,
+        relay_energized,
     })
 }
 
@@ -1053,6 +1101,32 @@ fn make_branches(
                     transfer_gain: component.parameters["transfer_gain"],
                     on_resistance: component.parameters["on_resistance"],
                     off_resistance: component.parameters["off_resistance"],
+                });
+                continue;
+            }
+            ComponentKind::Relay => {
+                let coil_positive = node("coil_positive")?;
+                let coil_negative = node("coil_negative")?;
+                let common = node("common")?;
+                let normally_closed = node("normally_closed")?;
+                let normally_open = node("normally_open")?;
+                active.extend([
+                    coil_positive,
+                    coil_negative,
+                    common,
+                    normally_closed,
+                    normally_open,
+                ]);
+                nonlinear.push(NonlinearElement::Relay {
+                    id: component.id.clone(),
+                    coil_positive,
+                    coil_negative,
+                    common,
+                    normally_closed,
+                    normally_open,
+                    coil_resistance: component.parameters["coil_resistance"],
+                    pickup_voltage: component.parameters["pickup_voltage"],
+                    contact_resistance: component.parameters["contact_resistance"],
                 });
                 continue;
             }
@@ -1780,6 +1854,42 @@ fn stamp_element(
                 matrix,
                 rhs,
             );
+        }
+        NonlinearElement::Relay {
+            coil_positive,
+            coil_negative,
+            common,
+            normally_closed,
+            normally_open,
+            coil_resistance,
+            pickup_voltage,
+            contact_resistance,
+            ..
+        } => {
+            let coil_voltage =
+                voltage(guess, vars, *coil_positive) - voltage(guess, vars, *coil_negative);
+            stamp_conductance(
+                matrix,
+                vars,
+                *coil_positive,
+                *coil_negative,
+                1.0 / *coil_resistance,
+            );
+            let energized = coil_voltage >= *pickup_voltage;
+            let contact = if energized {
+                (*normally_open, *contact_resistance)
+            } else {
+                (*normally_closed, *contact_resistance)
+            };
+            let open = if energized {
+                *normally_closed
+            } else {
+                *normally_open
+            };
+            stamp_conductance(matrix, vars, *common, contact.0, 1.0 / contact.1);
+            // Keep the unselected terminal numerically referenced without
+            // making it a meaningful electrical path.
+            stamp_conductance(matrix, vars, *common, open, 1e-12);
         }
         NonlinearElement::Npn {
             base,
@@ -2810,6 +2920,36 @@ mod tests {
                     > released.transistor_collector_currents[&ComponentId("Q1".into())]
             );
         }
+
+        #[test]
+        fn relay_breadboard_ranges_converge(
+            coil_bucket in 0u32..=1000,
+            pickup_bucket in 0u32..=1000,
+        ) {
+            let mut project: Project = serde_json::from_str(include_str!(
+                "../../../fixtures/projects/c09-s15-01-relay-switch.json"
+            )).unwrap();
+            let relay = project
+                .components
+                .iter_mut()
+                .find(|component| component.id.0 == "K1")
+                .unwrap();
+            relay.parameters.insert(
+                "coil_resistance".into(),
+                10f64.powf(0.0 + 6.0 * f64::from(coil_bucket) / 1000.0),
+            );
+            relay.parameters.insert(
+                "pickup_voltage".into(),
+                12.0 * f64::from(pickup_bucket) / 1000.0,
+            );
+            let pressed = solve_transient(
+                &project,
+                &BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]),
+                &BTreeMap::new(),
+                &BTreeMap::new(),
+            );
+            prop_assert!(pressed.is_ok(), "relay range did not converge: {:?}", pressed.err());
+        }
     }
 
     #[test]
@@ -2899,6 +3039,33 @@ mod tests {
         assert!((on.switch_currents[&ComponentId("S1".into())].abs() - 0.375).abs() < 1e-12);
         assert!((on.motor_currents[&ComponentId("M1".into())] - 0.375).abs() < 1e-12);
         assert!((on.motor_speeds[&ComponentId("M1".into())] - 10_000.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn relay_button_selects_calculated_contact_and_coil_current() {
+        let project: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c09-s15-01-relay-switch.json"
+        ))
+        .unwrap();
+        let released = solve_transient(
+            &project,
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        let pressed = solve_transient(
+            &project,
+            &BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        assert!(!released.relay_energized[&ComponentId("K1".into())]);
+        assert!(pressed.relay_energized[&ComponentId("K1".into())]);
+        assert!(pressed.relay_coil_currents[&ComponentId("K1".into())] > 0.06);
+        assert!(pressed.led_currents[&ComponentId("D1".into())] > 0.001);
+        assert!(released.led_currents[&ComponentId("D1".into())] < 1e-5);
     }
 
     #[test]

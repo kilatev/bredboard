@@ -247,6 +247,7 @@ pub fn restore_snapshot(
         let resistor_ids = ids_of(ComponentKind::Resistor);
         let motor_ids = ids_of(ComponentKind::Motor);
         let optocoupler_ids = ids_of(ComponentKind::Optocoupler);
+        let relay_ids = ids_of(ComponentKind::Relay);
         let source_ids = ids_of(ComponentKind::DcVoltageSource);
         let capacitor_ids = ids_of(ComponentKind::Capacitor);
         let led_ids = ids_of(ComponentKind::Led);
@@ -311,6 +312,18 @@ pub fn restore_snapshot(
                 .cloned()
                 .collect::<BTreeSet<_>>()
                 != optocoupler_ids
+            || readings
+                .relay_coil_currents
+                .keys()
+                .cloned()
+                .collect::<BTreeSet<_>>()
+                != relay_ids
+            || readings
+                .relay_energized
+                .keys()
+                .cloned()
+                .collect::<BTreeSet<_>>()
+                != relay_ids
         {
             return Err(persistence_error(
                 "invalid_readings",
@@ -333,6 +346,7 @@ pub fn restore_snapshot(
                 .chain(readings.motor_speeds.values())
                 .chain(readings.motor_currents.values())
                 .chain(readings.optocoupler_input_currents.values())
+                .chain(readings.relay_coil_currents.values())
                 .any(|v| !v.is_finite())
         {
             return Err(persistence_error(

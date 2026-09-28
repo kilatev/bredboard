@@ -1,0 +1,24 @@
+{
+  "format_version": 1,
+  "title": "C09-S15-01: Relay as switch",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 4.5 } },
+    { "id": "B1", "kind": "momentary_button", "pins": { "a": "A5", "b": "A8" }, "parameters": {} },
+    { "id": "K1", "kind": "relay", "pins": { "coil_positive": "B8", "coil_negative": "B11", "common": "C14", "normally_closed": "C17", "normally_open": "C20" }, "parameters": { "coil_resistance": 64.0, "pickup_voltage": 2.0, "contact_resistance": 0.5 } },
+    { "id": "D2", "kind": "diode", "pins": { "anode": "C11", "cathode": "C8" }, "parameters": { "forward_voltage": 0.7, "series_resistance": 10.0 } },
+    { "id": "V2", "kind": "dc_voltage_source", "pins": { "positive": "BP+:1", "negative": "BP-:1" }, "parameters": { "voltage": 9.0 } },
+    { "id": "RNC", "kind": "resistor", "pins": { "a": "D17", "b": "D18" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "D23", "cathode": "D26" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "E26", "b": "E29" }, "parameters": { "resistance": 470.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "C5", "to": "TP+:5" },
+    { "id": "W2", "from": "D11", "to": "TP-:11" },
+    { "id": "W3", "from": "D14", "to": "BP+:14" },
+    { "id": "W4", "from": "E18", "to": "BP-:18" },
+    { "id": "W5", "from": "E20", "to": "E23" },
+    { "id": "W6", "from": "D29", "to": "BP-:29" }
+  ],
+  "initial_conditions": { "controls": { "B1": "button_released" } }
+}
