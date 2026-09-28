@@ -81,6 +81,8 @@ const C03_S04_03_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s04-03-button-counter.json");
 const C03_S04_05_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s04-05-shift-register.json");
+const C03_S04_04_JSON: &str =
+    include_str!("../../../fixtures/projects/c03-s04-04-binary-counter.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -135,6 +137,7 @@ enum Circuit {
     C02S03_07,
     C03S04_03,
     C03S04_05,
+    C03S04_04,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -152,7 +155,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 51] {
+    fn all() -> [Self; 52] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -172,6 +175,7 @@ impl Circuit {
             Self::C02S03_07,
             Self::C03S04_03,
             Self::C03S04_05,
+            Self::C03S04_04,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -260,6 +264,7 @@ impl Circuit {
             Self::C02S03_07 => C02_S03_07_JSON,
             Self::C03S04_03 => C03_S04_03_JSON,
             Self::C03S04_05 => C03_S04_05_JSON,
+            Self::C03S04_04 => C03_S04_04_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -315,6 +320,7 @@ impl Circuit {
             Self::C02S03_07 => "C02-S03-07: LIGHT THEREMIN",
             Self::C03S04_03 => "C03-S04-03: BUTTON COUNTER DISPLAY",
             Self::C03S04_05 => "C03-S04-05: MANUAL SHIFT REGISTER",
+            Self::C03S04_04 => "C03-S04-04: BINARY COUNTER",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -395,6 +401,10 @@ impl Circuit {
             Self::C03S04_05 => (
                 "A calculated eight-bit shift register samples DATA on each rising CLOCK edge and copies the stored pattern to its outputs on LATCH.",
                 "Task: set DATA, press CLOCK once, then press LATCH and inspect the calculated output state.",
+            ),
+            Self::C03S04_04 => (
+                "A calculated bounded counter advances on each button edge and drives four current-limited LEDs as binary bits.",
+                "Task: press S1 repeatedly and record the four calculated bit states from 0 through 9.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -657,6 +667,7 @@ impl Circuit {
                     is_switch: false,
                 },
             ],
+            Self::C03S04_04 => S1_BUTTON,
             Self::E28 => E24_SWITCH,
             Self::E29 => S1_BUTTON,
             Self::E1
@@ -2380,7 +2391,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            51
+            52
         );
         assert!(matches!(
             items[0],
