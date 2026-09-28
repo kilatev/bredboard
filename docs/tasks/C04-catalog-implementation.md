@@ -84,7 +84,8 @@ cannot represent.
 ## Implementation evidence so far
 
 The first admitted C04 fixtures are `CAT-S06-02` (cricket), `CAT-S06-04`
-(metronome), `CAT-S06-05` (doorbell), and `CAT-S06-08` (police siren). S06-02 uses two calculated timer
+(metronome), `CAT-S06-05` (doorbell), `CAT-S06-08` (police siren), and
+`CAT-S06-03` (electronic piano). S06-02 uses two calculated timer
 stages and one adjustable burst control; it validates as 14 components, 9
 wires, and 10 derived nodes, with a 4,000-step speaker-load regression. S06-04
 uses one calculated 555 timing path, one adjustable control, one LED branch,
@@ -94,6 +95,9 @@ validation, fixed-step simulation, embedded app-menu entries, and focused core
 regressions; manual browser evidence remains pending. S06-08 adds a second
 calculated timer, an adjustable slow-rate control, a speaker load, and a finite
 SPDT mode branch; its exact control-voltage sweep remains a source discrepancy.
+S06-03 adds eight button/potentiometer key branches around one calculated 555
+tone path and speaker load; exact one-key frequency selection remains a source
+discrepancy.
 
 The S06-05 full gate passed on 2026-09-29 with: `cargo fmt --all --check`,
 `cargo clippy --workspace --all-targets --locked -- -D warnings`,
@@ -111,6 +115,16 @@ simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
 c04_siren_composes_dual_timers_and_switchable_mode_load --locked`, the app
 catalog test, fixture validation (`18 components, 9 wires, 13 derived nodes`),
 and 4,000-step simulation.
+
+The S06-03 focused gate passed with `cargo test -p bredboard-core
+c04_piano_exposes_eight_calculated_key_branches --locked`, the app catalog test,
+fixture validation (`24 components, 19 wires, 16 derived nodes`), and 4,000-step
+simulation. The S06-03 full gate passed on 2026-09-29 with `cargo fmt --all
+--check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`,
+`cargo test --workspace --locked` (49 app, 94 core, 3 tools, 0 doc-test
+failures), native and WASM app builds, fixture validation and 4,000-step
+simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
+--check`.
 
 ## Current blockers
 

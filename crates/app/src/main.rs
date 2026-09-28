@@ -114,6 +114,7 @@ const C04_S06_04_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-0
 const C04_S06_02_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-02-cricket.json");
 const C04_S06_05_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-05-doorbell.json");
 const C04_S06_08_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-08-siren.json");
+const C04_S06_03_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-03-piano.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -187,6 +188,7 @@ enum Circuit {
     C04S06_02,
     C04S06_05,
     C04S06_08,
+    C04S06_03,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -204,7 +206,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 70] {
+    fn all() -> [Self; 71] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -243,6 +245,7 @@ impl Circuit {
             Self::C04S06_02,
             Self::C04S06_05,
             Self::C04S06_08,
+            Self::C04S06_03,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -350,6 +353,7 @@ impl Circuit {
             Self::C04S06_02 => C04_S06_02_JSON,
             Self::C04S06_05 => C04_S06_05_JSON,
             Self::C04S06_08 => C04_S06_08_JSON,
+            Self::C04S06_03 => C04_S06_03_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -424,6 +428,7 @@ impl Circuit {
             Self::C04S06_02 => "C04-S06-02: CRICKET",
             Self::C04S06_05 => "C04-S06-05: DOORBELL",
             Self::C04S06_08 => "C04-S06-08: POLICE SIREN",
+            Self::C04S06_03 => "C04-S06-03: ELECTRONIC PIANO",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -580,6 +585,10 @@ impl Circuit {
             Self::C04S06_08 => (
                 "Two calculated 555 stages provide slow and fast fixed-step timing, while a speaker load reports the resulting electrical activity. S1 selects two finite mode branches; the source's exact control-voltage sweep remains an explicit discrepancy.",
                 "Task: drag RV1, toggle S1, run the fixture, and compare the two calculated timing capacitors and speaker load.",
+            ),
+            Self::C04S06_03 => (
+                "Eight calculated button-and-potentiometer key branches provide electrical note inputs to a bounded 555 tone path and speaker load. The source's exact musical tuning and one-at-a-time frequency selection remain explicit discrepancies.",
+                "Task: adjust RV1–RV8, press the eight keys, and compare their calculated branch currents with the speaker load.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -1060,6 +1069,48 @@ impl Circuit {
                 component: "S1",
                 is_switch: true,
             }],
+            Self::C04S06_03 => &[
+                ControlSpec {
+                    label: "B1: KEY 1",
+                    component: "B1",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B2: KEY 2",
+                    component: "B2",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B3: KEY 3",
+                    component: "B3",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B4: KEY 4",
+                    component: "B4",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B5: KEY 5",
+                    component: "B5",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B6: KEY 6",
+                    component: "B6",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B7: KEY 7",
+                    component: "B7",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B8: KEY 8",
+                    component: "B8",
+                    is_switch: false,
+                },
+            ],
             Self::C03S04_06 => &[
                 ControlSpec {
                     label: "RED PLAYER",
@@ -1216,6 +1267,40 @@ impl Circuit {
                 label: "RV1: SLOW RATE - drag left/right",
                 component: "RV1",
             }],
+            Self::C04S06_03 => &[
+                DialSpec {
+                    label: "RV1: KEY 1 TUNING - drag left/right",
+                    component: "RV1",
+                },
+                DialSpec {
+                    label: "RV2: KEY 2 TUNING - drag left/right",
+                    component: "RV2",
+                },
+                DialSpec {
+                    label: "RV3: KEY 3 TUNING - drag left/right",
+                    component: "RV3",
+                },
+                DialSpec {
+                    label: "RV4: KEY 4 TUNING - drag left/right",
+                    component: "RV4",
+                },
+                DialSpec {
+                    label: "RV5: KEY 5 TUNING - drag left/right",
+                    component: "RV5",
+                },
+                DialSpec {
+                    label: "RV6: KEY 6 TUNING - drag left/right",
+                    component: "RV6",
+                },
+                DialSpec {
+                    label: "RV7: KEY 7 TUNING - drag left/right",
+                    component: "RV7",
+                },
+                DialSpec {
+                    label: "RV8: KEY 8 TUNING - drag left/right",
+                    component: "RV8",
+                },
+            ],
             Self::E27 => &[DialSpec {
                 label: "RV1: SHARED BRIGHTNESS - drag left/right",
                 component: "RV1",
@@ -2851,7 +2936,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            70
+            71
         );
         assert!(matches!(
             items[0],

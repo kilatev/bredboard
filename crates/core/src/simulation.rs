@@ -1550,6 +1550,49 @@ mod tests {
     }
 
     #[test]
+    fn c04_piano_exposes_eight_calculated_key_branches() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c04-s06-03-piano.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("B1".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::Run,
+            ],
+        );
+        let mut max_speaker = 0.0_f64;
+        for _ in 0..4_000 {
+            advance_steps(&project, &mut state, 1);
+            let solved = state.last_valid.as_ref().unwrap();
+            max_speaker = max_speaker.max(
+                solved
+                    .resistor_currents
+                    .get(&ComponentId("SP1".into()))
+                    .copied()
+                    .unwrap_or(0.0)
+                    .abs(),
+            );
+        }
+        let key_one =
+            state.last_valid.as_ref().unwrap().resistor_currents[&ComponentId("RV1".into())].abs();
+        let key_two =
+            state.last_valid.as_ref().unwrap().resistor_currents[&ComponentId("RV2".into())].abs();
+        assert!(!state.stale, "diagnostics={:?}", state.diagnostics);
+        assert!(max_speaker > 0.004);
+        assert!(key_one > 0.0001);
+        assert!(key_two < 1e-6);
+    }
+
+    #[test]
     fn c03_shift_register_calculates_shift_then_latch() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c03-s04-05-shift-register.json"
