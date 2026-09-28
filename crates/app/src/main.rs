@@ -64,6 +64,8 @@ const C01_S02_01_JSON: &str =
     include_str!("../../../fixtures/projects/c01-s02-01-transistor-key.json");
 const C01_S02_02_JSON: &str =
     include_str!("../../../fixtures/projects/c01-s02-02-dusk-night-light.json");
+const C01_S02_06_JSON: &str =
+    include_str!("../../../fixtures/projects/c01-s02-06-transistor-logic.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -108,6 +110,7 @@ enum Circuit {
     C01S01_06,
     C01S02_01,
     C01S02_02,
+    C01S02_06,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -125,7 +128,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 41] {
+    fn all() -> [Self; 42] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -135,6 +138,7 @@ impl Circuit {
             Self::C01S01_06,
             Self::C01S02_01,
             Self::C01S02_02,
+            Self::C01S02_06,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -213,6 +217,7 @@ impl Circuit {
             Self::C01S01_06 => C01_S01_06_JSON,
             Self::C01S02_01 => C01_S02_01_JSON,
             Self::C01S02_02 => C01_S02_02_JSON,
+            Self::C01S02_06 => C01_S02_06_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -258,6 +263,7 @@ impl Circuit {
             Self::C01S01_06 => "C01-S01-06: SMOOTH FADE",
             Self::C01S02_01 => "C01-S02-01: BC547 TRANSISTOR KEY",
             Self::C01S02_02 => "C01-S02-02: DUSK NIGHT LIGHT",
+            Self::C01S02_06 => "C01-S02-06: TRANSISTOR LOGIC",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -298,6 +304,10 @@ impl Circuit {
             Self::C01S02_02 => (
                 "The photoresistor and two-terminal threshold control bias a BC547 so the LED becomes brighter as the simulated room gets darker.",
                 "Task: sweep R3 from bright to dark and adjust RV1; compare the LED current at each threshold.",
+            ),
+            Self::C01S02_06 => (
+                "Two button input rails drive five BC547 stages: two transistors form AND, two form OR, and the fifth is a calculated NOT output.",
+                "Task: test all four A/B button combinations and record the calculated AND, OR, and NOT LED states.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -526,6 +536,7 @@ impl Circuit {
             Self::E22 => E22_BUTTONS,
             Self::E25 => E25_BUTTONS,
             Self::E26 => E9_BUTTONS,
+            Self::C01S02_06 => E9_BUTTONS,
             Self::E28 => E24_SWITCH,
             Self::E29 => S1_BUTTON,
             Self::E1
@@ -2197,7 +2208,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            41
+            42
         );
         assert!(matches!(
             items[0],

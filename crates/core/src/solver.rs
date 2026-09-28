@@ -184,6 +184,10 @@ fn solve_internal(
             .count()
             >= 2
         && nonlinear.len() >= 2;
+    let use_collector_base_jacobian = dt.is_none()
+        || !branches
+            .iter()
+            .any(|branch| matches!(branch.kind, BranchKind::Capacitor));
     let relaxation = if coupled_transient {
         NONLINEAR_RELAXATION
     } else {
@@ -336,7 +340,14 @@ fn solve_internal(
             rhs[current_var] = branch.value;
         }
         for element in &nonlinear {
-            stamp_element(element, &guess, &voltage_vars, &mut matrix, &mut rhs);
+            stamp_element(
+                element,
+                &guess,
+                &voltage_vars,
+                &mut matrix,
+                &mut rhs,
+                use_collector_base_jacobian,
+            );
         }
         let solution = gaussian_solve(matrix, rhs).ok_or_else(|| {
             calc(
@@ -810,9 +821,20 @@ fn led_current(v: f64, forward: f64, resistance: f64) -> (f64, f64) {
 // saturation-current parameter sets the junction turn-on voltage.
 fn npn_currents(vbe: f64, vce: f64, beta: f64, saturation: f64) -> (f64, f64, f64, f64) {
     let threshold = 0.026 * (0.001 / saturation).ln();
-    let (ib, _) = led_current(vbe, threshold, 100.0);
-    let conductance = (beta * ib.max(0.0) / 0.2).clamp(1e-9, 1.0);
-    (ib, conductance * vce, 0.0, conductance)
+    let (ib, base_conductance) = led_current(vbe, threshold, 100.0);
+    let unclamped = beta * ib.max(0.0) / 0.2;
+    let conductance = unclamped.clamp(1e-9, 1.0);
+    let collector_base_conductance = if (1e-9..=1.0).contains(&unclamped) {
+        beta * base_conductance / 0.2 * vce
+    } else {
+        0.0
+    };
+    (
+        ib,
+        conductance * vce,
+        collector_base_conductance,
+        conductance,
+    )
 }
 
 fn stamp_current(
@@ -847,6 +869,7 @@ fn stamp_element(
     vars: &BTreeMap<usize, usize>,
     matrix: &mut [Vec<f64>],
     rhs: &mut [f64],
+    use_collector_base_jacobian: bool,
 ) {
     match element {
         NonlinearElement::Led {
@@ -898,6 +921,7 @@ fn stamp_element(
             let vbe = voltage(guess, vars, *base) - voltage(guess, vars, *emitter);
             let vce = voltage(guess, vars, *collector) - voltage(guess, vars, *emitter);
             let (ib, ic, gm, go) = npn_currents(vbe, vce, *beta, *saturation);
+            let gm = if use_collector_base_jacobian { gm } else { 0.0 };
             let (_, gib) = led_current(vbe, 0.026 * (0.001 / saturation).ln(), 100.0);
             stamp_current(
                 (*base, *emitter),
@@ -929,6 +953,7 @@ fn stamp_element(
             let veb = voltage(guess, vars, *emitter) - voltage(guess, vars, *base);
             let vec = voltage(guess, vars, *emitter) - voltage(guess, vars, *collector);
             let (ib, ic, gm, go) = npn_currents(veb, vec, *beta, *saturation);
+            let gm = if use_collector_base_jacobian { gm } else { 0.0 };
             let (_, gib) = led_current(veb, 0.026 * (0.001 / saturation).ln(), 100.0);
             stamp_current(
                 (*emitter, *base),
@@ -1607,9 +1632,8 @@ mod tests {
         }
     }
 
-    /// T22/T23 fixed-exercise fixtures: topology validity for all ten new
-    /// exercises, plus the specific electrical behavior each exercise's
-    /// acceptance criteria calls out.
+    /// Reference and admitted C01 fixtures: topology validity plus the
+    /// specific electrical behavior each fixture's acceptance criteria calls out.
     mod exercises {
         use super::*;
 
@@ -1646,10 +1670,11 @@ mod tests {
         fixture_json!(C01_S01_06, "c01-s01-06-smooth-fade.json");
         fixture_json!(C01_S02_01, "c01-s02-01-transistor-key.json");
         fixture_json!(C01_S02_02, "c01-s02-02-dusk-night-light.json");
+        fixture_json!(C01_S02_06, "c01-s02-06-transistor-logic.json");
 
         #[test]
-        fn all_ten_exercise_fixtures_have_valid_solvable_topology() {
-            for json in [E1, E2, E3, E4, E7, E8, E9, E5, E6] {
+        fn all_embedded_exercise_fixtures_have_valid_solvable_topology() {
+            for json in [E1, E2, E3, E4, E7, E8, E9, E5, E6, C01_S02_06] {
                 let project = fixture(json);
                 compile_topology(&project).unwrap_or_else(|e| panic!("{}: {e:?}", project.title));
                 solve_dc(&project, &BTreeMap::new(), &BTreeMap::new())
@@ -1751,6 +1776,47 @@ mod tests {
                 dark.led_currents[&ComponentId("D1".into())]
                     > bright.led_currents[&ComponentId("D1".into())]
             );
+        }
+
+        #[test]
+        fn c01_transistor_logic_matches_all_four_input_combinations() {
+            let project = fixture(C01_S02_06);
+            let inputs = [
+                (false, false, false, false, true),
+                (true, false, false, true, false),
+                (false, true, false, true, true),
+                (true, true, true, true, false),
+            ];
+            for (a_pressed, b_pressed, and_on, or_on, not_on) in inputs {
+                let mut controls = BTreeMap::new();
+                if a_pressed {
+                    controls.insert(ComponentId("S1".into()), ControlState::ButtonPressed);
+                }
+                if b_pressed {
+                    controls.insert(ComponentId("S2".into()), ControlState::ButtonPressed);
+                }
+                let result =
+                    solve_dc(&project, &controls, &BTreeMap::new()).unwrap_or_else(|error| {
+                        panic!("solve failed for A={a_pressed}, B={b_pressed}: {error:?}")
+                    });
+                let assert_led = |id: &str, on: bool, label: &str| {
+                    let current = result.led_currents[&ComponentId(id.into())];
+                    if on {
+                        assert!(
+                            current > 0.001,
+                            "{label} mismatch for A={a_pressed}, B={b_pressed}: {current}"
+                        );
+                    } else {
+                        assert!(
+                            current < 1e-4,
+                            "{label} mismatch for A={a_pressed}, B={b_pressed}: {current}"
+                        );
+                    }
+                };
+                assert_led("D1", and_on, "AND");
+                assert_led("D2", or_on, "OR");
+                assert_led("D3", not_on, "NOT");
+            }
         }
 
         #[test]

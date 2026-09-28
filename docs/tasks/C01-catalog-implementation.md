@@ -119,15 +119,39 @@ cargo test -p bredboard-app — passed
 The Section 01 rows remain release-blocked until manual continuity, polarity,
 measurement, and visual evidence is recorded. C01 is not `ready_for_fukit`.
 
-The current Section 02 slice adds two NPN fixtures under
+The current Section 02 slice adds three fixtures under
 `fixtures/projects/c01-s02-*.json`, selects the BC547 pin convention, and
 removes the source's unlisted motor behavior from the player-facing contract.
+S02-06 follows the five-NPN topology visible in its SVG; the three-NPN BOM
+count is recorded as a source discrepancy rather than dropping stages. Its
+calculated AND/OR/NOT truth table passes all four button combinations.
 The diode and PNP runtime contracts are also present, but no S02-05 candidate
 is admitted: the catalog's 47 kΩ/47 µF cross-coupled oscillator remains
 nonconvergent at a later polarity transition under the fixed-step solver.
-S02-06 remains blocked because its SVG contains five NPN symbols while its BOM
-claims three. The touch, water, logic, and PNP/speaker entries remain blocked
-with their ledger dispositions intact.
+The touch, water, and PNP/speaker entries remain blocked with their ledger
+dispositions intact.
+
+Latest automated evidence for this slice:
+
+```text
+cargo fmt --all --check — passed
+cargo clippy --workspace --all-targets --locked -- -D warnings — passed
+cargo test --workspace --locked — passed (49 app, 66 core, 3 tools tests)
+cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked — passed
+cargo build -p bredboard-app --target wasm32-unknown-unknown --locked — passed
+cargo run -p bredboard-tools --locked -- validate-catalog breadboard-circuits/spec/catalog.json breadboard-circuits/spec/catalog.schema.json — passed; 20 sections, 212 schematics
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s01-01-first-safe-light.json — passed; 3 components, 2 wires, 3 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s01-02-button-and-switch.json — passed; 7 components, 3 wires, 7 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s01-03-series-and-parallel.json — passed; 8 components, 8 wires, 5 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s01-04-potentiometer-dimmer.json — passed; 4 components, 2 wires, 4 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s01-05-reverse-polarity.json — passed; 4 components, 2 wires, 4 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s01-06-smooth-fade.json — passed; 6 components, 3 wires, 5 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s02-01-transistor-key.json — passed; 6 components, 3 wires, 6 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s02-02-dusk-night-light.json — passed; 7 components, 6 wires, 5 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s02-06-transistor-logic.json — passed; 20 components, 12 wires, 14 derived nodes
+cargo test -p bredboard-core c01_transistor_logic_matches_all_four_input_combinations --locked — passed
+cargo test -p bredboard-app e30_asymmetric_initial_state_sustains_multiple_alternating_led_cycles --locked — passed
+```
 
 ## Manual assembly checklist
 
@@ -149,8 +173,8 @@ battery-only safety decisions.
 - A candidate S02-05 project with the source's 47 kΩ/47 µF values validated
   structurally but stopped with `nonconvergence` during a later polarity
   transition; it was deleted and is not counted as an implementation.
-- S02-06 requires an owner decision on the five-transistor SVG versus the
-  three-transistor BOM before its topology can be represented honestly.
+- S02-06 uses the five-transistor SVG topology; the three-transistor BOM count
+  remains an explicit source discrepancy in the ledger and fixture contract.
 - Touch pads and water probes need a safe, reproducible physical-prop scope
   decision.
 - S01-06's nominal RC time constant does not support its “couple seconds”

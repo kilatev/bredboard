@@ -27,17 +27,20 @@ open in the shared assembly protocol.
 The admitted NPN slice selects a BC547 convention for content and assembly:
 the flat face is the reference orientation and the electrical names remain
 `base`, `collector`, and `emitter` in the project contract. The source's
-“BC547 or 2N3904” alternative is not exposed in the fixture. Both fixtures
-use the normalized 5 V supply.
+“BC547 or 2N3904” alternative is not exposed in the fixture. The three
+implemented Section 02 fixtures use the normalized 5 V supply. S02-06 follows
+the five-transistor topology drawn in its SVG; the source BOM's three-NPN count
+is retained as a catalog discrepancy rather than silently dropping two stages.
 
 | Entry | Fixture | Controls/readouts | Model decision |
 |---|---|---|---|
 | C01-S02-01 | `c01-s02-01-transistor-key.json` | B1; D1 and Q1 collector current | The source's unlisted motor behavior is excluded; the calculated LED load is the documented switched output. |
 | C01-S02-02 | `c01-s02-02-dusk-night-light.json` | R3 ambient light; RV1 threshold; D1/Q1 current | The photoresistor and potentiometer are two-terminal rheostats; dark raises the base drive and bright lowers it. |
+| C01-S02-06 | `c01-s02-06-transistor-logic.json` | S1/S2; D1 AND, D2 OR, D3 NOT currents | The SVG topology is authoritative for the five NPN stages; buttons feed active-high A/B rails through calculated resistor networks, and the DC-only transistor Jacobian is used without changing the fixed transient oscillator path. |
 
-The touch-pad, water-probe, two-transistor flasher, transistor-logic, and
-speaker entries remain blocked in the ledger until their physical or design
-contracts are accepted. No scripted output is used for those entries.
+The touch-pad, water-probe, two-transistor flasher, and speaker entries remain
+blocked in the ledger until their physical or design contracts are accepted.
+No scripted output is used for those entries.
 The core also now has a mirrored `pnp_transistor` model with the same named
 pins and bounded beta/saturation parameters. It is model-tested as a high-side
 load; the S02-07 fixture remains blocked until the speaker power/current bound

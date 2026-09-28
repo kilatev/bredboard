@@ -1,0 +1,41 @@
+{
+  "format_version": 1,
+  "title": "C01-S02-06: Transistor Logic",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "S1", "kind": "momentary_button", "pins": { "a": "A5", "b": "A8" }, "parameters": {} },
+    { "id": "S2", "kind": "momentary_button", "pins": { "a": "B5", "b": "B9" }, "parameters": {} },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "C8", "b": "C25" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "D9", "b": "D25" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "E8", "b": "E10" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R4", "kind": "resistor", "pins": { "a": "F9", "b": "F11" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R5", "kind": "resistor", "pins": { "a": "G8", "b": "G12" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R6", "kind": "resistor", "pins": { "a": "A9", "b": "A13" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "collector": "F15", "base": "F10", "emitter": "F16" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "Q2", "kind": "npn_transistor", "pins": { "collector": "G16", "base": "G11", "emitter": "G27" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "Q3", "kind": "npn_transistor", "pins": { "collector": "A18", "base": "A12", "emitter": "A26" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "Q4", "kind": "npn_transistor", "pins": { "collector": "B18", "base": "B13", "emitter": "G28" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "Q5", "kind": "npn_transistor", "pins": { "collector": "C19", "base": "B10", "emitter": "B26" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "R7", "kind": "resistor", "pins": { "a": "G5", "b": "D14" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "E14", "cathode": "E15" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "R8", "kind": "resistor", "pins": { "a": "E5", "b": "F17" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D2", "kind": "led", "pins": { "anode": "G17", "cathode": "C18" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "R9", "kind": "resistor", "pins": { "a": "B6", "b": "A19" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D3", "kind": "led", "pins": { "anode": "D19", "cathode": "E25" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "C5", "to": "TP+:5" },
+    { "id": "W2", "from": "A25", "to": "TP-:25" },
+    { "id": "W3", "from": "D5", "to": "F5" },
+    { "id": "W4", "from": "C26", "to": "B25" },
+    { "id": "W5", "from": "D26", "to": "F27" },
+    { "id": "W6", "from": "E26", "to": "F28" },
+    { "id": "W7", "from": "D8", "to": "F8" },
+    { "id": "W8", "from": "C9", "to": "G9" },
+    { "id": "W9", "from": "D10", "to": "G10" },
+    { "id": "W10", "from": "E12", "to": "F12" },
+    { "id": "W11", "from": "D15", "to": "G15" },
+    { "id": "W12", "from": "C6", "to": "TP+:6" }
+  ]
+}
