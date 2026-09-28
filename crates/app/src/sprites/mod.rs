@@ -9,6 +9,7 @@ mod button;
 mod buzzer;
 mod canvas;
 mod capacitor;
+mod diode;
 #[cfg(test)]
 mod future;
 mod led;
@@ -66,6 +67,7 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
     match kind {
         ComponentKind::Resistor => Some(&resistor::Resistor),
         ComponentKind::Led => Some(&led::Led),
+        ComponentKind::Diode => Some(&diode::Diode),
         ComponentKind::MomentaryButton => Some(&button::Button),
         ComponentKind::Capacitor => Some(&capacitor::Capacitor),
         ComponentKind::NpnTransistor => Some(&transistor::Transistor),
@@ -269,7 +271,7 @@ mod tests {
 
     #[test]
     fn every_state_of_a_part_has_the_same_size() {
-        let parts: [(&dyn PartArt, Component); 10] = [
+        let parts: [(&dyn PartArt, Component); 11] = [
             (
                 &resistor::Resistor,
                 component(
@@ -284,6 +286,14 @@ mod tests {
                     ComponentKind::Led,
                     &[("anode", "A1"), ("cathode", "A2")],
                     &[],
+                ),
+            ),
+            (
+                &diode::Diode,
+                component(
+                    ComponentKind::Diode,
+                    &[("anode", "A1"), ("cathode", "A4")],
+                    &[("forward_voltage", 0.7), ("series_resistance", 10.0)],
                 ),
             ),
             (

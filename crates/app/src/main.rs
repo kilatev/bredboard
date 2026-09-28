@@ -48,6 +48,18 @@ const E27_JSON: &str =
 const E28_JSON: &str = include_str!("../../../fixtures/projects/e28-power-source-selector.json");
 const E29_JSON: &str = include_str!("../../../fixtures/projects/e29-sensitivity-detector.json");
 const E30_JSON: &str = include_str!("../../../fixtures/projects/e30-two-transistor-flasher.json");
+const C01_S01_01_JSON: &str =
+    include_str!("../../../fixtures/projects/c01-s01-01-first-safe-light.json");
+const C01_S01_02_JSON: &str =
+    include_str!("../../../fixtures/projects/c01-s01-02-button-and-switch.json");
+const C01_S01_03_JSON: &str =
+    include_str!("../../../fixtures/projects/c01-s01-03-series-and-parallel.json");
+const C01_S01_04_JSON: &str =
+    include_str!("../../../fixtures/projects/c01-s01-04-potentiometer-dimmer.json");
+const C01_S01_05_JSON: &str =
+    include_str!("../../../fixtures/projects/c01-s01-05-reverse-polarity.json");
+const C01_S01_06_JSON: &str =
+    include_str!("../../../fixtures/projects/c01-s01-06-smooth-fade.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -84,6 +96,12 @@ enum Circuit {
     E28,
     E29,
     E30,
+    C01S01_01,
+    C01S01_02,
+    C01S01_03,
+    C01S01_04,
+    C01S01_05,
+    C01S01_06,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -101,8 +119,14 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 33] {
+    fn all() -> [Self; 39] {
         [
+            Self::C01S01_01,
+            Self::C01S01_02,
+            Self::C01S01_03,
+            Self::C01S01_04,
+            Self::C01S01_05,
+            Self::C01S01_06,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -173,6 +197,12 @@ impl Circuit {
             Self::E28 => E28_JSON,
             Self::E29 => E29_JSON,
             Self::E30 => E30_JSON,
+            Self::C01S01_01 => C01_S01_01_JSON,
+            Self::C01S01_02 => C01_S01_02_JSON,
+            Self::C01S01_03 => C01_S01_03_JSON,
+            Self::C01S01_04 => C01_S01_04_JSON,
+            Self::C01S01_05 => C01_S01_05_JSON,
+            Self::C01S01_06 => C01_S01_06_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -210,6 +240,12 @@ impl Circuit {
             Self::E28 => "E28: POWER SOURCE SELECTOR",
             Self::E29 => "E29: SENSITIVITY DETECTOR",
             Self::E30 => "E30: TWO-TRANSISTOR FLASHER",
+            Self::C01S01_01 => "C01-S01-01: FIRST SAFE LIGHT",
+            Self::C01S01_02 => "C01-S01-02: BUTTON AND CHANGEOVER SWITCH",
+            Self::C01S01_03 => "C01-S01-03: SERIES AND PARALLEL LED PATHS",
+            Self::C01S01_04 => "C01-S01-04: POTENTIOMETER DIMMER",
+            Self::C01S01_05 => "C01-S01-05: REVERSE-POLARITY PROTECTION",
+            Self::C01S01_06 => "C01-S01-06: SMOOTH FADE",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -219,6 +255,30 @@ impl Circuit {
     fn explanation_and_task(self) -> (&'static str, &'static str) {
         match self {
             Self::Led | Self::Rc | Self::Transistor => ("", ""),
+            Self::C01S01_01 => (
+                "A 470 ohm resistor limits the 5 V supply current, so the LED lights safely without a destructive failure outcome.",
+                "Task: run the fixture and confirm the calculated LED current stays bounded.",
+            ),
+            Self::C01S01_02 => (
+                "The button enables the circuit and the changeover switch selects exactly one resistor-and-LED branch.",
+                "Task: hold the button and toggle the switch; confirm only the selected LED lights.",
+            ),
+            Self::C01S01_03 => (
+                "The fixture places a two-LED series path beside independent resistor paths so current and topology can be compared.",
+                "Task: run the board and compare the calculated currents in the series and parallel paths.",
+            ),
+            Self::C01S01_04 => (
+                "The potentiometer is used as a two-terminal rheostat with a 330 ohm safety floor, changing LED current continuously.",
+                "Task: drag the dial and confirm the LED current changes monotonically.",
+            ),
+            Self::C01S01_05 => (
+                "A rectifier diode in series with the LED branch conducts in the forward direction and blocks a reversed source.",
+                "Task: run the forward-polarity fixture and inspect the diode's anode/cathode labels before reversing the source in a later experiment.",
+            ),
+            Self::C01S01_06 => (
+                "The button charges a 470 uF capacitor through 100 ohms; after release, the capacitor discharges through the 470 ohm LED branch.",
+                "Task: hold the button, release it, and observe the calculated capacitor voltage and LED fade.",
+            ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
                 "Task: run the circuit and confirm the LED lights immediately, with no switch needed.",
@@ -412,6 +472,19 @@ impl Circuit {
         }];
         match self {
             Self::Rc => RC,
+            Self::C01S01_02 => &[
+                ControlSpec {
+                    label: "B1: PRESS / RELEASE",
+                    component: "B1",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "S1: TOGGLE A / B",
+                    component: "S1",
+                    is_switch: true,
+                },
+            ],
+            Self::C01S01_06 => B1_BUTTON,
             Self::E11 => E11_SWITCH,
             Self::E24 => E24_SWITCH,
             Self::Led
@@ -446,6 +519,7 @@ impl Circuit {
             | Self::E19
             | Self::E20 => &[],
             Self::E21 | Self::E23 | Self::E27 | Self::E30 => &[],
+            Self::C01S01_01 | Self::C01S01_03 | Self::C01S01_04 | Self::C01S01_05 => &[],
         }
     }
     /// The continuous dial/slider control for variable-resistor exercises.
@@ -462,6 +536,10 @@ impl Circuit {
             },
         ];
         match self {
+            Self::C01S01_04 => &[DialSpec {
+                label: "RV1: DIMMER - drag left/right",
+                component: "RV1",
+            }],
             Self::E5 => &[DialSpec {
                 label: "RV1: BRIGHTNESS DIAL - drag left/right",
                 component: "RV1",
@@ -1222,6 +1300,11 @@ fn component_summary(component: &Component) -> String {
             component.pins[&bredboard_core::PinId("anode".into())].0,
             component.pins[&bredboard_core::PinId("cathode".into())].0
         ),
+        ComponentKind::Diode => format!(
+            "{id}  diode  A {} / K {}",
+            component.pins[&bredboard_core::PinId("anode".into())].0,
+            component.pins[&bredboard_core::PinId("cathode".into())].0
+        ),
         ComponentKind::Capacitor => format!(
             "{id}  {:.0} uF  + {} / - {}",
             component.parameters["capacitance"] * 1_000_000.0,
@@ -1816,14 +1899,16 @@ fn update_view(
                     bench.simulation.last_valid.as_ref().map_or(
                         "LED current: run to measure".into(),
                         |result| {
-                            let extra = if bench.circuit == Circuit::E10 {
-                                format!(
-                                    "  C1 {:.3} V",
-                                    bench.simulation.capacitor_voltages[&ComponentId("C1".into())]
-                                )
-                            } else {
-                                String::new()
-                            };
+                            let extra =
+                                if matches!(bench.circuit, Circuit::E10 | Circuit::C01S01_06) {
+                                    format!(
+                                        "  C1 {:.3} V",
+                                        bench.simulation.capacitor_voltages
+                                            [&ComponentId("C1".into())]
+                                    )
+                                } else {
+                                    String::new()
+                                };
                             format!(
                                 "D1  {:.2} mA{extra}",
                                 1000.0
@@ -2071,7 +2156,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            33
+            39
         );
         assert!(matches!(
             items[0],

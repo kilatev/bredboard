@@ -33,6 +33,8 @@ pub struct SolveResult {
     #[serde(default)]
     pub led_currents: BTreeMap<ComponentId, f64>,
     #[serde(default)]
+    pub diode_currents: BTreeMap<ComponentId, f64>,
+    #[serde(default)]
     pub transistor_collector_currents: BTreeMap<ComponentId, f64>,
 }
 
@@ -62,6 +64,13 @@ enum BranchKind {
 #[derive(Clone)]
 enum NonlinearElement {
     Led {
+        id: ComponentId,
+        anode: usize,
+        cathode: usize,
+        forward: f64,
+        resistance: f64,
+    },
+    Diode {
         id: ComponentId,
         anode: usize,
         cathode: usize,
@@ -179,6 +188,7 @@ fn solve_internal(
             capacitor_voltages: BTreeMap::new(),
             capacitor_currents: BTreeMap::new(),
             led_currents: BTreeMap::new(),
+            diode_currents: BTreeMap::new(),
             transistor_collector_currents: BTreeMap::new(),
         });
     }
@@ -190,7 +200,8 @@ fn solve_internal(
     }
     for element in &nonlinear {
         let (a, b, c) = match element {
-            NonlinearElement::Led { anode, cathode, .. } => (*anode, *cathode, None),
+            NonlinearElement::Led { anode, cathode, .. }
+            | NonlinearElement::Diode { anode, cathode, .. } => (*anode, *cathode, None),
             NonlinearElement::Npn {
                 base,
                 collector,
@@ -348,6 +359,7 @@ fn solve_internal(
     let mut capacitor_voltages = BTreeMap::new();
     let mut capacitor_currents = BTreeMap::new();
     let mut led_currents = BTreeMap::new();
+    let mut diode_currents = BTreeMap::new();
     let mut transistor_collector_currents = BTreeMap::new();
     for branch in &branches {
         let current = match branch.kind {
@@ -401,6 +413,17 @@ fn solve_internal(
                     - voltage(&solution, &voltage_vars, *cathode);
                 led_currents.insert(id.clone(), led_current(v, *forward, *resistance).0);
             }
+            NonlinearElement::Diode {
+                id,
+                anode,
+                cathode,
+                forward,
+                resistance,
+            } => {
+                let v = voltage(&solution, &voltage_vars, *anode)
+                    - voltage(&solution, &voltage_vars, *cathode);
+                diode_currents.insert(id.clone(), led_current(v, *forward, *resistance).0);
+            }
             NonlinearElement::Npn {
                 id,
                 base,
@@ -426,6 +449,7 @@ fn solve_internal(
         capacitor_voltages,
         capacitor_currents,
         led_currents,
+        diode_currents,
         transistor_collector_currents,
     })
 }
@@ -481,6 +505,19 @@ fn make_branches(
                 let cathode = node("cathode")?;
                 active.extend([anode, cathode]);
                 nonlinear.push(NonlinearElement::Led {
+                    id: component.id.clone(),
+                    anode,
+                    cathode,
+                    forward: component.parameters["forward_voltage"],
+                    resistance: component.parameters["series_resistance"],
+                });
+                continue;
+            }
+            ComponentKind::Diode => {
+                let anode = node("anode")?;
+                let cathode = node("cathode")?;
+                active.extend([anode, cathode]);
+                nonlinear.push(NonlinearElement::Diode {
                     id: component.id.clone(),
                     anode,
                     cathode,
@@ -764,6 +801,25 @@ fn stamp_element(
 ) {
     match element {
         NonlinearElement::Led {
+            anode,
+            cathode,
+            forward,
+            resistance,
+            ..
+        } => {
+            let v = voltage(guess, vars, *anode) - voltage(guess, vars, *cathode);
+            let (current, conductance) = led_current(v, *forward, *resistance);
+            stamp_current(
+                (*anode, *cathode),
+                current,
+                &[(*anode, conductance), (*cathode, -conductance)],
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
+        NonlinearElement::Diode {
             anode,
             cathode,
             forward,
@@ -1430,6 +1486,12 @@ mod tests {
         fixture_json!(E10, "e10-smooth-fade.json");
         fixture_json!(E5, "e5-brightness-dial.json");
         fixture_json!(E6, "e6-light-reactive-led.json");
+        fixture_json!(C01_S01_01, "c01-s01-01-first-safe-light.json");
+        fixture_json!(C01_S01_02, "c01-s01-02-button-and-switch.json");
+        fixture_json!(C01_S01_03, "c01-s01-03-series-and-parallel.json");
+        fixture_json!(C01_S01_04, "c01-s01-04-potentiometer-dimmer.json");
+        fixture_json!(C01_S01_05, "c01-s01-05-reverse-polarity.json");
+        fixture_json!(C01_S01_06, "c01-s01-06-smooth-fade.json");
 
         #[test]
         fn all_ten_exercise_fixtures_have_valid_solvable_topology() {
@@ -1445,6 +1507,57 @@ mod tests {
             compile_topology(&e10).unwrap_or_else(|e| panic!("{}: {e:?}", e10.title));
             solve_transient(&e10, &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new())
                 .unwrap_or_else(|e| panic!("{}: {e:?}", e10.title));
+        }
+
+        #[test]
+        fn c01_level_one_fixtures_validate_and_follow_their_controls() {
+            for json in [C01_S01_01, C01_S01_03, C01_S01_04, C01_S01_05] {
+                let project = fixture(json);
+                compile_topology(&project).unwrap_or_else(|e| panic!("{}: {e:?}", project.title));
+                let result = solve_dc(&project, &BTreeMap::new(), &BTreeMap::new())
+                    .unwrap_or_else(|e| panic!("{}: {e:?}", project.title));
+                assert!(result.led_currents[&ComponentId("D1".into())] > 0.0005);
+            }
+
+            let button = fixture(C01_S01_02);
+            let pressed = BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]);
+            let selected = solve_dc(&button, &pressed, &BTreeMap::new()).unwrap();
+            assert!(selected.led_currents[&ComponentId("D1".into())] > 0.0005);
+            assert!(selected.led_currents[&ComponentId("D2".into())].abs() < 1e-6);
+
+            let fade = fixture(C01_S01_06);
+            let mut capacitor_voltages = BTreeMap::new();
+            let mut charged = 0.0;
+            for _ in 0..2_500 {
+                let result =
+                    solve_transient(&fade, &pressed, &capacitor_voltages, &BTreeMap::new())
+                        .unwrap();
+                charged = result.capacitor_voltages[&ComponentId("C1".into())];
+                capacitor_voltages = result.capacitor_voltages;
+            }
+            assert!(charged > 3.0);
+        }
+
+        #[test]
+        fn c01_reverse_polarity_fixture_blocks_reversed_supply() {
+            let mut project = fixture(C01_S01_05);
+            let forward = solve_dc(&project, &BTreeMap::new(), &BTreeMap::new()).unwrap();
+            assert!(forward.diode_currents[&ComponentId("D0".into())] > 0.001);
+            let source = project
+                .components
+                .iter_mut()
+                .find(|c| c.id.0 == "V1")
+                .unwrap();
+            let positive = source.pins[&crate::PinId("positive".into())].clone();
+            let negative = source.pins[&crate::PinId("negative".into())].clone();
+            source
+                .pins
+                .insert(crate::PinId("positive".into()), negative);
+            source
+                .pins
+                .insert(crate::PinId("negative".into()), positive);
+            let reversed = solve_dc(&project, &BTreeMap::new(), &BTreeMap::new()).unwrap();
+            assert!(reversed.diode_currents[&ComponentId("D0".into())].abs() < 1e-6);
         }
 
         #[test]

@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "title": "C01-S01-02: Button and Changeover Switch",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "B1", "kind": "momentary_button", "pins": { "a": "A5", "b": "A8" }, "parameters": {} },
+    { "id": "S1", "kind": "changeover_switch", "pins": { "common": "B8", "normally_closed": "B11", "normally_open": "B20" }, "parameters": {} },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A11", "b": "B14" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "A14", "cathode": "B17" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "A20", "b": "B23" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D2", "kind": "led", "pins": { "anode": "A23", "cathode": "B26" }, "parameters": { "forward_voltage": 2.1, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "B5", "to": "TP+:5" },
+    { "id": "W2", "from": "A17", "to": "TP-:17" },
+    { "id": "W3", "from": "A26", "to": "TP-:26" }
+  ],
+  "initial_conditions": { "controls": { "B1": "button_released", "S1": "switch_normally_closed" } }
+}

@@ -1,6 +1,7 @@
 # C01 — Level 1 and transistor reference fixtures
 
-Status: pending
+Status: pending; Section 01 fixture slice implemented, manual acceptance and
+Sections 01/02 release decisions remain open.
 
 ## Dependencies
 
@@ -95,6 +96,27 @@ tests, deterministic action/step behavior where applicable, and a manual
 Linux interaction check for every admitted menu fixture. A successful build is
 not interaction or manual-assembly evidence. Browser interaction is not part
 of this card's acceptance.
+
+## Section 01 implementation evidence
+
+The current Section 01 slice adds six embedded fixtures under
+`fixtures/projects/c01-s01-*.json`, registers them in the app menu, and adds
+the smallest missing runtime contract for the 1N4007 reference: a smooth
+two-pin `diode` with `anode/cathode`, bounded parameters, calculated current,
+and a cathode-band sprite. The source 9 V labels are normalized to the
+product's 5 V supply. The destructive S01-01 wording is replaced with a
+bounded current observation, and the S01-06 timing claim is replaced with the
+documented 470 uF / 470 ohm time constant.
+
+Checks run for this slice:
+
+```text
+cargo test -p bredboard-core — passed
+cargo test -p bredboard-app — passed
+```
+
+The Section 01 rows remain release-blocked until manual continuity, polarity,
+measurement, and visual evidence is recorded. C01 is not `ready_for_fukit`.
 
 ## Manual assembly checklist
 

@@ -97,6 +97,8 @@ pub enum ComponentKind {
     DcVoltageSource,
     Resistor,
     Led,
+    /// Two-terminal rectifier diode with a smooth forward characteristic.
+    Diode,
     Capacitor,
     NpnTransistor,
     MomentaryButton,
@@ -456,7 +458,7 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
     match k {
         ComponentKind::DcVoltageSource => &["negative", "positive"],
         ComponentKind::Resistor => &["a", "b"],
-        ComponentKind::Led => &["anode", "cathode"],
+        ComponentKind::Led | ComponentKind::Diode => &["anode", "cathode"],
         ComponentKind::Capacitor => &["negative", "positive"],
         ComponentKind::NpnTransistor => &["base", "collector", "emitter"],
         ComponentKind::MomentaryButton => &["a", "b"],
@@ -469,7 +471,7 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
     match k {
         ComponentKind::DcVoltageSource => &["voltage"],
         ComponentKind::Resistor => &["resistance"],
-        ComponentKind::Led => &["forward_voltage", "series_resistance"],
+        ComponentKind::Led | ComponentKind::Diode => &["forward_voltage", "series_resistance"],
         ComponentKind::Capacitor => &["capacitance"],
         ComponentKind::NpnTransistor => &["beta", "saturation_current"],
         ComponentKind::MomentaryButton | ComponentKind::ChangeoverSwitch => &[],
@@ -483,8 +485,8 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
     match (k, p) {
         (ComponentKind::DcVoltageSource, "voltage") => Some((0.0, 12.0)),
         (ComponentKind::Resistor, "resistance") => Some((1.0, 1e7)),
-        (ComponentKind::Led, "forward_voltage") => Some((0.0, 10.0)),
-        (ComponentKind::Led, "series_resistance") => Some((1.0, 1e7)),
+        (ComponentKind::Led | ComponentKind::Diode, "forward_voltage") => Some((0.0, 10.0)),
+        (ComponentKind::Led | ComponentKind::Diode, "series_resistance") => Some((1.0, 1e7)),
         (ComponentKind::Capacitor, "capacitance") => Some((1e-10, 1e-2)),
         (ComponentKind::NpnTransistor, "beta") => Some((10.0, 1000.0)),
         (ComponentKind::NpnTransistor, "saturation_current") => Some((1e-16, 1e-12)),
