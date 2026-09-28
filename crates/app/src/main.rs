@@ -87,6 +87,8 @@ const C03_S04_01_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s04-01-running-lights.json");
 const C03_S04_02_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s04-02-electronic-dice.json");
+const C03_S04_09_JSON: &str =
+    include_str!("../../../fixtures/projects/c03-s04-09-dual-555-noisemaker.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -144,6 +146,7 @@ enum Circuit {
     C03S04_04,
     C03S04_01,
     C03S04_02,
+    C03S04_09,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -161,7 +164,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 54] {
+    fn all() -> [Self; 55] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -184,6 +187,7 @@ impl Circuit {
             Self::C03S04_04,
             Self::C03S04_01,
             Self::C03S04_02,
+            Self::C03S04_09,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -275,6 +279,7 @@ impl Circuit {
             Self::C03S04_04 => C03_S04_04_JSON,
             Self::C03S04_01 => C03_S04_01_JSON,
             Self::C03S04_02 => C03_S04_02_JSON,
+            Self::C03S04_09 => C03_S04_09_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -333,6 +338,7 @@ impl Circuit {
             Self::C03S04_04 => "C03-S04-04: BINARY COUNTER",
             Self::C03S04_01 => "C03-S04-01: RUNNING LIGHTS",
             Self::C03S04_02 => "C03-S04-02: ELECTRONIC DICE",
+            Self::C03S04_09 => "C03-S04-09: DUAL 555 NOISEMAKER",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -425,6 +431,10 @@ impl Circuit {
             Self::C03S04_02 => (
                 "A calculated modulo-six counter decodes each state into the seven-dot pattern of a die face.",
                 "Task: press S1 repeatedly and inspect the calculated dot pattern for faces one through six.",
+            ),
+            Self::C03S04_09 => (
+                "Two calculated 555 timer stages form a bounded coupled oscillator, with two dials changing its timing and a speaker load reading the output.",
+                "Task: drag RV1 and RV2 separately and compare the calculated timer and speaker readings.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -709,7 +719,7 @@ impl Circuit {
             | Self::C01S01_04
             | Self::C01S01_05
             | Self::C01S02_02 => &[],
-            Self::C02S03_01 | Self::C02S03_06 | Self::C02S03_07 => &[],
+            Self::C02S03_01 | Self::C02S03_06 | Self::C02S03_07 | Self::C03S04_09 => &[],
         }
     }
     /// The continuous dial/slider control for variable-resistor exercises.
@@ -783,6 +793,16 @@ impl Circuit {
                 label: "TH1: LIGHT - drag left/right",
                 component: "TH1",
             }],
+            Self::C03S04_09 => &[
+                DialSpec {
+                    label: "RV1: MODULATOR RATE - drag left/right",
+                    component: "RV1",
+                },
+                DialSpec {
+                    label: "RV2: OUTPUT TONE - drag left/right",
+                    component: "RV2",
+                },
+            ],
             Self::E27 => &[DialSpec {
                 label: "RV1: SHARED BRIGHTNESS - drag left/right",
                 component: "RV1",
@@ -2413,7 +2433,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            54
+            55
         );
         assert!(matches!(
             items[0],
