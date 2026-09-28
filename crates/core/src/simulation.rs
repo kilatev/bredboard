@@ -1416,6 +1416,32 @@ mod tests {
     }
 
     #[test]
+    fn c04_cricket_composes_two_calculated_timer_stages() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c04-s06-02-cricket.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Run]);
+        let mut max_speaker = 0.0_f64;
+        for _ in 0..4_000 {
+            advance_steps(&project, &mut state, 1);
+            let solved = state.last_valid.as_ref().unwrap();
+            max_speaker = max_speaker.max(
+                solved
+                    .resistor_currents
+                    .get(&ComponentId("SP1".into()))
+                    .copied()
+                    .unwrap_or(0.0)
+                    .abs(),
+            );
+        }
+        assert!(!state.stale, "diagnostics={:?}", state.diagnostics);
+        assert!(max_speaker > 0.004);
+    }
+
+    #[test]
     fn c03_shift_register_calculates_shift_then_latch() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c03-s04-05-shift-register.json"

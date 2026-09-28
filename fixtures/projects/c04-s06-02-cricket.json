@@ -1,0 +1,33 @@
+{
+  "format_version": 1,
+  "title": "C04-S06-02: Calculated cricket",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "U1", "kind": "timer_555", "pins": { "control": "A20", "discharge": "A7", "gnd": "TP-:2", "output": "F5", "reset": "TP+:3", "threshold": "A10", "trigger": "B10", "vcc": "TP+:4" }, "parameters": { "output_resistance": 50.0, "discharge_resistance": 100.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "C5", "b": "C7" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "D7", "b": "D10" }, "parameters": { "resistance": 4700.0 } },
+    { "id": "RV1", "kind": "potentiometer", "pins": { "a": "E7", "b": "E10" }, "parameters": { "min_resistance": 1.0, "max_resistance": 100000.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "negative": "C12", "positive": "C10" }, "parameters": { "capacitance": 0.00001 } },
+    { "id": "C2", "kind": "capacitor", "pins": { "negative": "C22", "positive": "C20" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "U2", "kind": "timer_555", "pins": { "control": "A24", "discharge": "A15", "gnd": "TP-:24", "output": "F15", "reset": "TP+:25", "threshold": "A18", "trigger": "B18", "vcc": "TP+:26" }, "parameters": { "output_resistance": 50.0, "discharge_resistance": 100.0 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "C15", "b": "C17" }, "parameters": { "resistance": 4700.0 } },
+    { "id": "R4", "kind": "resistor", "pins": { "a": "D17", "b": "D18" }, "parameters": { "resistance": 1000.0 } },
+    { "id": "C3", "kind": "capacitor", "pins": { "negative": "C28", "positive": "C18" }, "parameters": { "capacitance": 0.00001 } },
+    { "id": "C4", "kind": "capacitor", "pins": { "negative": "C30", "positive": "C24" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "R5", "kind": "resistor", "pins": { "a": "G15", "b": "G17" }, "parameters": { "resistance": 470.0 } },
+    { "id": "SP1", "kind": "speaker", "pins": { "negative": "H18", "positive": "H17" }, "parameters": { "resistance": 8.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "D12", "to": "TP-:12" },
+    { "id": "W2", "from": "D22", "to": "TP-:22" },
+    { "id": "W3", "from": "E5", "to": "TP+:5" },
+    { "id": "W4", "from": "I7", "to": "TP-:7" },
+    { "id": "W5", "from": "D28", "to": "TP-:28" },
+    { "id": "W6", "from": "D30", "to": "TP-:30" },
+    { "id": "W7", "from": "E15", "to": "TP+:15" },
+    { "id": "W8", "from": "I18", "to": "TP-:18" },
+    { "id": "W9", "from": "H5", "to": "B24" }
+  ],
+  "initial_conditions": { "control_ratios": { "RV1": 0.35 } }
+}

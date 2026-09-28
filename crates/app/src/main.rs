@@ -111,6 +111,7 @@ const C03_S05_07_JSON: &str =
 const C03_S05_08_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s05-08-bounded-sram.json");
 const C04_S06_04_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-04-metronome.json");
+const C04_S06_02_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-02-cricket.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -181,6 +182,7 @@ enum Circuit {
     C03S05_07,
     C03S05_08,
     C04S06_04,
+    C04S06_02,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -198,7 +200,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 67] {
+    fn all() -> [Self; 68] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -234,6 +236,7 @@ impl Circuit {
             Self::C03S05_07,
             Self::C03S05_08,
             Self::C04S06_04,
+            Self::C04S06_02,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -338,6 +341,7 @@ impl Circuit {
             Self::C03S05_07 => C03_S05_07_JSON,
             Self::C03S05_08 => C03_S05_08_JSON,
             Self::C04S06_04 => C04_S06_04_JSON,
+            Self::C04S06_02 => C04_S06_02_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -409,6 +413,7 @@ impl Circuit {
             Self::C03S05_07 => "C03-S05-07: STEP SEQUENCER",
             Self::C03S05_08 => "C03-S05-08: BOUNDED SRAM COMPUTER",
             Self::C04S06_04 => "C04-S06-04: METRONOME",
+            Self::C04S06_02 => "C04-S06-02: CRICKET",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -553,6 +558,10 @@ impl Circuit {
             Self::C04S06_04 => (
                 "A calculated NE555 timer charges and discharges its timing capacitor through an adjustable control, driving a current-limited LED and speaker load. The beat rate is derived from fixed simulation steps and electrical state.",
                 "Task: drag RV1, run the fixture, and compare the calculated capacitor waveform, LED pulses, and speaker load current.",
+            ),
+            Self::C04S06_02 => (
+                "Two calculated 555 timer stages form a slow burst modulator and a faster tone source, driving a bounded speaker load from electrical state. The source passive piezo response and exact cricket timbre remain explicit discrepancies.",
+                "Task: drag RV1, run the fixture, and compare the calculated slow timing capacitor with the faster speaker-load activity.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -1022,6 +1031,7 @@ impl Circuit {
                 },
             ],
             Self::C04S06_04 => &[],
+            Self::C04S06_02 => &[],
             Self::C03S04_06 => &[
                 ControlSpec {
                     label: "RED PLAYER",
@@ -1168,6 +1178,10 @@ impl Circuit {
             ],
             Self::C04S06_04 => &[DialSpec {
                 label: "RV1: TEMPO - drag left/right",
+                component: "RV1",
+            }],
+            Self::C04S06_02 => &[DialSpec {
+                label: "RV1: BURST RATE - drag left/right",
                 component: "RV1",
             }],
             Self::E27 => &[DialSpec {
@@ -2805,7 +2819,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            67
+            68
         );
         assert!(matches!(
             items[0],

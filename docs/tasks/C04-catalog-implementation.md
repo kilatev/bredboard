@@ -83,10 +83,13 @@ cannot represent.
 
 ## Implementation evidence so far
 
-The first admitted C04 fixture is `CAT-S06-04` (metronome), using one
-calculated 555 timing path, one adjustable control, one LED branch, and an
-isolated speaker load. It validates as 11 components, 5 wires, and 8 derived
-nodes; its 4,000-step regression observes calculated LED and speaker pulses.
+The first admitted C04 fixtures are `CAT-S06-02` (cricket) and `CAT-S06-04`
+(metronome). S06-02 uses two calculated timer stages and one adjustable burst
+control; it validates as 14 components, 9 wires, and 10 derived nodes, with a
+4,000-step speaker-load regression. S06-04 uses one calculated 555 timing path,
+one adjustable control, one LED branch, and an isolated speaker load; it
+validates as 11 components, 5 wires, and 8 derived nodes, with a 4,000-step
+LED/speaker pulse regression.
 
 ## Current blockers
 
