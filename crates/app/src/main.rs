@@ -81,6 +81,8 @@ const C03_S04_03_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s04-03-button-counter.json");
 const C03_S04_05_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s04-05-shift-register.json");
+const C03_S04_06_JSON: &str =
+    include_str!("../../../fixtures/projects/c03-s04-06-reaction-game.json");
 const C03_S04_04_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s04-04-binary-counter.json");
 const C03_S04_01_JSON: &str =
@@ -150,6 +152,7 @@ enum Circuit {
     C02S03_07,
     C03S04_03,
     C03S04_05,
+    C03S04_06,
     C03S04_04,
     C03S04_01,
     C03S04_02,
@@ -175,7 +178,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 59] {
+    fn all() -> [Self; 60] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -195,6 +198,7 @@ impl Circuit {
             Self::C02S03_07,
             Self::C03S04_03,
             Self::C03S04_05,
+            Self::C03S04_06,
             Self::C03S04_04,
             Self::C03S04_01,
             Self::C03S04_02,
@@ -291,6 +295,7 @@ impl Circuit {
             Self::C02S03_07 => C02_S03_07_JSON,
             Self::C03S04_03 => C03_S04_03_JSON,
             Self::C03S04_05 => C03_S04_05_JSON,
+            Self::C03S04_06 => C03_S04_06_JSON,
             Self::C03S04_04 => C03_S04_04_JSON,
             Self::C03S04_01 => C03_S04_01_JSON,
             Self::C03S04_02 => C03_S04_02_JSON,
@@ -354,6 +359,7 @@ impl Circuit {
             Self::C02S03_07 => "C02-S03-07: LIGHT THEREMIN",
             Self::C03S04_03 => "C03-S04-03: BUTTON COUNTER DISPLAY",
             Self::C03S04_05 => "C03-S04-05: MANUAL SHIFT REGISTER",
+            Self::C03S04_06 => "C03-S04-06: REACTION GAME",
             Self::C03S04_04 => "C03-S04-04: BINARY COUNTER",
             Self::C03S04_01 => "C03-S04-01: RUNNING LIGHTS",
             Self::C03S04_02 => "C03-S04-02: ELECTRONIC DICE",
@@ -442,6 +448,10 @@ impl Circuit {
             Self::C03S04_05 => (
                 "A calculated eight-bit shift register samples DATA on each rising CLOCK edge and copies the stored pattern to its outputs on LATCH.",
                 "Task: set DATA, press CLOCK once, then press LATCH and inspect the calculated output state.",
+            ),
+            Self::C03S04_06 => (
+                "Two calculated edge-triggered stages form a first-press lockout: the first player's output blocks the other player's stage, lights the winner LED, and drives the buzzer through a diode OR.",
+                "Task: press either player button, try the other player, then press RESET and verify that both calculated outputs clear.",
             ),
             Self::C03S04_04 => (
                 "A calculated bounded counter advances on each button edge and drives four current-limited LEDs as binary bits.",
@@ -893,6 +903,23 @@ impl Circuit {
                 ControlSpec {
                     label: "RESET 6",
                     component: "RST6",
+                    is_switch: false,
+                },
+            ],
+            Self::C03S04_06 => &[
+                ControlSpec {
+                    label: "RED PLAYER",
+                    component: "P_RED",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "GREEN PLAYER",
+                    component: "P_GREEN",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "RESET",
+                    component: "RESET",
                     is_switch: false,
                 },
             ],
@@ -2610,7 +2637,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            59
+            60
         );
         assert!(matches!(
             items[0],

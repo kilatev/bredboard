@@ -1,0 +1,40 @@
+{
+  "format_version": 1,
+  "title": "C03-S04-06: Reaction Game",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 4.5 } },
+    { "id": "P_RED", "kind": "momentary_button", "pins": { "a": "TP+:2", "b": "A1" }, "parameters": {} },
+    { "id": "P_GREEN", "kind": "momentary_button", "pins": { "a": "TP+:3", "b": "A2" }, "parameters": {} },
+    { "id": "RESET", "kind": "momentary_button", "pins": { "a": "TP+:4", "b": "A3" }, "parameters": {} },
+    { "id": "R_RED_INPUT", "kind": "resistor", "pins": { "a": "B1", "b": "TP-:2" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_GREEN_INPUT", "kind": "resistor", "pins": { "a": "B2", "b": "TP-:3" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_RESET", "kind": "resistor", "pins": { "a": "B20", "b": "TP-:4" }, "parameters": { "resistance": 10000.0 } },
+
+    { "id": "U_RED", "kind": "d_flip_flop", "pins": { "clock": "C1", "data": "D16", "gnd": "TP-:7", "not_q": "C12", "q": "D10", "reset": "C20", "set": "TP-:5", "vcc": "TP+:5" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "U_GREEN", "kind": "d_flip_flop", "pins": { "clock": "C2", "data": "D12", "gnd": "TP-:8", "not_q": "C16", "q": "D14", "reset": "D20", "set": "TP-:6", "vcc": "TP+:6" }, "parameters": { "output_resistance": 100.0 } },
+
+    { "id": "R_RED_LED", "kind": "resistor", "pins": { "a": "E10", "b": "F24" }, "parameters": { "resistance": 330.0 } },
+    { "id": "LED_RED", "kind": "led", "pins": { "anode": "F25", "cathode": "TP-:9" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "R_GREEN_LED", "kind": "resistor", "pins": { "a": "E14", "b": "F27" }, "parameters": { "resistance": 330.0 } },
+    { "id": "LED_GREEN", "kind": "led", "pins": { "anode": "F28", "cathode": "TP-:10" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+
+    { "id": "D_RED", "kind": "diode", "pins": { "anode": "B10", "cathode": "B11" }, "parameters": { "forward_voltage": 0.7, "series_resistance": 100.0 } },
+    { "id": "D_GREEN", "kind": "diode", "pins": { "anode": "B14", "cathode": "B15" }, "parameters": { "forward_voltage": 0.7, "series_resistance": 100.0 } },
+    { "id": "BZ1", "kind": "buzzer", "pins": { "positive": "H29", "negative": "TP-:11" }, "parameters": { "resistance": 100.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "negative": "TP-:12", "positive": "TP+:12" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "C2", "kind": "capacitor", "pins": { "negative": "TP-:13", "positive": "TP+:13" }, "parameters": { "capacitance": 0.0000001 } }
+  ],
+  "wires": [
+    { "id": "W_RESET", "from": "C3", "to": "E20" },
+    { "id": "W_RED_LED", "from": "G24", "to": "G25" },
+    { "id": "W_GREEN_LED", "from": "G27", "to": "G28" },
+    { "id": "W_RED_BUZZER", "from": "A11", "to": "F29" },
+    { "id": "W_GREEN_BUZZER", "from": "A15", "to": "G29" }
+  ],
+  "initial_conditions": {
+    "controls": {
+      "P_RED": "button_released", "P_GREEN": "button_released", "RESET": "button_released"
+    }
+  }
+}

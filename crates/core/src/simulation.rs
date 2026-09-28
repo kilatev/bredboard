@@ -796,6 +796,52 @@ mod tests {
     }
 
     #[test]
+    fn c03_reaction_game_latches_the_first_player_and_resets_both_outputs() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c03-s04-06-reaction-game.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        let pulse = |project: &mut Project, state: &mut SimulationState, id: &str| {
+            apply_actions(
+                project,
+                &baseline,
+                state,
+                &[
+                    Action::SetControl {
+                        component: ComponentId(id.into()),
+                        state: ControlState::ButtonPressed,
+                    },
+                    Action::SingleStep,
+                    Action::SetControl {
+                        component: ComponentId(id.into()),
+                        state: ControlState::ButtonReleased,
+                    },
+                    Action::SingleStep,
+                ],
+            );
+        };
+
+        apply_actions(&mut project, &baseline, &mut state, &[Action::SingleStep]);
+        pulse(&mut project, &mut state, "P_GREEN");
+        pulse(&mut project, &mut state, "P_RED");
+        assert_eq!(state.digital_states[&ComponentId("U_RED".into())] & 1, 0);
+        assert_eq!(state.digital_states[&ComponentId("U_GREEN".into())] & 1, 1);
+        let result = state.last_valid.as_ref().unwrap();
+        assert!(result.led_currents[&ComponentId("LED_GREEN".into())] > 0.001);
+        assert!(result.led_currents[&ComponentId("LED_RED".into())] < 1e-6);
+        assert!(result.resistor_currents[&ComponentId("BZ1".into())] > 0.001);
+
+        pulse(&mut project, &mut state, "RESET");
+        assert_eq!(state.digital_states[&ComponentId("U_RED".into())] & 1, 0);
+        assert_eq!(state.digital_states[&ComponentId("U_GREEN".into())] & 1, 0);
+        let result = state.last_valid.as_ref().unwrap();
+        assert!(result.led_currents[&ComponentId("LED_GREEN".into())] < 1e-6);
+        assert!(result.resistor_currents[&ComponentId("BZ1".into())] < 1e-6);
+    }
+
+    #[test]
     fn c03_counter_fixture_drives_a_calculated_display_digit() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c03-s04-03-button-counter.json"

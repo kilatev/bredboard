@@ -1,8 +1,8 @@
 # C03 — Counting, display, and systems fixtures
 
 Status: in_progress; the Section 04 and Section 05 source review is recorded
-and implementation is proceeding in bounded capability slices. Six Section 04
-and four Section 05 fixtures are admitted; the remaining seven entries and all
+and implementation is proceeding in bounded capability slices. Seven Section 04
+and four Section 05 fixtures are admitted; the remaining six entries and all
 manual evidence remain open.
 
 ## Scope
@@ -29,9 +29,10 @@ electrical behavior.
   CD4026, and 74HC393 packages that are not represented by the current core.
 - S04-05 and S05-01/S05-02 need shift-register and arithmetic contracts;
   DIP inputs must be electrical switch states and outputs must be calculated.
-- S04-06 still needs reaction-timing and diode-OR semantics beyond the bounded
-  edge/reset contract. S05-04 needs ordered sequence memory and reset behavior;
-  those are now covered by a bounded four-stage D-flip-flop chain.
+- S04-06 is covered by a bounded two-player first-press lockout using the
+  edge/reset contract and diode-OR buzzer path. S05-04 needs ordered sequence
+  memory and reset behavior; those are covered by a bounded four-stage
+  D-flip-flop chain.
 - S04-07 and S04-08 depend on LM358, LM3914, LM386, microphone, bargraph, and
   audio contracts. Audio output remains presentation-only and cannot be
   claimed as an electrical amplifier result without the corresponding model.
@@ -82,7 +83,7 @@ electrical behavior.
 
 The current slice adds calculated `digital_counter`, `shift_register`,
 `seven_segment_display`, `four_bit_adder`, and stateful edge-triggered
-`d_flip_flop` contracts, six embedded Section 04 fixtures, four embedded
+`d_flip_flop` contracts, seven embedded Section 04 fixtures, four embedded
 Section 05 fixtures, menu entries, and fixed-step regressions for rising-edge
 counting, BCD segment decoding, serial shifting, output latching, binary
 addition, ordered code entry, and reset.
@@ -107,6 +108,8 @@ cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s05-02-f
 cargo test -p bredboard-core c03_four_bit_subtractor_calculates_nine_minus_five --locked — passed
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s05-03-pedestrian-signal.json — passed; 14 components, 5 wires, 8 derived nodes
 cargo test -p bredboard-core c03_pedestrian_signal_advances_calculated_phases --locked — passed
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s04-06-reaction-game.json — passed; 18 components, 5 wires, 12 derived nodes
+cargo test -p bredboard-core c03_reaction_game_latches_the_first_player_and_resets_both_outputs --locked — passed
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s05-04-code-lock.json — passed; 24 components, 6 wires, 17 derived nodes
 cargo test -p bredboard-core d_flip_flop_captures_data_only_on_a_calculated_rising_edge --locked — passed
 cargo test -p bredboard-core c03_code_lock_requires_ordered_edges_and_calculates_reset_and_unlock_outputs --locked — passed
@@ -117,7 +120,7 @@ cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes 
 cargo test -p bredboard-app each_circuit_uses_core_controls_and_reset --locked — passed
 cargo fmt --all --check — passed after `cargo fmt --all`
 cargo clippy --workspace --all-targets --locked -- -D warnings — passed
-cargo test --workspace --locked — passed (49 app, 82 core, 3 tools, 0 doc-tests)
+cargo test --workspace --locked — passed (49 app, 83 core, 3 tools, 0 doc-tests)
 cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked — passed
 cargo build -p bredboard-app --target wasm32-unknown-unknown --locked — passed
 cargo run -p bredboard-tools --locked -- validate-catalog breadboard-circuits/spec/catalog.json breadboard-circuits/spec/catalog.schema.json — passed; 20 sections, 212 schematics
@@ -125,13 +128,9 @@ cargo run -p bredboard-tools --locked -- validate-catalog breadboard-circuits/sp
 
 ## Current blockers
 
-- S04-06 still lacks the delayed-enable and diode-OR reaction-timing contract;
-  the new D flip-flop contract is sufficient only for the bounded S05-04 code
-  lock.
 - LM358/LM3914/LM386, microphone, bargraph, crystal, SRAM, and multi-board
   supply/presentation contracts are not yet available.
-- S04-06 is explicitly blocked by the missing reaction-timing/diode-OR
-  contract; S04-07 is blocked by the missing
+- S04-07 is blocked by the missing
   op-amp, microphone, and bargraph contracts; S04-08 is blocked by the missing
   LM386, input-jack, and powered-speaker contracts.
 - Manual interaction and real-breadboard evidence are pending for every new
