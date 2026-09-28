@@ -1442,6 +1442,69 @@ mod tests {
     }
 
     #[test]
+    fn c04_doorbell_calculates_button_pulse_and_transistor_branches() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c04-s06-05-doorbell.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("S1".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::Run,
+            ],
+        );
+        let mut max_speaker = 0.0_f64;
+        let mut max_npn = 0.0_f64;
+        let mut max_pnp = 0.0_f64;
+        for _ in 0..4_000 {
+            advance_steps(&project, &mut state, 1);
+            let solved = state
+                .last_valid
+                .as_ref()
+                .unwrap_or_else(|| panic!("diagnostics={:?}", state.diagnostics));
+            max_speaker = max_speaker.max(
+                solved
+                    .resistor_currents
+                    .get(&ComponentId("SP1".into()))
+                    .copied()
+                    .unwrap_or(0.0)
+                    .abs(),
+            );
+            max_npn = max_npn.max(
+                solved
+                    .transistor_collector_currents
+                    .get(&ComponentId("Q1".into()))
+                    .copied()
+                    .unwrap_or(0.0)
+                    .abs(),
+            );
+            max_pnp = max_pnp.max(
+                solved
+                    .pnp_collector_currents
+                    .get(&ComponentId("Q2".into()))
+                    .copied()
+                    .unwrap_or(0.0)
+                    .abs(),
+            );
+        }
+        assert!(!state.stale, "diagnostics={:?}", state.diagnostics);
+        assert!(
+            max_speaker > 0.004,
+            "speaker={max_speaker} npn={max_npn} pnp={max_pnp}"
+        );
+        assert!(max_npn > 0.0001);
+        assert!(max_pnp > 0.0001);
+    }
+
+    #[test]
     fn c03_shift_register_calculates_shift_then_latch() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c03-s04-05-shift-register.json"

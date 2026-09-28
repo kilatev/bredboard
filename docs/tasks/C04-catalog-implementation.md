@@ -83,13 +83,22 @@ cannot represent.
 
 ## Implementation evidence so far
 
-The first admitted C04 fixtures are `CAT-S06-02` (cricket) and `CAT-S06-04`
-(metronome). S06-02 uses two calculated timer stages and one adjustable burst
-control; it validates as 14 components, 9 wires, and 10 derived nodes, with a
-4,000-step speaker-load regression. S06-04 uses one calculated 555 timing path,
-one adjustable control, one LED branch, and an isolated speaker load; it
-validates as 11 components, 5 wires, and 8 derived nodes, with a 4,000-step
-LED/speaker pulse regression.
+The first admitted C04 fixtures are `CAT-S06-02` (cricket), `CAT-S06-04`
+(metronome), and `CAT-S06-05` (doorbell). S06-02 uses two calculated timer
+stages and one adjustable burst control; it validates as 14 components, 9
+wires, and 10 derived nodes, with a 4,000-step speaker-load regression. S06-04
+uses one calculated 555 timing path, one adjustable control, one LED branch,
+and an isolated speaker load. S06-05 uses a button-triggered 555 monostable
+with diode and transistor companion branches. All three have structural
+validation, fixed-step simulation, embedded app-menu entries, and focused core
+regressions; manual browser evidence remains pending.
+
+The S06-05 full gate passed on 2026-09-29 with: `cargo fmt --all --check`,
+`cargo clippy --workspace --all-targets --locked -- -D warnings`,
+`cargo test --workspace --locked` (49 app, 92 core, 3 tools, 0 doc-test
+failures), native and WASM app builds, fixture validation and 4,000-step
+simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
+--check`.
 
 ## Current blockers
 
