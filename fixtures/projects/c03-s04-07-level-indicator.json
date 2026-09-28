@@ -1,0 +1,46 @@
+{
+  "format_version": 1,
+  "title": "C03-S04-07: Level Indicator",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "PHOTO1", "kind": "photoresistor", "pins": { "a": "TP+:11", "b": "A12" }, "parameters": { "min_resistance": 100.0, "max_resistance": 100000.0 } },
+    { "id": "R_LEVEL", "kind": "resistor", "pins": { "a": "B12", "b": "TP-:11" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "BG1", "kind": "bargraph_display", "pins": { "gnd": "TP-:12", "input": "C12", "seg0": "A1", "seg1": "A2", "seg2": "A3", "seg3": "A4", "seg4": "A5", "seg5": "A6", "seg6": "A7", "seg7": "A8", "seg8": "A9", "seg9": "A10", "vcc": "TP+:12" }, "parameters": { "output_resistance": 100.0 } },
+
+    { "id": "R0", "kind": "resistor", "pins": { "a": "B1", "b": "F20" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "B2", "b": "F22" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "B3", "b": "F24" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "B4", "b": "F26" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R4", "kind": "resistor", "pins": { "a": "B5", "b": "F28" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R5", "kind": "resistor", "pins": { "a": "B6", "b": "A20" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R6", "kind": "resistor", "pins": { "a": "B7", "b": "A22" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R7", "kind": "resistor", "pins": { "a": "B8", "b": "A24" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R8", "kind": "resistor", "pins": { "a": "B9", "b": "A26" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R9", "kind": "resistor", "pins": { "a": "B10", "b": "A28" }, "parameters": { "resistance": 470.0 } },
+
+    { "id": "LED0", "kind": "led", "pins": { "anode": "F21", "cathode": "TP-:20" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "LED1", "kind": "led", "pins": { "anode": "F23", "cathode": "TP-:21" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "LED2", "kind": "led", "pins": { "anode": "F25", "cathode": "TP-:22" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "LED3", "kind": "led", "pins": { "anode": "F27", "cathode": "TP-:23" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "LED4", "kind": "led", "pins": { "anode": "F29", "cathode": "TP-:24" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "LED5", "kind": "led", "pins": { "anode": "A21", "cathode": "TP-:25" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "LED6", "kind": "led", "pins": { "anode": "A23", "cathode": "TP-:26" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "LED7", "kind": "led", "pins": { "anode": "A25", "cathode": "TP-:27" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "LED8", "kind": "led", "pins": { "anode": "A27", "cathode": "TP-:28" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "LED9", "kind": "led", "pins": { "anode": "A29", "cathode": "TP-:29" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } }
+  ],
+  "wires": [
+    { "id": "W0", "from": "G20", "to": "G21" },
+    { "id": "W1", "from": "G22", "to": "G23" },
+    { "id": "W2", "from": "G24", "to": "G25" },
+    { "id": "W3", "from": "G26", "to": "G27" },
+    { "id": "W4", "from": "G28", "to": "G29" },
+    { "id": "W5", "from": "B20", "to": "B21" },
+    { "id": "W6", "from": "B22", "to": "B23" },
+    { "id": "W7", "from": "B24", "to": "B25" },
+    { "id": "W8", "from": "B26", "to": "B27" },
+    { "id": "W9", "from": "B28", "to": "B29" }
+  ],
+  "initial_conditions": { "control_ratios": { "PHOTO1": 0.0 } }
+}

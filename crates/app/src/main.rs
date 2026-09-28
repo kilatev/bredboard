@@ -83,6 +83,8 @@ const C03_S04_05_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s04-05-shift-register.json");
 const C03_S04_06_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s04-06-reaction-game.json");
+const C03_S04_07_JSON: &str =
+    include_str!("../../../fixtures/projects/c03-s04-07-level-indicator.json");
 const C03_S04_04_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s04-04-binary-counter.json");
 const C03_S04_01_JSON: &str =
@@ -153,6 +155,7 @@ enum Circuit {
     C03S04_03,
     C03S04_05,
     C03S04_06,
+    C03S04_07,
     C03S04_04,
     C03S04_01,
     C03S04_02,
@@ -178,7 +181,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 60] {
+    fn all() -> [Self; 61] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -199,6 +202,7 @@ impl Circuit {
             Self::C03S04_03,
             Self::C03S04_05,
             Self::C03S04_06,
+            Self::C03S04_07,
             Self::C03S04_04,
             Self::C03S04_01,
             Self::C03S04_02,
@@ -296,6 +300,7 @@ impl Circuit {
             Self::C03S04_03 => C03_S04_03_JSON,
             Self::C03S04_05 => C03_S04_05_JSON,
             Self::C03S04_06 => C03_S04_06_JSON,
+            Self::C03S04_07 => C03_S04_07_JSON,
             Self::C03S04_04 => C03_S04_04_JSON,
             Self::C03S04_01 => C03_S04_01_JSON,
             Self::C03S04_02 => C03_S04_02_JSON,
@@ -360,6 +365,7 @@ impl Circuit {
             Self::C03S04_03 => "C03-S04-03: BUTTON COUNTER DISPLAY",
             Self::C03S04_05 => "C03-S04-05: MANUAL SHIFT REGISTER",
             Self::C03S04_06 => "C03-S04-06: REACTION GAME",
+            Self::C03S04_07 => "C03-S04-07: LEVEL INDICATOR",
             Self::C03S04_04 => "C03-S04-04: BINARY COUNTER",
             Self::C03S04_01 => "C03-S04-01: RUNNING LIGHTS",
             Self::C03S04_02 => "C03-S04-02: ELECTRONIC DICE",
@@ -452,6 +458,10 @@ impl Circuit {
             Self::C03S04_06 => (
                 "Two calculated edge-triggered stages form a first-press lockout: the first player's output blocks the other player's stage, lights the winner LED, and drives the buzzer through a diode OR.",
                 "Task: press either player button, try the other player, then press RESET and verify that both calculated outputs clear.",
+            ),
+            Self::C03S04_07 => (
+                "A calculated ten-segment bargraph converts a voltage-divider input into a bounded level display. The photoresistor is an explicit input substitute for the source microphone.",
+                "Task: drag PHOTO1 from dark to bright and compare the calculated number of lit level segments.",
             ),
             Self::C03S04_04 => (
                 "A calculated bounded counter advances on each button edge and drives four current-limited LEDs as binary bits.",
@@ -923,6 +933,7 @@ impl Circuit {
                     is_switch: false,
                 },
             ],
+            Self::C03S04_07 => &[],
         }
     }
     /// The continuous dial/slider control for variable-resistor exercises.
@@ -995,6 +1006,10 @@ impl Circuit {
             Self::C02S03_07 => &[DialSpec {
                 label: "TH1: LIGHT - drag left/right",
                 component: "TH1",
+            }],
+            Self::C03S04_07 => &[DialSpec {
+                label: "PHOTO1: INPUT LEVEL - drag left/right",
+                component: "PHOTO1",
             }],
             Self::C03S04_09 => &[
                 DialSpec {
@@ -1835,6 +1850,7 @@ fn component_summary(component: &Component) -> String {
             format!("{id}  seven-segment display  A–G/common cathode")
         }
         ComponentKind::FourBitAdder => format!("{id}  four-bit adder  A/B → SUM/CARRY"),
+        ComponentKind::BargraphDisplay => format!("{id}  ten-segment level bargraph"),
     }
 }
 
@@ -2637,7 +2653,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            60
+            61
         );
         assert!(matches!(
             items[0],

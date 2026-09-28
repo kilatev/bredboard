@@ -149,6 +149,8 @@ pub enum ComponentKind {
     SevenSegmentDisplay,
     /// Four-bit combinational adder/subtractor with calculated carry output.
     FourBitAdder,
+    /// Ten-segment voltage-level display with calculated threshold outputs.
+    BargraphDisplay,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Wire {
@@ -541,6 +543,10 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
             "sum3",
             "vcc",
         ],
+        ComponentKind::BargraphDisplay => &[
+            "gnd", "input", "seg0", "seg1", "seg2", "seg3", "seg4", "seg5", "seg6", "seg7", "seg8",
+            "seg9", "vcc",
+        ],
     }
 }
 fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
@@ -566,6 +572,7 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::ShiftRegister => &["output_resistance"],
         ComponentKind::SevenSegmentDisplay => &["output_resistance"],
         ComponentKind::FourBitAdder => &["output_resistance"],
+        ComponentKind::BargraphDisplay => &["output_resistance"],
     }
 }
 fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
@@ -605,6 +612,7 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         (ComponentKind::ShiftRegister, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::SevenSegmentDisplay, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::FourBitAdder, "output_resistance") => Some((1.0, 1e7)),
+        (ComponentKind::BargraphDisplay, "output_resistance") => Some((1.0, 1e7)),
         _ => None,
     }
 }

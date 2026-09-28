@@ -184,6 +184,13 @@ enum NonlinearElement {
         gnd: usize,
         resistance: f64,
     },
+    BargraphDisplay {
+        input: usize,
+        segments: [usize; 10],
+        vcc: usize,
+        gnd: usize,
+        resistance: f64,
+    },
 }
 
 pub const FIXED_STEP_SECONDS: f64 = 100e-6;
@@ -467,6 +474,21 @@ fn solve_internal(
                 pairs.extend(sum.windows(2).map(|pair| (pair[0], pair[1])));
                 pairs
             }
+            NonlinearElement::BargraphDisplay {
+                input,
+                segments,
+                vcc,
+                gnd,
+                ..
+            } => {
+                let mut pairs = vec![
+                    (*input, segments[0]),
+                    (*vcc, segments[0]),
+                    (*gnd, segments[0]),
+                ];
+                pairs.extend(segments.windows(2).map(|pair| (pair[0], pair[1])));
+                pairs
+            }
         };
         for (a, b) in pairs {
             adjacency[a].push(b);
@@ -727,7 +749,8 @@ fn solve_internal(
             | NonlinearElement::DigitalCounter { .. }
             | NonlinearElement::ShiftRegister { .. }
             | NonlinearElement::SevenSegmentDisplay { .. }
-            | NonlinearElement::FourBitAdder { .. } => {}
+            | NonlinearElement::FourBitAdder { .. }
+            | NonlinearElement::BargraphDisplay { .. } => {}
         }
     }
     Ok(SolveResult {
@@ -1061,6 +1084,27 @@ fn make_branches(
                     carry_out,
                     subtract,
                     sum,
+                    vcc,
+                    gnd,
+                    resistance: component.parameters["output_resistance"],
+                });
+                continue;
+            }
+            ComponentKind::BargraphDisplay => {
+                let input = node("input")?;
+                let segments = [
+                    "seg0", "seg1", "seg2", "seg3", "seg4", "seg5", "seg6", "seg7", "seg8", "seg9",
+                ]
+                .map(node);
+                let segments = segments.into_iter().collect::<Result<Vec<_>, _>>()?;
+                let segments: [usize; 10] = segments.try_into().expect("ten bargraph segments");
+                let vcc = node("vcc")?;
+                let gnd = node("gnd")?;
+                active.extend(segments);
+                active.extend([input, vcc, gnd]);
+                nonlinear.push(NonlinearElement::BargraphDisplay {
+                    input,
+                    segments,
                     vcc,
                     gnd,
                     resistance: component.parameters["output_resistance"],
@@ -1808,6 +1852,31 @@ fn stamp_element(
                 matrix,
                 rhs,
             );
+        }
+        NonlinearElement::BargraphDisplay {
+            input,
+            segments,
+            vcc,
+            gnd,
+            resistance,
+        } => {
+            let supply = voltage(guess, vars, *vcc);
+            let level = (voltage(guess, vars, *input) / supply.max(1e-6) * 10.0)
+                .floor()
+                .clamp(0.0, 10.0) as usize;
+            for (index, segment) in segments.iter().enumerate() {
+                stamp_logic_output(
+                    *segment,
+                    *vcc,
+                    *gnd,
+                    index < level,
+                    *resistance,
+                    guess,
+                    vars,
+                    matrix,
+                    rhs,
+                );
+            }
         }
     }
 }

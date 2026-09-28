@@ -842,6 +842,37 @@ mod tests {
     }
 
     #[test]
+    fn c03_level_indicator_calculates_segment_count_from_input_ratio() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c03-s04-07-level-indicator.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::SingleStep]);
+        let dark = state.last_valid.as_ref().unwrap();
+        assert!(dark.led_currents.values().all(|current| *current < 1e-6));
+
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControlRatio {
+                    component: ComponentId("PHOTO1".into()),
+                    ratio: 1.0,
+                },
+                Action::SingleStep,
+            ],
+        );
+        let bright = state.last_valid.as_ref().unwrap();
+        assert!(
+            (0..9).all(|index| bright.led_currents[&ComponentId(format!("LED{index}"))] > 0.001)
+        );
+        assert!(bright.led_currents[&ComponentId("LED9".into())] < 1e-6);
+    }
+
+    #[test]
     fn c03_counter_fixture_drives_a_calculated_display_digit() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c03-s04-03-button-counter.json"
