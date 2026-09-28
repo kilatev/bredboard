@@ -1,0 +1,22 @@
+{
+  "format_version": 1,
+  "title": "C08-S17-03: Optocoupler",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 9.0 } },
+    { "id": "B1", "kind": "momentary_button", "pins": { "a": "A11", "b": "A14" }, "parameters": {} },
+    { "id": "RIN", "kind": "resistor", "pins": { "a": "B5", "b": "B11" }, "parameters": { "resistance": 1000.0 } },
+    { "id": "U1", "kind": "optocoupler", "pins": { "input_anode": "C11", "input_cathode": "C14", "collector": "D20", "emitter": "D23" }, "parameters": { "forward_voltage": 1.2, "series_resistance": 20.0, "transfer_gain": 100.0, "on_resistance": 100.0, "off_resistance": 1000000000.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "E23", "cathode": "E26" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "F26", "b": "F29" }, "parameters": { "resistance": 470.0 } },
+    { "id": "V2", "kind": "dc_voltage_source", "pins": { "positive": "BP+:1", "negative": "BP-:1" }, "parameters": { "voltage": 4.5 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "C5", "to": "TP+:5" },
+    { "id": "W2", "from": "D14", "to": "TP-:14" },
+    { "id": "W3", "from": "C20", "to": "BP+:20" },
+    { "id": "W4", "from": "G29", "to": "BP-:29" },
+    { "id": "W5", "from": "B26", "to": "G26" }
+  ],
+  "initial_conditions": { "controls": { "B1": "button_released" } }
+}

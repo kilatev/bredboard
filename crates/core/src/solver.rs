@@ -46,6 +46,9 @@ pub struct SolveResult {
     /// actuator contract, not a mechanical inertia simulation.
     #[serde(default)]
     pub motor_speeds: BTreeMap<ComponentId, f64>,
+    /// Calculated LED-side current through each optocoupler input.
+    #[serde(default)]
+    pub optocoupler_input_currents: BTreeMap<ComponentId, f64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -87,6 +90,18 @@ enum NonlinearElement {
         cathode: usize,
         forward: f64,
         resistance: f64,
+    },
+    Optocoupler {
+        id: ComponentId,
+        input_anode: usize,
+        input_cathode: usize,
+        collector: usize,
+        emitter: usize,
+        forward: f64,
+        series_resistance: f64,
+        transfer_gain: f64,
+        on_resistance: f64,
+        off_resistance: f64,
     },
     Npn {
         id: ComponentId,
@@ -348,6 +363,7 @@ fn solve_internal(
             transistor_collector_currents: BTreeMap::new(),
             pnp_collector_currents: BTreeMap::new(),
             motor_speeds: BTreeMap::new(),
+            optocoupler_input_currents: BTreeMap::new(),
         });
     }
 
@@ -360,6 +376,13 @@ fn solve_internal(
         let pairs: Vec<(usize, usize)> = match element {
             NonlinearElement::Led { anode, cathode, .. }
             | NonlinearElement::Diode { anode, cathode, .. } => vec![(*anode, *cathode)],
+            NonlinearElement::Optocoupler {
+                input_anode,
+                input_cathode,
+                collector,
+                emitter,
+                ..
+            } => vec![(*input_anode, *input_cathode), (*collector, *emitter)],
             NonlinearElement::Npn {
                 base,
                 collector,
@@ -735,6 +758,7 @@ fn solve_internal(
     let mut transistor_collector_currents = BTreeMap::new();
     let mut pnp_collector_currents = BTreeMap::new();
     let mut motor_speeds = BTreeMap::new();
+    let mut optocoupler_input_currents = BTreeMap::new();
     for branch in &branches {
         let current = match branch.kind {
             BranchKind::Resistor | BranchKind::Motor => {
@@ -831,6 +855,19 @@ fn solve_internal(
                 pnp_collector_currents
                     .insert(id.clone(), -npn_currents(veb, vec, *beta, *saturation).1);
             }
+            NonlinearElement::Optocoupler {
+                id,
+                input_anode,
+                input_cathode,
+                forward,
+                series_resistance,
+                ..
+            } => {
+                let vin = voltage(&solution, &voltage_vars, *input_anode)
+                    - voltage(&solution, &voltage_vars, *input_cathode);
+                optocoupler_input_currents
+                    .insert(id.clone(), led_current(vin, *forward, *series_resistance).0);
+            }
             NonlinearElement::LogicGate { .. }
             | NonlinearElement::SchmittInverter { .. }
             | NonlinearElement::Comparator { .. }
@@ -892,6 +929,7 @@ fn solve_internal(
         transistor_collector_currents,
         pnp_collector_currents,
         motor_speeds,
+        optocoupler_input_currents,
     })
 }
 
@@ -995,6 +1033,26 @@ fn make_branches(
                     emitter,
                     beta: component.parameters["beta"],
                     saturation: component.parameters["saturation_current"],
+                });
+                continue;
+            }
+            ComponentKind::Optocoupler => {
+                let input_anode = node("input_anode")?;
+                let input_cathode = node("input_cathode")?;
+                let collector = node("collector")?;
+                let emitter = node("emitter")?;
+                active.extend([input_anode, input_cathode, collector, emitter]);
+                nonlinear.push(NonlinearElement::Optocoupler {
+                    id: component.id.clone(),
+                    input_anode,
+                    input_cathode,
+                    collector,
+                    emitter,
+                    forward: component.parameters["forward_voltage"],
+                    series_resistance: component.parameters["series_resistance"],
+                    transfer_gain: component.parameters["transfer_gain"],
+                    on_resistance: component.parameters["on_resistance"],
+                    off_resistance: component.parameters["off_resistance"],
                 });
                 continue;
             }
@@ -1676,6 +1734,47 @@ fn stamp_element(
                 (*anode, *cathode),
                 current,
                 &[(*anode, conductance), (*cathode, -conductance)],
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
+        NonlinearElement::Optocoupler {
+            input_anode,
+            input_cathode,
+            collector,
+            emitter,
+            forward,
+            series_resistance,
+            transfer_gain,
+            on_resistance,
+            off_resistance,
+            ..
+        } => {
+            let vin = voltage(guess, vars, *input_anode) - voltage(guess, vars, *input_cathode);
+            let (input_current, input_conductance) = led_current(vin, *forward, *series_resistance);
+            stamp_current(
+                (*input_anode, *input_cathode),
+                input_current,
+                &[
+                    (*input_anode, input_conductance),
+                    (*input_cathode, -input_conductance),
+                ],
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+            let light = (*transfer_gain * input_current.max(0.0)).clamp(0.0, 1.0);
+            let conductance =
+                1.0 / *off_resistance + light * (1.0 / *on_resistance - 1.0 / *off_resistance);
+            let output_current =
+                conductance * (voltage(guess, vars, *collector) - voltage(guess, vars, *emitter));
+            stamp_current(
+                (*collector, *emitter),
+                output_current,
+                &[(*collector, conductance), (*emitter, -conductance)],
                 guess,
                 vars,
                 matrix,
@@ -2822,6 +2921,29 @@ mod tests {
         assert!(first.resistor_currents[&ComponentId("BZ1".into())].abs() > 0.01);
         assert!(first.led_currents[&ComponentId("D2".into())].abs() < 1e-12);
         assert!(first.resistor_currents[&ComponentId("BZ2".into())].abs() < 1e-12);
+    }
+
+    #[test]
+    fn optocoupler_transfers_calculated_input_current_across_isolated_sources() {
+        let project: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c08-s17-03-optocoupler.json"
+        ))
+        .unwrap();
+        let on = solve(&project).unwrap();
+        assert!(on.optocoupler_input_currents[&ComponentId("U1".into())] > 0.001);
+        assert!(on.led_currents[&ComponentId("D1".into())] > 0.001);
+        let blocked = solve_internal(
+            &project,
+            &BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            None,
+            MAX_NONLINEAR_ITERATIONS,
+        )
+        .unwrap();
+        assert!(blocked.optocoupler_input_currents[&ComponentId("U1".into())] < 1e-9);
+        assert!(blocked.led_currents[&ComponentId("D1".into())] < 1e-5);
     }
 
     fn variable_resistor_divider(kind: ComponentKind, min: f64, max: f64) -> Project {

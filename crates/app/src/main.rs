@@ -123,6 +123,8 @@ const C06_S08_01_JSON: &str =
     include_str!("../../../fixtures/projects/c06-s08-01-motor-with-switch.json");
 const C07_S09_03_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-03-two-station-telegraph.json");
+const C08_S17_03_JSON: &str =
+    include_str!("../../../fixtures/projects/c08-s17-03-optocoupler.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -201,6 +203,7 @@ enum Circuit {
     C05S07_08,
     C06S08_01,
     C07S09_03,
+    C08S17_03,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -218,7 +221,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 75] {
+    fn all() -> [Self; 76] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -262,6 +265,7 @@ impl Circuit {
             Self::C05S07_08,
             Self::C06S08_01,
             Self::C07S09_03,
+            Self::C08S17_03,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -374,6 +378,7 @@ impl Circuit {
             Self::C05S07_08 => C05_S07_08_JSON,
             Self::C06S08_01 => C06_S08_01_JSON,
             Self::C07S09_03 => C07_S09_03_JSON,
+            Self::C08S17_03 => C08_S17_03_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -453,6 +458,7 @@ impl Circuit {
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
             Self::C06S08_01 => "C06-S08-01: MOTOR WITH SWITCH",
             Self::C07S09_03 => "C07-S09-03: TWO-STATION TELEGRAPH",
+            Self::C08S17_03 => "C08-S17-03: OPTOCOUPLER",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -629,6 +635,10 @@ impl Circuit {
             Self::C07S09_03 => (
                 "Two calculated button stations drive independent LED and active-buzzer branches. The source's long cable is represented by board wiring and remains an explicit presentation discrepancy.",
                 "Task: press B1 or B2, run the fixture, and compare the calculated LED and buzzer currents for each station.",
+            ),
+            Self::C08S17_03 => (
+                "A calculated optocoupler transfers current from a 9 V button domain into an isolated 4.5 V LED domain. The two source rails remain electrically separate; the PC817 package is represented by the bounded optical-transfer contract.",
+                "Task: run the fixture, press B1, and compare the calculated optocoupler input current with the isolated LED current.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -1174,6 +1184,11 @@ impl Circuit {
                     is_switch: false,
                 },
             ],
+            Self::C08S17_03 => &[ControlSpec {
+                label: "B1: TRANSMIT",
+                component: "B1",
+                is_switch: false,
+            }],
             Self::C03S04_06 => &[
                 ControlSpec {
                     label: "RED PLAYER",
@@ -2211,6 +2226,7 @@ fn component_summary(component: &Component) -> String {
         ComponentKind::AudioAmplifier => format!("{id}  bounded audio amplifier"),
         ComponentKind::StepSequencer => format!("{id}  bounded eight-step sequencer"),
         ComponentKind::Sram => format!("{id}  bounded 2×8 SRAM  address/data/output bus"),
+        ComponentKind::Optocoupler => format!("{id}  optocoupler  isolated LED / transistor"),
     }
 }
 
@@ -2808,6 +2824,27 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C08S17_03 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Optocoupler transfer: run to measure".into(),
+                        |result| {
+                            format!(
+                                "U1 input {:.2} mA   D1 {:.2} mA",
+                                1000.0
+                                    * result
+                                        .optocoupler_input_currents
+                                        .get(&ComponentId("U1".into()))
+                                        .copied()
+                                        .unwrap_or(0.0),
+                                1000.0
+                                    * result
+                                        .led_currents
+                                        .get(&ComponentId("D1".into()))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                            )
+                        },
+                    )
                 } else {
                     bench.simulation.last_valid.as_ref().map_or(
                         "LED current: run to measure".into(),
@@ -3073,7 +3110,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            75
+            76
         );
         assert!(matches!(
             items[0],

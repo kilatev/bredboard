@@ -133,6 +133,9 @@ pub enum ComponentKind {
     /// component's rated voltage and no-load speed parameters. Inertia,
     /// torque load, and physical props are outside this core contract.
     Motor,
+    /// Four-terminal optocoupler with a calculated LED input and
+    /// light-controlled collector-emitter conductance.
+    Optocoupler,
     /// Two-input digital gate with a voltage-derived output.
     LogicGate,
     /// Voltage-threshold inverting buffer with hysteresis-free educational behavior.
@@ -511,6 +514,7 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::Buzzer | ComponentKind::Speaker | ComponentKind::Motor => {
             &["positive", "negative"]
         }
+        ComponentKind::Optocoupler => &["input_anode", "input_cathode", "collector", "emitter"],
         ComponentKind::LogicGate => &["gnd", "input_a", "input_b", "output", "vcc"],
         ComponentKind::SchmittInverter => &["gnd", "input", "output", "vcc"],
         ComponentKind::Comparator => &["gnd", "inverting", "non_inverting", "output", "vcc"],
@@ -588,6 +592,13 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
         }
         ComponentKind::Buzzer | ComponentKind::Speaker => &["resistance"],
         ComponentKind::Motor => &["resistance", "rated_voltage", "no_load_speed_rpm"],
+        ComponentKind::Optocoupler => &[
+            "forward_voltage",
+            "series_resistance",
+            "transfer_gain",
+            "on_resistance",
+            "off_resistance",
+        ],
         ComponentKind::LogicGate => &["operation", "output_resistance"],
         ComponentKind::SchmittInverter => &["output_resistance"],
         ComponentKind::Comparator => &["output_resistance"],
@@ -627,6 +638,11 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         (ComponentKind::Motor, "resistance") => Some((1.0, 1000.0)),
         (ComponentKind::Motor, "rated_voltage") => Some((0.1, 12.0)),
         (ComponentKind::Motor, "no_load_speed_rpm") => Some((1.0, 50_000.0)),
+        (ComponentKind::Optocoupler, "forward_voltage") => Some((0.0, 10.0)),
+        (ComponentKind::Optocoupler, "series_resistance") => Some((1.0, 1e7)),
+        (ComponentKind::Optocoupler, "transfer_gain") => Some((0.0, 1000.0)),
+        (ComponentKind::Optocoupler, "on_resistance") => Some((1.0, 1e6)),
+        (ComponentKind::Optocoupler, "off_resistance") => Some((1.0, 1e12)),
         (ComponentKind::LogicGate, "operation") => Some((0.0, 3.0)),
         (
             ComponentKind::LogicGate
