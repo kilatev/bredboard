@@ -373,10 +373,10 @@ fn update_digital_states(
                 *entry = u32::from(q_high) | u32::from(clock_high) << 16;
             }
             ComponentKind::DigitalCounter => {
-                if rising
-                    && voltage(&component.id, "reset") < supply * 0.5
-                    && voltage(&component.id, "enable") > supply * 0.5
-                {
+                let reset_high = voltage(&component.id, "reset") > supply * 0.5;
+                if reset_high {
+                    *entry = u32::from(clock_high) << 16;
+                } else if rising && voltage(&component.id, "enable") > supply * 0.5 {
                     let modulus = component.parameters["modulus"] as u32;
                     let value = *entry & 0x3ff;
                     *entry = (if value + 1 >= modulus { 0 } else { value + 1 }) | (1 << 16);
@@ -1111,6 +1111,89 @@ mod tests {
             );
         }
         assert_eq!(state.digital_states[&ComponentId("U1".into())] & 0x3ff, 4);
+    }
+
+    #[test]
+    fn c03_stopwatch_cascades_clock_carry_and_reset() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c03-s05-05-digital-stopwatch.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("RUN".into()),
+                    state: ControlState::SwitchNormallyOpen,
+                },
+                Action::Run,
+            ],
+        );
+        for _ in 0..12 {
+            apply_actions(
+                &mut project,
+                &baseline,
+                &mut state,
+                &[
+                    Action::SetControl {
+                        component: ComponentId("STEP".into()),
+                        state: ControlState::ButtonPressed,
+                    },
+                    Action::SingleStep,
+                    Action::SetControl {
+                        component: ComponentId("STEP".into()),
+                        state: ControlState::ButtonReleased,
+                    },
+                    Action::SingleStep,
+                ],
+            );
+        }
+
+        let first = state.digital_states[&ComponentId("U1".into())] & 0x3ff;
+        let second = state.digital_states[&ComponentId("U2".into())] & 0x3ff;
+        assert!(
+            state.last_valid.is_some(),
+            "stopwatch solve failed: states={:?} diagnostics={:?}",
+            state.digital_states,
+            state.diagnostics
+        );
+        let u1_voltage = |pin: &str| {
+            state
+                .last_valid
+                .as_ref()
+                .unwrap()
+                .node_voltages
+                .iter()
+                .find(|node| {
+                    node.contacts.contains(&crate::Contact::ComponentPin(
+                        ComponentId("U1".into()),
+                        crate::PinId(pin.into()),
+                    ))
+                })
+                .map(|node| node.voltage)
+                .unwrap_or(-1.0)
+        };
+        assert!(
+            first > 0,
+            "step input must advance the first decimal stage: states={:?} controls={:?} diagnostics={:?} clock={} enable={} reset={}",
+            state.digital_states,
+            state.controls,
+            state.diagnostics,
+            u1_voltage("clock"),
+            u1_voltage("enable"),
+            u1_voltage("reset")
+        );
+        assert!(second > 0, "carry must advance the second decimal stage");
+
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Reset]);
+        assert_eq!(state.digital_states[&ComponentId("U1".into())] & 0x3ff, 0);
+        assert_eq!(state.digital_states[&ComponentId("U2".into())] & 0x3ff, 0);
+        assert_eq!(state.digital_states[&ComponentId("U3".into())] & 0x3ff, 0);
+        assert_eq!(state.digital_states[&ComponentId("U4".into())] & 0x3ff, 0);
     }
 
     #[test]

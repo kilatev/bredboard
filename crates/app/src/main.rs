@@ -102,6 +102,8 @@ const C03_S05_02_JSON: &str =
 const C03_S05_03_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s05-03-pedestrian-signal.json");
 const C03_S05_04_JSON: &str = include_str!("../../../fixtures/projects/c03-s05-04-code-lock.json");
+const C03_S05_05_JSON: &str =
+    include_str!("../../../fixtures/projects/c03-s05-05-digital-stopwatch.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -167,6 +169,7 @@ enum Circuit {
     C03S05_02,
     C03S05_03,
     C03S05_04,
+    C03S05_05,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -184,7 +187,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 62] {
+    fn all() -> [Self; 63] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -215,6 +218,7 @@ impl Circuit {
             Self::C03S05_02,
             Self::C03S05_03,
             Self::C03S05_04,
+            Self::C03S05_05,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -314,6 +318,7 @@ impl Circuit {
             Self::C03S05_02 => C03_S05_02_JSON,
             Self::C03S05_03 => C03_S05_03_JSON,
             Self::C03S05_04 => C03_S05_04_JSON,
+            Self::C03S05_05 => C03_S05_05_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -380,6 +385,7 @@ impl Circuit {
             Self::C03S05_02 => "C03-S05-02: FOUR-BIT SUBTRACTOR",
             Self::C03S05_03 => "C03-S05-03: PEDESTRIAN SIGNAL",
             Self::C03S05_04 => "C03-S05-04: CODE LOCK",
+            Self::C03S05_05 => "C03-S05-05: DIGITAL STOPWATCH",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -504,6 +510,10 @@ impl Circuit {
             Self::C03S05_04 => (
                 "Four edge-triggered stages retain an ordered code. Each stage samples the preceding stage, while six reset buttons clear the chain and drive the calculated reset indicator.",
                 "Task: press C1, C2, C3, then C4 and verify the calculated unlock LED; use any RST button to clear the sequence.",
+            ),
+            Self::C03S05_05 => (
+                "A bounded electrical STEP input drives four cascaded calculated decimal counters and four seven-segment displays. The source crystal and exact hundredths timing remain explicit source discrepancies.",
+                "Task: switch RUN on, press STEP repeatedly to observe calculated carry through the four displays, then use the bench reset and verify all digits return to zero.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -923,6 +933,18 @@ impl Circuit {
                 ControlSpec {
                     label: "RESET 6",
                     component: "RST6",
+                    is_switch: false,
+                },
+            ],
+            Self::C03S05_05 => &[
+                ControlSpec {
+                    label: "RUN: OFF / ON",
+                    component: "RUN",
+                    is_switch: true,
+                },
+                ControlSpec {
+                    label: "STEP: PRESS / RELEASE",
+                    component: "STEP",
                     is_switch: false,
                 },
             ],
@@ -2669,7 +2691,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            62
+            63
         );
         assert!(matches!(
             items[0],
