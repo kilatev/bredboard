@@ -1,8 +1,8 @@
 # C03 — Counting, display, and systems fixtures
 
 Status: in_progress; the Section 04 and Section 05 source review is recorded
-and implementation is proceeding in bounded capability slices. Two Section 04
-fixtures are admitted; the remaining 15 entries and all manual evidence remain
+and implementation is proceeding in bounded capability slices. Four Section 04
+fixtures are admitted; the remaining 13 entries and all manual evidence remain
 open.
 
 ## Scope
@@ -81,7 +81,7 @@ electrical behavior.
 ## Implementation evidence so far
 
 The current slice adds calculated `digital_counter`, `shift_register`, and
-`seven_segment_display` contracts, three embedded Section 04 fixtures, menu
+`seven_segment_display` contracts, four embedded Section 04 fixtures, menu
 entries, and fixed-step regressions for rising-edge counting, BCD segment
 decoding, serial shifting, and output latching.
 
@@ -89,6 +89,7 @@ decoding, serial shifting, and output latching.
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s04-03-button-counter.json — passed; 5 components, 0 wires, 20 derived nodes
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s04-05-shift-register.json — passed; 8 components, 0 wires, 13 derived nodes
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s04-04-binary-counter.json — passed; 12 components, 4 wires, 7 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s04-01-running-lights.json — passed; 24 components, 10 wires, 13 derived nodes
 cargo test -p bredboard-core digital_counter_advances_once_per_calculated_rising_edge --locked — passed
 cargo test -p bredboard-core c03_counter_fixture_drives_a_calculated_display_digit --locked — passed
 cargo test -p bredboard-core c03_shift_register_calculates_shift_then_latch --locked — passed
