@@ -85,6 +85,11 @@ The current slice adds calculated `digital_counter`, `shift_register`, and
 entries, and fixed-step regressions for rising-edge counting, BCD segment
 decoding, serial shifting, and output latching.
 
+Section 05 is reconciled in the ledger as blocked rather than simulated: its
+eight records require DIP input banks, arithmetic and bus contracts, stronger
+state-machine timing, crystal dividers, SRAM, or multi-board supply and
+presentation behavior that the current core does not provide.
+
 ```text
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s04-03-button-counter.json — passed; 5 components, 0 wires, 20 derived nodes
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s04-05-shift-register.json — passed; 8 components, 0 wires, 13 derived nodes
