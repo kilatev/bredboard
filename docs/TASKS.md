@@ -78,6 +78,7 @@ batches:
 | [C02](tasks/C02-catalog-implementation.md) | The bounded implementation card for section 03, covering 7 first-IC schemes | C00b, C01, plus the IC model decisions named in the card |
 | [C03](tasks/C03-catalog-implementation.md) | The bounded implementation card for sections 04 and 05, covering 17 counting/display and systems schemes | C02, plus the digital/display and multi-board decisions named in the card |
 | [C04](tasks/C04-catalog-implementation.md) | The bounded implementation card for sections 06, 11, and 16, covering 27 sound, op-amp, and analog-computer schemes | C03, plus the signal, audio, and analog-computer decisions named in the card |
+| [C05](tasks/C05-catalog-implementation.md) | The bounded implementation card for sections 07 and 10, covering 24 home-tool and power-energy schemes | C01, C02, C04, plus the measurement, regulator, and power-safety decisions named in the card |
 
 C00 is documentation-only and is marked `ready_for_fukit` with its exact
 source checks and limitations recorded in the card. C01 remains `pending`;

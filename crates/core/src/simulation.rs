@@ -1593,6 +1593,56 @@ mod tests {
     }
 
     #[test]
+    fn c05_two_minute_timer_calculates_button_led_buzzer_and_pnp_state() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c05-s07-10-two-minute-timer.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("S1".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::Run,
+            ],
+        );
+        let mut max_led = 0.0_f64;
+        let mut max_buzzer = 0.0_f64;
+        let mut max_pnp = 0.0_f64;
+        for _ in 0..4_000 {
+            advance_steps(&project, &mut state, 1);
+            let solved = state.last_valid.as_ref().unwrap();
+            max_led = max_led.max(solved.led_currents[&ComponentId("LED1".into())]);
+            max_buzzer = max_buzzer.max(
+                solved
+                    .resistor_currents
+                    .get(&ComponentId("BZ1".into()))
+                    .copied()
+                    .unwrap_or(0.0)
+                    .abs(),
+            );
+            max_pnp = max_pnp.max(
+                solved
+                    .pnp_collector_currents
+                    .get(&ComponentId("Q1".into()))
+                    .copied()
+                    .unwrap_or(0.0)
+                    .abs(),
+            );
+        }
+        assert!(!state.stale, "diagnostics={:?}", state.diagnostics);
+        assert!(max_led > 0.001);
+        assert!(max_buzzer > 0.001);
+        assert!(max_pnp > 0.0001);
+    }
+
+    #[test]
     fn c03_shift_register_calculates_shift_then_latch() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c03-s04-05-shift-register.json"
