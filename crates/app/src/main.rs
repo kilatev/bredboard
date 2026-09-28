@@ -110,6 +110,7 @@ const C03_S05_07_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s05-07-step-sequencer.json");
 const C03_S05_08_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s05-08-bounded-sram.json");
+const C04_S06_04_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-04-metronome.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -179,6 +180,7 @@ enum Circuit {
     C03S05_06,
     C03S05_07,
     C03S05_08,
+    C04S06_04,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -196,7 +198,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 66] {
+    fn all() -> [Self; 67] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -231,6 +233,7 @@ impl Circuit {
             Self::C03S05_06,
             Self::C03S05_07,
             Self::C03S05_08,
+            Self::C04S06_04,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -334,6 +337,7 @@ impl Circuit {
             Self::C03S05_06 => C03_S05_06_JSON,
             Self::C03S05_07 => C03_S05_07_JSON,
             Self::C03S05_08 => C03_S05_08_JSON,
+            Self::C04S06_04 => C04_S06_04_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -404,6 +408,7 @@ impl Circuit {
             Self::C03S05_06 => "C03-S05-06: DIGITAL CLOCK CORE",
             Self::C03S05_07 => "C03-S05-07: STEP SEQUENCER",
             Self::C03S05_08 => "C03-S05-08: BOUNDED SRAM COMPUTER",
+            Self::C04S06_04 => "C04-S06-04: METRONOME",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -544,6 +549,10 @@ impl Circuit {
             Self::C03S05_08 => (
                 "A bounded SRAM model stores two calculated eight-bit words on electrical WRITE edges and drives the selected word onto an eight-bit LED read bus. The source SAP-1 CPU, four-board layout, and 5 V / 2 A supply remain explicit discrepancies.",
                 "Task: select an address and data byte, press WRITE, then switch the address and verify the stored calculated byte on the output LEDs.",
+            ),
+            Self::C04S06_04 => (
+                "A calculated NE555 timer charges and discharges its timing capacitor through an adjustable control, driving a current-limited LED and speaker load. The beat rate is derived from fixed simulation steps and electrical state.",
+                "Task: drag RV1, run the fixture, and compare the calculated capacitor waveform, LED pulses, and speaker load current.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -1012,6 +1021,7 @@ impl Circuit {
                     is_switch: false,
                 },
             ],
+            Self::C04S06_04 => &[],
             Self::C03S04_06 => &[
                 ControlSpec {
                     label: "RED PLAYER",
@@ -1156,6 +1166,10 @@ impl Circuit {
                     component: "RV8",
                 },
             ],
+            Self::C04S06_04 => &[DialSpec {
+                label: "RV1: TEMPO - drag left/right",
+                component: "RV1",
+            }],
             Self::E27 => &[DialSpec {
                 label: "RV1: SHARED BRIGHTNESS - drag left/right",
                 component: "RV1",
@@ -2791,7 +2805,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            66
+            67
         );
         assert!(matches!(
             items[0],
