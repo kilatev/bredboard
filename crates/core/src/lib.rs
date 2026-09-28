@@ -101,6 +101,7 @@ pub enum ComponentKind {
     Diode,
     Capacitor,
     NpnTransistor,
+    PnpTransistor,
     MomentaryButton,
     ChangeoverSwitch,
     /// Two-terminal variable resistor (rheostat wiring only; the wiper
@@ -460,7 +461,9 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::Resistor => &["a", "b"],
         ComponentKind::Led | ComponentKind::Diode => &["anode", "cathode"],
         ComponentKind::Capacitor => &["negative", "positive"],
-        ComponentKind::NpnTransistor => &["base", "collector", "emitter"],
+        ComponentKind::NpnTransistor | ComponentKind::PnpTransistor => {
+            &["base", "collector", "emitter"]
+        }
         ComponentKind::MomentaryButton => &["a", "b"],
         ComponentKind::ChangeoverSwitch => &["common", "normally_closed", "normally_open"],
         ComponentKind::Potentiometer | ComponentKind::Photoresistor => &["a", "b"],
@@ -473,7 +476,9 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::Resistor => &["resistance"],
         ComponentKind::Led | ComponentKind::Diode => &["forward_voltage", "series_resistance"],
         ComponentKind::Capacitor => &["capacitance"],
-        ComponentKind::NpnTransistor => &["beta", "saturation_current"],
+        ComponentKind::NpnTransistor | ComponentKind::PnpTransistor => {
+            &["beta", "saturation_current"]
+        }
         ComponentKind::MomentaryButton | ComponentKind::ChangeoverSwitch => &[],
         ComponentKind::Potentiometer | ComponentKind::Photoresistor => {
             &["min_resistance", "max_resistance"]
@@ -488,8 +493,12 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         (ComponentKind::Led | ComponentKind::Diode, "forward_voltage") => Some((0.0, 10.0)),
         (ComponentKind::Led | ComponentKind::Diode, "series_resistance") => Some((1.0, 1e7)),
         (ComponentKind::Capacitor, "capacitance") => Some((1e-10, 1e-2)),
-        (ComponentKind::NpnTransistor, "beta") => Some((10.0, 1000.0)),
-        (ComponentKind::NpnTransistor, "saturation_current") => Some((1e-16, 1e-12)),
+        (ComponentKind::NpnTransistor | ComponentKind::PnpTransistor, "beta") => {
+            Some((10.0, 1000.0))
+        }
+        (ComponentKind::NpnTransistor | ComponentKind::PnpTransistor, "saturation_current") => {
+            Some((1e-16, 1e-12))
+        }
         (
             ComponentKind::Potentiometer | ComponentKind::Photoresistor,
             "min_resistance" | "max_resistance",

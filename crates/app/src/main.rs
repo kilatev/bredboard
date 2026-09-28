@@ -1363,6 +1363,12 @@ fn component_summary(component: &Component) -> String {
             component.pins[&bredboard_core::PinId("collector".into())].0,
             component.pins[&bredboard_core::PinId("emitter".into())].0
         ),
+        ComponentKind::PnpTransistor => format!(
+            "{id}  PNP  B {} C {} E {}",
+            component.pins[&bredboard_core::PinId("base".into())].0,
+            component.pins[&bredboard_core::PinId("collector".into())].0,
+            component.pins[&bredboard_core::PinId("emitter".into())].0
+        ),
         ComponentKind::Potentiometer => format!(
             "{id}  potentiometer {:.0}-{:.0} ohm  {} / {}",
             component.parameters["min_resistance"],

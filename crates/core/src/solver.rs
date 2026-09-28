@@ -36,6 +36,8 @@ pub struct SolveResult {
     pub diode_currents: BTreeMap<ComponentId, f64>,
     #[serde(default)]
     pub transistor_collector_currents: BTreeMap<ComponentId, f64>,
+    #[serde(default)]
+    pub pnp_collector_currents: BTreeMap<ComponentId, f64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -78,6 +80,14 @@ enum NonlinearElement {
         resistance: f64,
     },
     Npn {
+        id: ComponentId,
+        base: usize,
+        collector: usize,
+        emitter: usize,
+        beta: f64,
+        saturation: f64,
+    },
+    Pnp {
         id: ComponentId,
         base: usize,
         collector: usize,
@@ -190,6 +200,7 @@ fn solve_internal(
             led_currents: BTreeMap::new(),
             diode_currents: BTreeMap::new(),
             transistor_collector_currents: BTreeMap::new(),
+            pnp_collector_currents: BTreeMap::new(),
         });
     }
 
@@ -203,6 +214,12 @@ fn solve_internal(
             NonlinearElement::Led { anode, cathode, .. }
             | NonlinearElement::Diode { anode, cathode, .. } => (*anode, *cathode, None),
             NonlinearElement::Npn {
+                base,
+                collector,
+                emitter,
+                ..
+            } => (*base, *emitter, Some(*collector)),
+            NonlinearElement::Pnp {
                 base,
                 collector,
                 emitter,
@@ -361,6 +378,7 @@ fn solve_internal(
     let mut led_currents = BTreeMap::new();
     let mut diode_currents = BTreeMap::new();
     let mut transistor_collector_currents = BTreeMap::new();
+    let mut pnp_collector_currents = BTreeMap::new();
     for branch in &branches {
         let current = match branch.kind {
             BranchKind::Resistor => {
@@ -439,6 +457,21 @@ fn solve_internal(
                 transistor_collector_currents
                     .insert(id.clone(), npn_currents(vbe, vce, *beta, *saturation).1);
             }
+            NonlinearElement::Pnp {
+                id,
+                base,
+                collector,
+                emitter,
+                beta,
+                saturation,
+            } => {
+                let veb = voltage(&solution, &voltage_vars, *emitter)
+                    - voltage(&solution, &voltage_vars, *base);
+                let vec = voltage(&solution, &voltage_vars, *emitter)
+                    - voltage(&solution, &voltage_vars, *collector);
+                pnp_collector_currents
+                    .insert(id.clone(), -npn_currents(veb, vec, *beta, *saturation).1);
+            }
         }
     }
     Ok(SolveResult {
@@ -451,6 +484,7 @@ fn solve_internal(
         led_currents,
         diode_currents,
         transistor_collector_currents,
+        pnp_collector_currents,
     })
 }
 
@@ -532,6 +566,21 @@ fn make_branches(
                 let emitter = node("emitter")?;
                 active.extend([base, collector, emitter]);
                 nonlinear.push(NonlinearElement::Npn {
+                    id: component.id.clone(),
+                    base,
+                    collector,
+                    emitter,
+                    beta: component.parameters["beta"],
+                    saturation: component.parameters["saturation_current"],
+                });
+                continue;
+            }
+            ComponentKind::PnpTransistor => {
+                let base = node("base")?;
+                let collector = node("collector")?;
+                let emitter = node("emitter")?;
+                active.extend([base, collector, emitter]);
+                nonlinear.push(NonlinearElement::Pnp {
                     id: component.id.clone(),
                     base,
                     collector,
@@ -869,6 +918,37 @@ fn stamp_element(
                 rhs,
             );
         }
+        NonlinearElement::Pnp {
+            base,
+            collector,
+            emitter,
+            beta,
+            saturation,
+            ..
+        } => {
+            let veb = voltage(guess, vars, *emitter) - voltage(guess, vars, *base);
+            let vec = voltage(guess, vars, *emitter) - voltage(guess, vars, *collector);
+            let (ib, ic, gm, go) = npn_currents(veb, vec, *beta, *saturation);
+            let (_, gib) = led_current(veb, 0.026 * (0.001 / saturation).ln(), 100.0);
+            stamp_current(
+                (*emitter, *base),
+                ib,
+                &[(*emitter, gib), (*base, -gib)],
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+            stamp_current(
+                (*emitter, *collector),
+                ic,
+                &[(*emitter, gm + go), (*base, -gm), (*collector, -go)],
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
     }
 }
 fn gaussian_solve(mut a: Vec<Vec<f64>>, mut b: Vec<f64>) -> Option<Vec<f64>> {
@@ -950,8 +1030,80 @@ mod tests {
         ))
         .unwrap()
     }
+
+    fn pnp_high_side() -> Project {
+        Project {
+            format_version: crate::PROJECT_FORMAT_VERSION,
+            title: "PNP high-side test".into(),
+            board: crate::Board {
+                model: crate::BoardModel::HalfSizeSolderless,
+            },
+            components: vec![
+                Component {
+                    id: ComponentId("V1".into()),
+                    kind: ComponentKind::DcVoltageSource,
+                    pins: BTreeMap::from([
+                        (
+                            crate::PinId("positive".into()),
+                            crate::HoleId("TP+:1".into()),
+                        ),
+                        (
+                            crate::PinId("negative".into()),
+                            crate::HoleId("TP-:1".into()),
+                        ),
+                    ]),
+                    parameters: BTreeMap::from([(String::from("voltage"), 5.0)]),
+                },
+                Component {
+                    id: ComponentId("R1".into()),
+                    kind: ComponentKind::Resistor,
+                    pins: BTreeMap::from([
+                        (crate::PinId("a".into()), crate::HoleId("B1".into())),
+                        (crate::PinId("b".into()), crate::HoleId("TP-:4".into())),
+                    ]),
+                    parameters: BTreeMap::from([(String::from("resistance"), 470.0)]),
+                },
+                Component {
+                    id: ComponentId("R2".into()),
+                    kind: ComponentKind::Resistor,
+                    pins: BTreeMap::from([
+                        (crate::PinId("a".into()), crate::HoleId("A2".into())),
+                        (crate::PinId("b".into()), crate::HoleId("TP-:2".into())),
+                    ]),
+                    parameters: BTreeMap::from([(String::from("resistance"), 10_000.0)]),
+                },
+                Component {
+                    id: ComponentId("Q1".into()),
+                    kind: ComponentKind::PnpTransistor,
+                    pins: BTreeMap::from([
+                        (crate::PinId("base".into()), crate::HoleId("C2".into())),
+                        (crate::PinId("collector".into()), crate::HoleId("A1".into())),
+                        (
+                            crate::PinId("emitter".into()),
+                            crate::HoleId("TP+:3".into()),
+                        ),
+                    ]),
+                    parameters: BTreeMap::from([
+                        (String::from("beta"), 100.0),
+                        (String::from("saturation_current"), 1e-15),
+                    ]),
+                },
+            ],
+            wires: Vec::new(),
+            initial_conditions: Default::default(),
+        }
+    }
     fn solve(p: &Project) -> Result<SolveResult, ElectricalError> {
         solve_dc(p, &BTreeMap::new(), &BTreeMap::new())
+    }
+
+    #[test]
+    fn pnp_high_side_has_a_calculated_collector_current() {
+        let result = solve(&pnp_high_side()).unwrap();
+        let collector = result.pnp_collector_currents[&ComponentId("Q1".into())];
+        let load = result.resistor_currents[&ComponentId("R1".into())];
+        assert!(collector < -0.005);
+        assert!((collector + load).abs() < 1e-9);
     }
     fn pin_voltage(result: &SolveResult, component: &str, pin: &str) -> f64 {
         result

@@ -36,5 +36,9 @@ use the normalized 5 V supply.
 | C01-S02-02 | `c01-s02-02-dusk-night-light.json` | R3 ambient light; RV1 threshold; D1/Q1 current | The photoresistor and potentiometer are two-terminal rheostats; dark raises the base drive and bright lowers it. |
 
 The touch-pad, water-probe, two-transistor flasher, transistor-logic, and
-PNP/speaker entries remain blocked in the ledger until their physical or model
+speaker entries remain blocked in the ledger until their physical or design
 contracts are accepted. No scripted output is used for those entries.
+The core also now has a mirrored `pnp_transistor` model with the same named
+pins and bounded beta/saturation parameters. It is model-tested as a high-side
+load; the S02-07 fixture remains blocked until the speaker power/current bound
+and oscillator startup are accepted.

@@ -71,6 +71,7 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
         ComponentKind::MomentaryButton => Some(&button::Button),
         ComponentKind::Capacitor => Some(&capacitor::Capacitor),
         ComponentKind::NpnTransistor => Some(&transistor::Transistor),
+        ComponentKind::PnpTransistor => Some(&transistor::Transistor),
         ComponentKind::ChangeoverSwitch => Some(&switch::Switch),
         ComponentKind::DcVoltageSource => Some(&source::Source),
         ComponentKind::Potentiometer => Some(&potentiometer::Potentiometer),

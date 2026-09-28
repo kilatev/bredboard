@@ -12,8 +12,9 @@ Sections 01/02 release decisions remain open.
 - Existing fixture architecture, stable board topology, and the current
   component contracts from the accepted MVP and post-MVP cards remain the
   boundary. This card does not authorize a second netlist or scripted result.
-- New diode and PNP model/pin-contract tasks are prerequisites for S01-05 and
-  S02-07. A physical-prop decision is a prerequisite for S02-03 and S02-04.
+- The diode and PNP model/pin contracts are now present for S01-05 and
+  S02-07; S02-07 still needs a bounded speaker-load fixture. A physical-prop
+  decision is a prerequisite for S02-03 and S02-04.
 
 ## Outcome and commit boundary
 
@@ -139,8 +140,8 @@ battery-only safety decisions.
   5 V external source.
 - The source alternates BC547/2N3904 and BC557/2N3906 without a single pin
   convention.
-- No diode or PNP runtime model/pin contract is currently established for the
-  C01 batch.
+- The diode and PNP runtime models now have named pin contracts; S02-07 still
+  lacks a bounded speaker-load and oscillator-startup fixture.
 - Touch pads and water probes need a safe, reproducible physical-prop scope
   decision.
 - S01-06's nominal RC time constant does not support its “couple seconds”
