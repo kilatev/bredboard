@@ -652,6 +652,48 @@ mod tests {
     }
 
     #[test]
+    fn c03_dice_counter_calculates_the_one_dot_pattern() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c03-s04-02-electronic-dice.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Run]);
+        advance_steps(&project, &mut state, 1);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("S1".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::SingleStep,
+            ],
+        );
+        assert_eq!(state.digital_states[&ComponentId("U1".into())] & 0x3ff, 1);
+        let solved = state.last_valid.as_ref().unwrap();
+        let pin_voltage = |pin: &str| {
+            solved
+                .node_voltages
+                .iter()
+                .find(|node| {
+                    node.contacts.contains(&crate::Contact::ComponentPin(
+                        ComponentId("U1".into()),
+                        crate::PinId(pin.into()),
+                    ))
+                })
+                .unwrap()
+                .voltage
+        };
+        assert!(pin_voltage("q3") > 3.0);
+        assert!(pin_voltage("q0") < 1.0);
+        assert!(pin_voltage("q6") < 1.0);
+    }
+
+    #[test]
     fn c03_shift_register_calculates_shift_then_latch() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c03-s04-05-shift-register.json"

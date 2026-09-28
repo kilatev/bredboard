@@ -1596,10 +1596,10 @@ fn stamp_element(
             let reset_high = voltage(guess, vars, *reset) > supply * 0.5;
             for (index, output) in outputs.iter().enumerate() {
                 let high = !reset_high
-                    && if *mode == 1 {
-                        value == index as u32
-                    } else {
-                        index < 4 && value & (1 << index) != 0
+                    && match *mode {
+                        1 => value == index as u32,
+                        2 => dice_output(value, index),
+                        _ => index < 4 && value & (1 << index) != 0,
                     };
                 stamp_logic_output(
                     *output,
@@ -1691,6 +1691,18 @@ fn stamp_element(
             }
         }
     }
+}
+fn dice_output(value: u32, index: usize) -> bool {
+    let mask = match value {
+        1 => 0b0001000,
+        2 => 0b1000001,
+        3 => 0b1001001,
+        4 => 0b1010101,
+        5 => 0b1011101,
+        6 => 0b1110111,
+        _ => 0,
+    };
+    index < 7 && mask & (1 << index) != 0
 }
 fn gaussian_solve(mut a: Vec<Vec<f64>>, mut b: Vec<f64>) -> Option<Vec<f64>> {
     let n = b.len();

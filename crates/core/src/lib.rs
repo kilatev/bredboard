@@ -578,7 +578,7 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         ) => Some((1.0, 1e7)),
         (ComponentKind::Timer555, "discharge_resistance") => Some((1.0, 1e7)),
         (ComponentKind::DigitalCounter, "modulus") => Some((2.0, 10.0)),
-        (ComponentKind::DigitalCounter, "output_mode") => Some((0.0, 1.0)),
+        (ComponentKind::DigitalCounter, "output_mode") => Some((0.0, 2.0)),
         (ComponentKind::DigitalCounter, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::ShiftRegister, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::SevenSegmentDisplay, "output_resistance") => Some((1.0, 1e7)),
