@@ -114,8 +114,14 @@ pub enum ComponentKind {
     /// ratio 1.0 (brightest) is `min_resistance`.
     Photoresistor,
     /// Fixed-resistance two-terminal load with a current-derived "sounding"
-    /// presentation state; no audio output (the app has no audio system).
+    /// presentation state. The app plays a fixed tone while sounding; the
+    /// pitch is a presentation choice, not a calculated electrical result.
     Buzzer,
+    /// Fixed-resistance two-terminal load, electrically identical to
+    /// `Buzzer` (see its documentation): a low-impedance dynamic speaker
+    /// rather than a piezo buzzer, with its own sprite and a lower, fuller
+    /// tone while sounding.
+    Speaker,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Wire {
@@ -456,7 +462,7 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::MomentaryButton => &["a", "b"],
         ComponentKind::ChangeoverSwitch => &["common", "normally_closed", "normally_open"],
         ComponentKind::Potentiometer | ComponentKind::Photoresistor => &["a", "b"],
-        ComponentKind::Buzzer => &["positive", "negative"],
+        ComponentKind::Buzzer | ComponentKind::Speaker => &["positive", "negative"],
     }
 }
 fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
@@ -470,7 +476,7 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::Potentiometer | ComponentKind::Photoresistor => {
             &["min_resistance", "max_resistance"]
         }
-        ComponentKind::Buzzer => &["resistance"],
+        ComponentKind::Buzzer | ComponentKind::Speaker => &["resistance"],
     }
 }
 fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
@@ -487,6 +493,9 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
             "min_resistance" | "max_resistance",
         ) => Some((1.0, 1e7)),
         (ComponentKind::Buzzer, "resistance") => Some((1.0, 1e7)),
+        // Dynamic speakers are low-impedance voice coils (typically 4-32
+        // ohms), unlike the piezo buzzer's much wider practical range.
+        (ComponentKind::Speaker, "resistance") => Some((1.0, 100.0)),
         _ => None,
     }
 }
@@ -918,6 +927,42 @@ mod tests {
         let text = serde_json::to_string(&serde_json::to_value(schema).unwrap()).unwrap();
         assert!(text.contains("\"buzzer\""));
         for value in [0.999, 10_000_001.0] {
+            let mut bad = p.clone();
+            bad.components[0]
+                .parameters
+                .insert("resistance".into(), value);
+            assert!(
+                compile_topology(&bad)
+                    .unwrap_err()
+                    .iter()
+                    .any(|d| d.code == "parameter_out_of_range")
+            );
+        }
+        let json = serde_json::to_string(&p).unwrap();
+        let decoded: Project = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, p);
+    }
+
+    #[test]
+    fn speaker_is_a_valid_kind_with_documented_range_and_round_trips() {
+        let mut p = project();
+        p.components = vec![Component {
+            id: ComponentId("SPK1".into()),
+            kind: ComponentKind::Speaker,
+            pins: BTreeMap::from([
+                (PinId("positive".into()), HoleId("A1".into())),
+                (PinId("negative".into()), HoleId("A2".into())),
+            ]),
+            parameters: BTreeMap::from([("resistance".into(), 8.0)]),
+        }];
+        p.wires.clear();
+        assert!(compile_topology(&p).is_ok());
+        let schema =
+            schemars::SchemaGenerator::new(schemars::generate::SchemaSettings::draft2020_12())
+                .into_root_schema_for::<Project>();
+        let text = serde_json::to_string(&serde_json::to_value(schema).unwrap()).unwrap();
+        assert!(text.contains("\"speaker\""));
+        for value in [0.999, 100.001] {
             let mut bad = p.clone();
             bad.components[0]
                 .parameters

@@ -17,6 +17,7 @@ mod photoresistor;
 mod potentiometer;
 mod resistor;
 mod source;
+mod speaker;
 mod switch;
 mod transistor;
 
@@ -33,7 +34,9 @@ pub const PIXEL: f32 = 2.0;
 pub struct PartContext {
     /// Calculated LED current in amperes; 0 when readings are stale.
     pub led_current: f64,
-    /// Calculated buzzer current in amperes; 0 when readings are stale.
+    /// Calculated current in amperes for a buzzer or speaker; 0 when
+    /// readings are stale. Shared by both kinds: they are electrically
+    /// identical fixed resistive loads with the same sounding threshold.
     pub buzzer_current: f64,
     pub control: Option<ControlState>,
 }
@@ -71,6 +74,7 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
         ComponentKind::Potentiometer => Some(&potentiometer::Potentiometer),
         ComponentKind::Photoresistor => Some(&photoresistor::Photoresistor),
         ComponentKind::Buzzer => Some(&buzzer::Buzzer),
+        ComponentKind::Speaker => Some(&speaker::Speaker),
     }
 }
 
@@ -242,6 +246,8 @@ mod tests {
         golden("dc-voltage-source", &source::Source.body(&source, 0));
         golden("buzzer-silent", &buzzer::body(false));
         golden("buzzer-sounding", &buzzer::body(true));
+        golden("speaker-silent", &speaker::body(false));
+        golden("speaker-sounding", &speaker::body(true));
         // T19 promotes these two designs from the T17 Part B future references;
         // the golden files are unchanged and now describe a real component.
         golden("future-trimmer-potentiometer", &potentiometer::body());
@@ -263,7 +269,7 @@ mod tests {
 
     #[test]
     fn every_state_of_a_part_has_the_same_size() {
-        let parts: [(&dyn PartArt, Component); 9] = [
+        let parts: [(&dyn PartArt, Component); 10] = [
             (
                 &resistor::Resistor,
                 component(
@@ -340,6 +346,14 @@ mod tests {
                     &[("resistance", 32.0)],
                 ),
             ),
+            (
+                &speaker::Speaker,
+                component(
+                    ComponentKind::Speaker,
+                    &[("positive", "A1"), ("negative", "A4")],
+                    &[("resistance", 8.0)],
+                ),
+            ),
         ];
         for (art, c) in parts {
             let sizes: Vec<_> = (0..art.state_count())
@@ -401,7 +415,7 @@ mod tests {
 
         #[test]
         fn placements_cover_every_pin_hole(
-            ax in -8i32..8, ay in -8i32..8, dx in -6i32..=6, dy in -6i32..=6, kind in 0usize..6,
+            ax in -8i32..8, ay in -8i32..8, dx in -6i32..=6, dy in -6i32..=6, kind in 0usize..7,
         ) {
             prop_assume!((dx, dy) != (0, 0));
             let a = Vec2::new(ax as f32, ay as f32) * 16.0;
@@ -412,7 +426,8 @@ mod tests {
                 2 => (&button::Button, component(ComponentKind::MomentaryButton, &[("a", "E1"), ("b", "F1")], &[])),
                 3 => (&potentiometer::Potentiometer, component(ComponentKind::Potentiometer, &[("a", "A1"), ("b", "A4")], &[("min_resistance", 1.0), ("max_resistance", 10_000.0)])),
                 4 => (&photoresistor::Photoresistor, component(ComponentKind::Photoresistor, &[("a", "A1"), ("b", "A4")], &[("min_resistance", 100.0), ("max_resistance", 1_000_000.0)])),
-                _ => (&buzzer::Buzzer, component(ComponentKind::Buzzer, &[("positive", "A1"), ("negative", "A4")], &[("resistance", 32.0)])),
+                5 => (&buzzer::Buzzer, component(ComponentKind::Buzzer, &[("positive", "A1"), ("negative", "A4")], &[("resistance", 32.0)])),
+                _ => (&speaker::Speaker, component(ComponentKind::Speaker, &[("positive", "A1"), ("negative", "A4")], &[("resistance", 8.0)])),
             };
             assert_leads_reach_holes(art, &c, &[a, b])?;
         }

@@ -2,7 +2,7 @@
 
 ## Outcome and scope
 
-Build an educational 2D breadboard simulator for a school-age beginner with no electronics background. Use Rust and Bevy, with an independently testable electrical core. One Bevy app provides the same menu, controls, and board view for Linux and WASM deployments. The Linux executable is the MVP interaction target; the WASM target is compilation-checked only. The browser wrapper adds a canvas and startup call, with no separate product UI. The planned commercial distribution target is an offline-first desktop release on Steam; Steam integration must not make simulation or level creation depend on a network service.
+Build an educational 2D breadboard simulator for a school-age beginner with no electronics background. Use Rust and Bevy, with an independently testable electrical core. One Bevy app provides the same menu, controls, and board view for Linux and WASM deployments. The Linux executable is the MVP interaction target; the WASM target is compilation-checked only. The browser wrapper adds a canvas and startup call, with no separate product UI. Steam packaging is a later release concern and is outside the current catalog-expansion priority.
 
 English is canonical for all project artifacts: plans, task cards, documentation, code comments, UI, board labels, component descriptions, lessons, diagnostics, JSON Schema descriptions, examples, and commit messages. Keep user-facing strings separate from logic. Russian localization is outside the MVP.
 
@@ -73,7 +73,7 @@ Add tests with each feature, not only at final integration. Use Proptest generat
 - Invalid imports, contradictory sources, floating nodes, limit violations, and nonlinear failure produce bounded diagnostics without hangs or misleading live readings.
 - Select and operate all three fixed circuits in the Linux executable. A successful build alone is not Linux interaction acceptance.
 
-T01 establishes exact formatting-check, Clippy, test, Linux-build, and WASM-build commands. Later cards add numerical, property, and interaction checks. Report unavailable required checks as blockers rather than passes. Before expanding the fixed-exercise corpus beyond E30, add a local `.cir` exporter and representative differential checks against ngspice; this is a development/reference tool, not an online runtime dependency.
+T01 establishes exact formatting-check, Clippy, test, Linux-build, and WASM-build commands. Later cards add numerical, property, and interaction checks. Report unavailable required checks as blockers rather than passes. The `.cir` exporter and ngspice differential checks are explicitly deferred; they are not prerequisites for the current design-audit and manual-assembly work.
 
 The project uses the owner-selected [MIT License](../LICENSE) from the initial GitHub commit. English contributor/build instructions and dependency/asset license and attribution review are prerequisites for the MVP release. Public hosting and repository publication require an established destination and authorization.
 
@@ -89,7 +89,16 @@ See [the post-MVP roadmap](roadmap/POST-MVP.md) for free assembly, AI-authored l
 
 ### Current post-MVP direction
 
-Complete the fixed exercise sequence through E30 using the existing fixture-and-menu architecture. Do not introduce a remote backend or a new solver solely to add these levels. After E30, pause content expansion and specify data-driven level metadata, declarative completion conditions, and the required format migration before targeting a larger catalog or user-authored circuits. Steam packaging and optional native ngspice integration are later release work and must preserve offline play.
+Expand the 212-scheme reference catalog into playable content in small, reviewable batches. The immediate work is:
+
+1. audit every source schematic, BOM, and visual reference for design defects;
+2. record defects such as missing artwork, unsupported parts, ambiguous pins, impossible or unsafe BOMs, unreadable layouts, and non-buildable connections;
+3. implement the next supported schemes as validated fixtures and menu entries;
+4. manually assemble representative schemes on a real breadboard and record whether the documented BOM and hole-level layout can be built.
+
+Keep the local solver and existing fixture architecture while the catalog is being audited. New abstractions are justified only by a concrete catalog blocker. Steam packaging, `.cir` export, ngspice comparison, browser interaction, free assembly, user-facing file workflow, guided lessons, and broader product polish are deferred until the catalog audit and a manual-assembly tranche have produced findings.
+
+The complete execution sequence for this work is documented in the [212-scheme catalog execution plan](roadmap/CATALOG-EXECUTION-PLAN.md). It covers the per-scheme review and implementation pipeline, shared audit prerequisites, 12 implementation batches, and batch acceptance gates.
 
 ## Design references
 

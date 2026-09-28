@@ -615,7 +615,7 @@ fn component_branch(
                 ));
             }
         },
-        ComponentKind::Buzzer => Some((
+        ComponentKind::Buzzer | ComponentKind::Speaker => Some((
             "positive",
             "negative",
             BranchKind::Resistor,
@@ -1270,6 +1270,42 @@ mod tests {
         assert_eq!(
             pin_voltage(&plain, "R1", "b"),
             pin_voltage(&as_buzzer, "R1", "negative")
+        );
+    }
+
+    #[test]
+    fn speaker_matches_a_plain_resistor_of_the_same_value() {
+        // Within Speaker's documented range (1-100 ohms), unlike the buzzer
+        // equivalence test's 1000-ohm divider.
+        let mut plain_project = divider();
+        plain_project.components[1]
+            .parameters
+            .insert("resistance".into(), 8.0);
+        plain_project.components[2]
+            .parameters
+            .insert("resistance".into(), 8.0);
+        let mut speaker = plain_project.clone();
+        speaker.components[1].kind = ComponentKind::Speaker;
+        speaker.components[1].pins = BTreeMap::from([
+            (
+                crate::PinId("positive".into()),
+                crate::HoleId("TP+:2".into()),
+            ),
+            (crate::PinId("negative".into()), crate::HoleId("A1".into())),
+        ]);
+        let plain = solve(&plain_project).unwrap();
+        let as_speaker = solve(&speaker).unwrap();
+        assert_eq!(
+            plain.resistor_currents[&ComponentId("R1".into())],
+            as_speaker.resistor_currents[&ComponentId("R1".into())]
+        );
+        assert_eq!(
+            pin_voltage(&plain, "R1", "a"),
+            pin_voltage(&as_speaker, "R1", "positive")
+        );
+        assert_eq!(
+            pin_voltage(&plain, "R1", "b"),
+            pin_voltage(&as_speaker, "R1", "negative")
         );
     }
 

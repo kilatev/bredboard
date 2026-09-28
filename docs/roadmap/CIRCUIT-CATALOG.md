@@ -3,11 +3,9 @@
 This specifies how the imported `breadboard-circuits/spec/` corpus — 212
 buildable circuits across 20 sections, with finished schematics and a
 machine-readable `catalog.json` validated by its separate
-`catalog.schema.json` — turns into bredboard content. It is a
-**specification**, not an active Goal: no task card here is ready to execute.
-Each phase below still needs its own dedicated specification and
-commit-sized task cards, the same way [LESSONS.md](LESSONS.md) decomposed
-into T19–T27, before any of it is implemented.
+`catalog.schema.json` — turns into bredboard content. The catalog is now the
+active content-expansion priority, but each bounded batch still needs its own
+dedicated task card before implementation.
 
 The reference-only `breadboard-circuits/circuits-catalog.html` page keeps the
 20 sections separate and provides client-side search; this does not make the
@@ -24,40 +22,71 @@ schemdraw and checked by eye ... must be verified against the solver and a
 real board before publishing a level" (`spec/README.md`); treat every
 schematic as a reference to validate, not a ground truth to trust.
 
+## Current execution order
+
+Work through the catalog in small batches, not by adding all 212 entries to
+the menu at once:
+
+The complete batch map, per-scheme evidence pipeline, and acceptance gates are
+in [CATALOG-EXECUTION-PLAN.md](CATALOG-EXECUTION-PLAN.md). The steps below are
+the short version of that plan.
+
+1. **Design and source audit.** Check the schematic, BOM, pin names, power
+   assumptions, safety, and visual references. Record every defect, including
+   missing artwork, unsupported parts, ambiguous or incorrect connections,
+   impossible values, duplicate or omitted parts, and layouts that cannot be
+   reproduced on the documented board.
+2. **Implementation readiness.** Classify each scheme as ready, blocked by a
+   component/model, blocked by a design defect, or out of scope. Do not hide
+   blocked schemes by inventing scripted outcomes.
+3. **Fixture implementation.** For ready schemes, create a validated project,
+   add the required component art and menu metadata, and cover electrical
+   behavior with core tests.
+4. **Manual assembly.** Build representative schemes on a real solderless
+   breadboard using the documented BOM and hole layout. Record missing parts,
+   wiring ambiguity, unsafe assumptions, and differences between the drawing
+   and a physically buildable board.
+5. **Batch decision.** Only after the automated and manual evidence is
+   recorded is a scheme considered ready for the next release/content batch.
+
+Manual assembly evidence is a separate acceptance surface: passing Rust tests
+or rendering an SVG does not prove that a learner can build the circuit.
+
 ## Why this is bigger than E11–E30
 
-[docs/roadmap/POST-MVP.md](POST-MVP.md) already says: after E30, pause
-content expansion and specify data-driven level metadata, declarative
-completion conditions, and a project-format migration path before targeting
-a substantially larger catalog; add a local `.cir` exporter and ngspice
-differential checks before relying on the numerical model for a larger
-corpus. This 212-circuit catalog is that "substantially larger catalog." It
-does not fit the fixed-exercise-per-menu-entry pattern used through E30:
+[docs/roadmap/POST-MVP.md](POST-MVP.md) previously described pausing after E30
+for data-driven level metadata, format migration, and `.cir`/ngspice work.
+Those improvements are now deferred while this catalog is audited and
+expanded in bounded, manually tested batches. This 212-circuit catalog does
+not fit the fixed-exercise-per-menu-entry pattern used through E30:
 several sections describe multi-board systems (digital clock, robot,
 solar station) with a block diagram instead of one schematic, and section
 20 is a different game mode (find-the-fault pairs), not a buildable circuit
 at all.
 
-## Phase 0 — prerequisites (must land before any phase below)
+## Phase 0 — catalog audit prerequisites
 
-1. **Level metadata and migration path.** The exact deferred item from
-   `POST-MVP.md`'s "Current direction" paragraph. 212 circuits need
-   data-driven level definitions; hand-writing 212 more fixed-fixture JSON
-   files the way E1–E30 were written does not scale and each new component
-   family below would otherwise force a project-format break.
-2. **`.cir` exporter and ngspice differential checks.** Also already
-   required by `POST-MVP.md`. Needed to validate the source spec's
-   schemdraw schematics (explicitly unverified against a solver) before any
-   are turned into levels, and to catch solver-vs-reality gaps once
-   component families in Phases E–I introduce non-ideal behavior (motor
-   back-EMF, relay coils, AC rectification).
-3. **Per-section scope decision.** Decide, once per section, whether its
+1. **Per-batch defect ledger.** Create a small evidence file or section for
+   every reviewed batch. Keep source defects separate from implementation
+   blockers and manual assembly findings.
+2. **Supported-component inventory.** Map each selected BOM part to an
+   existing component kind, a required new model, or an explicit out-of-scope
+   decision. Missing sprites and missing pin descriptions are findings, not
+   reasons to substitute a scripted result.
+3. **Manual assembly protocol.** Define the real-board size, rail convention,
+   allowed supply range, required tools, photo/notes format, and the exact
+   checklist for confirming that a reference scheme is buildable.
+4. **Per-section scope decision.** Decide, once per section, whether its
    circuits become individual fixed exercises (like E1–E30), a free-assembly
    unlock set (`POST-MVP.md` phase 1), or are descoped. Sections 18 and parts
    of 08/13/19 include non-breadboard physical props (a lemon, a cup of
    water, a donor toy/printer/CD drive, a soldering iron) that cannot be
    represented as board holes at all; flag these explicitly rather than
    silently dropping them during implementation.
+
+`.cir` export, ngspice comparisons, data-driven level metadata, and format
+migration are intentionally deferred from this phase. Revisit them after the
+first catalog batches and manual assembly findings.
 
 ## Gap analysis: new component families needed
 

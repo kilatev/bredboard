@@ -2,6 +2,7 @@ mod exercise_catalog;
 mod sprites;
 mod text;
 
+use bevy::audio::{AudioPlayer, AudioSink, Pitch, PlaybackSettings};
 use bevy::camera::ScalingMode;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
@@ -723,6 +724,32 @@ struct PartVisual {
     kind: ComponentKind,
     states: Vec<Handle<Image>>,
     shown: usize,
+    /// Last-applied audio state for a buzzer/speaker; drives `AudioPlayer`
+    /// insertion and removal in `update_view` so the tone starts and stops
+    /// exactly when the sprite's sounding state changes, without re-checking
+    /// current every frame for parts that never sound.
+    sounding: bool,
+}
+
+/// Sine tones played while a buzzer or speaker is calculated as sounding.
+/// Built once at startup from `bevy_audio`'s `Pitch` asset (a synthesized
+/// sine wave; no audio file is shipped). Present only when `AudioPlugin` has
+/// registered `Assets<Pitch>` (the real app, not every test harness build),
+/// so `update_view` treats it as optional.
+#[derive(Resource)]
+struct SoundTones {
+    /// Piezo buzzer: a high, thin beep.
+    buzzer: Handle<Pitch>,
+    /// Dynamic speaker: a lower, fuller tone.
+    speaker: Handle<Pitch>,
+}
+
+fn setup_audio(mut commands: Commands, mut pitches: ResMut<Assets<Pitch>>) {
+    let long = std::time::Duration::from_secs(3600);
+    commands.insert_resource(SoundTones {
+        buzzer: pitches.add(Pitch::new(2800.0, long)),
+        speaker: pitches.add(Pitch::new(440.0, long)),
+    });
 }
 
 fn main() {
@@ -750,7 +777,7 @@ fn main() {
         .insert_resource(MenuScroll::default())
         .insert_resource(MenuFilter::default())
         .insert_resource(MenuCollapsed::default())
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (setup, setup_audio))
         .add_systems(FixedUpdate, fixed_step)
         .add_systems(
             Update,
@@ -1133,6 +1160,7 @@ fn spawn_part(
             kind: component.kind,
             states,
             shown: 0,
+            sounding: false,
         },
     ));
 }
@@ -1233,6 +1261,12 @@ fn component_summary(component: &Component) -> String {
         ),
         ComponentKind::Buzzer => format!(
             "{id}  buzzer {:.0} ohm  + {} / - {}",
+            component.parameters["resistance"],
+            component.pins[&bredboard_core::PinId("positive".into())].0,
+            component.pins[&bredboard_core::PinId("negative".into())].0
+        ),
+        ComponentKind::Speaker => format!(
+            "{id}  speaker {:.0} ohm  + {} / - {}",
             component.parameters["resistance"],
             component.pins[&bredboard_core::PinId("positive".into())].0,
             component.pins[&bredboard_core::PinId("negative".into())].0
@@ -1691,10 +1725,12 @@ fn fixed_step(mut session: ResMut<Session>) {
 }
 
 fn update_view(
+    mut commands: Commands,
     session: Res<Session>,
     windows: Query<&Window>,
+    sound_tones: Option<Res<SoundTones>>,
     mut labels: Query<(&Readout, &mut Text2d, &mut TextColor)>,
-    mut parts: Query<(&mut PartVisual, &mut Sprite)>,
+    mut parts: Query<(Entity, &mut PartVisual, &mut Sprite)>,
 ) {
     let Some(bench) = &session.bench else {
         return;
@@ -1826,7 +1862,7 @@ fn update_view(
         .last_valid
         .as_ref()
         .filter(|_| !bench.simulation.stale);
-    for (mut part, mut sprite) in &mut parts {
+    for (entity, mut part, mut sprite) in &mut parts {
         let Some(art) = sprites::art_for(part.kind) else {
             continue;
         };
@@ -1845,6 +1881,29 @@ fn update_view(
         if state != part.shown {
             sprite.image = part.states[state].clone();
             part.shown = state;
+        }
+        // A buzzer/speaker's sprite state 1 is its current-driven "sounding"
+        // state (see `sprites::buzzer`/`sprites::speaker`); play or stop its
+        // tone exactly when that state changes.
+        let sounding =
+            state == 1 && matches!(part.kind, ComponentKind::Buzzer | ComponentKind::Speaker);
+        if let Some(tones) = &sound_tones
+            && sounding != part.sounding
+        {
+            part.sounding = sounding;
+            if sounding {
+                let tone = match part.kind {
+                    ComponentKind::Speaker => tones.speaker.clone(),
+                    _ => tones.buzzer.clone(),
+                };
+                commands
+                    .entity(entity)
+                    .insert((AudioPlayer(tone), PlaybackSettings::LOOP));
+            } else {
+                commands
+                    .entity(entity)
+                    .remove::<(AudioPlayer<Pitch>, AudioSink)>();
+            }
         }
     }
 }
