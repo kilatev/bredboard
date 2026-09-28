@@ -206,7 +206,9 @@ pub fn restore_snapshot(
         .filter(|c| {
             matches!(
                 c.kind,
-                ComponentKind::DigitalCounter | ComponentKind::ShiftRegister
+                ComponentKind::DFlipFlop
+                    | ComponentKind::DigitalCounter
+                    | ComponentKind::ShiftRegister
             )
         })
         .map(|c| c.id.clone())

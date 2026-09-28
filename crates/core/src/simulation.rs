@@ -120,7 +120,9 @@ impl SimulationState {
                             .unwrap_or(0.5),
                     );
                 }
-                ComponentKind::DigitalCounter | ComponentKind::ShiftRegister => {
+                ComponentKind::DFlipFlop
+                | ComponentKind::DigitalCounter
+                | ComponentKind::ShiftRegister => {
                     digital_states.insert(component.id.clone(), 0);
                 }
                 _ => {}
@@ -347,9 +349,9 @@ fn update_digital_states(
     };
     for component in &project.components {
         let entry = match component.kind {
-            ComponentKind::DigitalCounter | ComponentKind::ShiftRegister => {
-                states.entry(component.id.clone()).or_default()
-            }
+            ComponentKind::DFlipFlop
+            | ComponentKind::DigitalCounter
+            | ComponentKind::ShiftRegister => states.entry(component.id.clone()).or_default(),
             _ => continue,
         };
         let supply = voltage(&component.id, "vcc").max(1e-6);
@@ -357,6 +359,19 @@ fn update_digital_states(
         let old_clock_high = *entry & (1 << 16) != 0;
         let rising = clock_high && !old_clock_high;
         match component.kind {
+            ComponentKind::DFlipFlop => {
+                let reset_high = voltage(&component.id, "reset") > supply * 0.5;
+                let set_high = voltage(&component.id, "set") > supply * 0.5;
+                let mut q_high = *entry & 1 != 0;
+                if reset_high {
+                    q_high = false;
+                } else if set_high {
+                    q_high = true;
+                } else if rising {
+                    q_high = voltage(&component.id, "data") > supply * 0.5;
+                }
+                *entry = u32::from(q_high) | u32::from(clock_high) << 16;
+            }
             ComponentKind::DigitalCounter => {
                 if rising
                     && voltage(&component.id, "reset") < supply * 0.5
@@ -494,6 +509,71 @@ mod tests {
         }
     }
 
+    fn d_flip_flop_project() -> Project {
+        let pins = |pairs: &[(&str, &str)]| {
+            pairs
+                .iter()
+                .map(|(pin, hole)| (crate::PinId((*pin).into()), crate::HoleId((*hole).into())))
+                .collect()
+        };
+        Project {
+            format_version: 1,
+            title: "D flip-flop test".into(),
+            board: crate::Board {
+                model: crate::BoardModel::HalfSizeSolderless,
+            },
+            components: vec![
+                crate::Component {
+                    id: ComponentId("V1".into()),
+                    kind: ComponentKind::DcVoltageSource,
+                    pins: pins(&[("positive", "TP+:1"), ("negative", "TP-:1")]),
+                    parameters: BTreeMap::from([("voltage".into(), 5.0)]),
+                },
+                crate::Component {
+                    id: ComponentId("S_DATA".into()),
+                    kind: ComponentKind::MomentaryButton,
+                    pins: pins(&[("a", "TP+:2"), ("b", "A1")]),
+                    parameters: BTreeMap::new(),
+                },
+                crate::Component {
+                    id: ComponentId("R_DATA".into()),
+                    kind: ComponentKind::Resistor,
+                    pins: pins(&[("a", "A1"), ("b", "TP-:2")]),
+                    parameters: BTreeMap::from([("resistance".into(), 10_000.0)]),
+                },
+                crate::Component {
+                    id: ComponentId("S_CLOCK".into()),
+                    kind: ComponentKind::MomentaryButton,
+                    pins: pins(&[("a", "TP+:3"), ("b", "A2")]),
+                    parameters: BTreeMap::new(),
+                },
+                crate::Component {
+                    id: ComponentId("R_CLOCK".into()),
+                    kind: ComponentKind::Resistor,
+                    pins: pins(&[("a", "A2"), ("b", "TP-:3")]),
+                    parameters: BTreeMap::from([("resistance".into(), 10_000.0)]),
+                },
+                crate::Component {
+                    id: ComponentId("U1".into()),
+                    kind: ComponentKind::DFlipFlop,
+                    pins: pins(&[
+                        ("clock", "A2"),
+                        ("data", "A1"),
+                        ("gnd", "TP-:4"),
+                        ("not_q", "B10"),
+                        ("q", "B11"),
+                        ("reset", "TP-:4"),
+                        ("set", "TP-:5"),
+                        ("vcc", "TP+:4"),
+                    ]),
+                    parameters: BTreeMap::from([("output_resistance".into(), 100.0)]),
+                },
+            ],
+            wires: Vec::new(),
+            initial_conditions: crate::InitialConditions::default(),
+        }
+    }
+
     #[test]
     fn run_pause_single_step_and_reset_are_discrete() {
         let baseline = rc();
@@ -579,6 +659,140 @@ mod tests {
         );
         advance_steps(&project, &mut state, 1);
         assert_eq!(state.digital_states[&ComponentId("U1".into())] & 0x3ff, 1);
+    }
+
+    #[test]
+    fn d_flip_flop_captures_data_only_on_a_calculated_rising_edge() {
+        let baseline = d_flip_flop_project();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        let control = |component: &str, control| Action::SetControl {
+            component: ComponentId(component.into()),
+            state: control,
+        };
+
+        apply_actions(&mut project, &baseline, &mut state, &[Action::SingleStep]);
+        assert_eq!(state.digital_states[&ComponentId("U1".into())] & 1, 0);
+
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                control("S_DATA", ControlState::ButtonPressed),
+                Action::SingleStep,
+            ],
+        );
+        assert_eq!(state.digital_states[&ComponentId("U1".into())] & 1, 0);
+
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                control("S_CLOCK", ControlState::ButtonPressed),
+                Action::SingleStep,
+            ],
+        );
+        assert_eq!(state.digital_states[&ComponentId("U1".into())] & 1, 1);
+
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                control("S_DATA", ControlState::ButtonReleased),
+                Action::SingleStep,
+            ],
+        );
+        assert_eq!(state.digital_states[&ComponentId("U1".into())] & 1, 1);
+
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                control("S_CLOCK", ControlState::ButtonReleased),
+                Action::SingleStep,
+            ],
+        );
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                control("S_CLOCK", ControlState::ButtonPressed),
+                Action::SingleStep,
+            ],
+        );
+        assert_eq!(state.digital_states[&ComponentId("U1".into())] & 1, 0);
+    }
+
+    #[test]
+    fn c03_code_lock_requires_ordered_edges_and_calculates_reset_and_unlock_outputs() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c03-s05-04-code-lock.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        let pulse = |project: &mut Project, state: &mut SimulationState, id: &str| {
+            apply_actions(
+                project,
+                &baseline,
+                state,
+                &[
+                    Action::SetControl {
+                        component: ComponentId(id.into()),
+                        state: ControlState::ButtonPressed,
+                    },
+                    Action::SingleStep,
+                    Action::SetControl {
+                        component: ComponentId(id.into()),
+                        state: ControlState::ButtonReleased,
+                    },
+                    Action::SingleStep,
+                ],
+            );
+        };
+
+        apply_actions(&mut project, &baseline, &mut state, &[Action::SingleStep]);
+        pulse(&mut project, &mut state, "C3");
+        assert_eq!(state.digital_states[&ComponentId("U1".into())] & 1, 0);
+        assert_eq!(state.digital_states[&ComponentId("U2".into())] & 1, 0);
+        assert_eq!(state.digital_states[&ComponentId("U3".into())] & 1, 0);
+        assert_eq!(state.digital_states[&ComponentId("U4".into())] & 1, 0);
+
+        for id in ["C1", "C2", "C3", "C4"] {
+            pulse(&mut project, &mut state, id);
+        }
+        assert_eq!(state.digital_states[&ComponentId("U1".into())] & 1, 1);
+        assert_eq!(state.digital_states[&ComponentId("U2".into())] & 1, 1);
+        assert_eq!(state.digital_states[&ComponentId("U3".into())] & 1, 1);
+        assert_eq!(state.digital_states[&ComponentId("U4".into())] & 1, 1);
+        assert!(
+            state.last_valid.as_ref().unwrap().led_currents[&ComponentId("LED_GREEN".into())]
+                > 0.001
+        );
+
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("RST1".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::SingleStep,
+            ],
+        );
+        for id in ["U1", "U2", "U3", "U4"] {
+            assert_eq!(state.digital_states[&ComponentId(id.into())] & 1, 0);
+        }
+        assert!(
+            state.last_valid.as_ref().unwrap().led_currents[&ComponentId("LED_RED".into())] > 0.001
+        );
     }
 
     #[test]

@@ -1,0 +1,50 @@
+{
+  "format_version": 1,
+  "title": "C03-S05-04: Code Lock",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+
+    { "id": "C1", "kind": "momentary_button", "pins": { "a": "TP+:6", "b": "A1" }, "parameters": {} },
+    { "id": "C2", "kind": "momentary_button", "pins": { "a": "TP+:7", "b": "A2" }, "parameters": {} },
+    { "id": "C3", "kind": "momentary_button", "pins": { "a": "TP+:8", "b": "A3" }, "parameters": {} },
+    { "id": "C4", "kind": "momentary_button", "pins": { "a": "TP+:9", "b": "A4" }, "parameters": {} },
+    { "id": "R_C1", "kind": "resistor", "pins": { "a": "B1", "b": "TP-:6" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_C2", "kind": "resistor", "pins": { "a": "B2", "b": "TP-:7" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_C3", "kind": "resistor", "pins": { "a": "B3", "b": "TP-:8" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_C4", "kind": "resistor", "pins": { "a": "B4", "b": "TP-:9" }, "parameters": { "resistance": 10000.0 } },
+
+    { "id": "RST1", "kind": "momentary_button", "pins": { "a": "TP+:10", "b": "A29" }, "parameters": {} },
+    { "id": "RST2", "kind": "momentary_button", "pins": { "a": "TP+:11", "b": "B29" }, "parameters": {} },
+    { "id": "RST3", "kind": "momentary_button", "pins": { "a": "TP+:12", "b": "C29" }, "parameters": {} },
+    { "id": "RST4", "kind": "momentary_button", "pins": { "a": "TP+:13", "b": "D29" }, "parameters": {} },
+    { "id": "RST5", "kind": "momentary_button", "pins": { "a": "TP+:14", "b": "B30" }, "parameters": {} },
+    { "id": "RST6", "kind": "momentary_button", "pins": { "a": "TP+:15", "b": "A28" }, "parameters": {} },
+    { "id": "R_RESET", "kind": "resistor", "pins": { "a": "F28", "b": "TP-:16" }, "parameters": { "resistance": 10000.0 } },
+
+    { "id": "U1", "kind": "d_flip_flop", "pins": { "clock": "C1", "data": "TP+:16", "gnd": "TP-:17", "not_q": "F11", "q": "D10", "reset": "F29", "set": "TP-:18", "vcc": "TP+:17" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "U2", "kind": "d_flip_flop", "pins": { "clock": "C2", "data": "E10", "gnd": "TP-:19", "not_q": "F15", "q": "D14", "reset": "G29", "set": "TP-:20", "vcc": "TP+:18" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "U3", "kind": "d_flip_flop", "pins": { "clock": "C3", "data": "E14", "gnd": "TP-:21", "not_q": "F19", "q": "D18", "reset": "H29", "set": "TP-:22", "vcc": "TP+:19" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "U4", "kind": "d_flip_flop", "pins": { "clock": "C4", "data": "E18", "gnd": "TP-:23", "not_q": "F23", "q": "D22", "reset": "I29", "set": "TP-:24", "vcc": "TP+:20" }, "parameters": { "output_resistance": 100.0 } },
+
+    { "id": "R_GREEN", "kind": "resistor", "pins": { "a": "E22", "b": "F24" }, "parameters": { "resistance": 470.0 } },
+    { "id": "LED_GREEN", "kind": "led", "pins": { "anode": "F25", "cathode": "TP-:25" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "R_RED", "kind": "resistor", "pins": { "a": "H28", "b": "H27" }, "parameters": { "resistance": 470.0 } },
+    { "id": "LED_RED", "kind": "led", "pins": { "anode": "H26", "cathode": "TP-:26" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } }
+  ],
+  "wires": [
+    { "id": "W_RESET_BUS", "from": "J29", "to": "A30" },
+    { "id": "W_RESET_PULL", "from": "G28", "to": "E30" },
+    { "id": "W_RESET_5", "from": "E29", "to": "D30" },
+    { "id": "W_RESET_6", "from": "B28", "to": "C30" },
+    { "id": "W_GREEN_MID", "from": "G24", "to": "G25" },
+    { "id": "W_RED_MID", "from": "J27", "to": "J26" }
+  ],
+  "initial_conditions": {
+    "controls": {
+      "C1": "button_released", "C2": "button_released", "C3": "button_released", "C4": "button_released",
+      "RST1": "button_released", "RST2": "button_released", "RST3": "button_released",
+      "RST4": "button_released", "RST5": "button_released", "RST6": "button_released"
+    }
+  }
+}

@@ -141,6 +141,7 @@ enum NonlinearElement {
         vcc: usize,
         gnd: usize,
         resistance: f64,
+        state: u32,
     },
     DigitalCounter {
         clock: usize,
@@ -942,6 +943,10 @@ fn make_branches(
                     vcc,
                     gnd,
                     resistance: component.parameters["output_resistance"],
+                    state: digital_states
+                        .get(&component.id)
+                        .copied()
+                        .unwrap_or_default(),
                 });
                 continue;
             }
@@ -1598,8 +1603,6 @@ fn stamp_element(
             }
         }
         NonlinearElement::DFlipFlop {
-            clock,
-            data,
             not_q,
             q,
             reset,
@@ -1607,21 +1610,18 @@ fn stamp_element(
             vcc,
             gnd,
             resistance,
+            state,
             ..
         } => {
             let supply = voltage(guess, vars, *vcc);
-            let clock_high = voltage(guess, vars, *clock) > supply * 0.5;
             let set_high = voltage(guess, vars, *set) > supply * 0.5;
             let reset_high = voltage(guess, vars, *reset) > supply * 0.5;
-            if !clock_high && !set_high && !reset_high {
-                return;
-            }
             let q_high = if reset_high {
                 false
             } else if set_high {
                 true
             } else {
-                logic_high(voltage(guess, vars, *data), supply)
+                *state & 1 != 0
             };
             stamp_logic_output(
                 *q,

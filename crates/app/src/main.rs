@@ -95,6 +95,7 @@ const C03_S05_02_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s05-02-four-bit-subtractor.json");
 const C03_S05_03_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s05-03-pedestrian-signal.json");
+const C03_S05_04_JSON: &str = include_str!("../../../fixtures/projects/c03-s05-04-code-lock.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -156,6 +157,7 @@ enum Circuit {
     C03S05_01,
     C03S05_02,
     C03S05_03,
+    C03S05_04,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -173,7 +175,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 58] {
+    fn all() -> [Self; 59] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -200,6 +202,7 @@ impl Circuit {
             Self::C03S05_01,
             Self::C03S05_02,
             Self::C03S05_03,
+            Self::C03S05_04,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -295,6 +298,7 @@ impl Circuit {
             Self::C03S05_01 => C03_S05_01_JSON,
             Self::C03S05_02 => C03_S05_02_JSON,
             Self::C03S05_03 => C03_S05_03_JSON,
+            Self::C03S05_04 => C03_S05_04_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -357,6 +361,7 @@ impl Circuit {
             Self::C03S05_01 => "C03-S05-01: FOUR-BIT ADDER",
             Self::C03S05_02 => "C03-S05-02: FOUR-BIT SUBTRACTOR",
             Self::C03S05_03 => "C03-S05-03: PEDESTRIAN SIGNAL",
+            Self::C03S05_04 => "C03-S05-04: CODE LOCK",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -465,6 +470,10 @@ impl Circuit {
             Self::C03S05_03 => (
                 "A calculated five-state counter advances the pedestrian signal phases from fixed-step button edges, with one current-limited phase LED active at a time.",
                 "Task: press S1 and record the calculated five-phase cycle.",
+            ),
+            Self::C03S05_04 => (
+                "Four edge-triggered stages retain an ordered code. Each stage samples the preceding stage, while six reset buttons clear the chain and drive the calculated reset indicator.",
+                "Task: press C1, C2, C3, then C4 and verify the calculated unlock LED; use any RST button to clear the sequence.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -835,6 +844,58 @@ impl Circuit {
                 },
             ],
             Self::C03S05_03 => S1_BUTTON,
+            Self::C03S05_04 => &[
+                ControlSpec {
+                    label: "CODE 1",
+                    component: "C1",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "CODE 2",
+                    component: "C2",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "CODE 3",
+                    component: "C3",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "CODE 4",
+                    component: "C4",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "RESET 1",
+                    component: "RST1",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "RESET 2",
+                    component: "RST2",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "RESET 3",
+                    component: "RST3",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "RESET 4",
+                    component: "RST4",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "RESET 5",
+                    component: "RST5",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "RESET 6",
+                    component: "RST6",
+                    is_switch: false,
+                },
+            ],
         }
     }
     /// The continuous dial/slider control for variable-resistor exercises.
@@ -2549,7 +2610,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            58
+            59
         );
         assert!(matches!(
             items[0],
