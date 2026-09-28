@@ -93,6 +93,8 @@ const C03_S05_01_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s05-01-four-bit-adder.json");
 const C03_S05_02_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s05-02-four-bit-subtractor.json");
+const C03_S05_03_JSON: &str =
+    include_str!("../../../fixtures/projects/c03-s05-03-pedestrian-signal.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -153,6 +155,7 @@ enum Circuit {
     C03S04_09,
     C03S05_01,
     C03S05_02,
+    C03S05_03,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -170,7 +173,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 57] {
+    fn all() -> [Self; 58] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -196,6 +199,7 @@ impl Circuit {
             Self::C03S04_09,
             Self::C03S05_01,
             Self::C03S05_02,
+            Self::C03S05_03,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -290,6 +294,7 @@ impl Circuit {
             Self::C03S04_09 => C03_S04_09_JSON,
             Self::C03S05_01 => C03_S05_01_JSON,
             Self::C03S05_02 => C03_S05_02_JSON,
+            Self::C03S05_03 => C03_S05_03_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -351,6 +356,7 @@ impl Circuit {
             Self::C03S04_09 => "C03-S04-09: DUAL 555 NOISEMAKER",
             Self::C03S05_01 => "C03-S05-01: FOUR-BIT ADDER",
             Self::C03S05_02 => "C03-S05-02: FOUR-BIT SUBTRACTOR",
+            Self::C03S05_03 => "C03-S05-03: PEDESTRIAN SIGNAL",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -455,6 +461,10 @@ impl Circuit {
             Self::C03S05_02 => (
                 "The calculated four-bit arithmetic unit uses two's-complement subtraction to show a bounded A minus B result and carry state.",
                 "Task: set the eight input switches and verify the calculated difference and carry output.",
+            ),
+            Self::C03S05_03 => (
+                "A calculated five-state counter advances the pedestrian signal phases from fixed-step button edges, with one current-limited phase LED active at a time.",
+                "Task: press S1 and record the calculated five-phase cycle.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -824,6 +834,7 @@ impl Circuit {
                     is_switch: true,
                 },
             ],
+            Self::C03S05_03 => S1_BUTTON,
         }
     }
     /// The continuous dial/slider control for variable-resistor exercises.
@@ -2538,7 +2549,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            57
+            58
         );
         assert!(matches!(
             items[0],

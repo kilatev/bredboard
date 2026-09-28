@@ -763,6 +763,37 @@ mod tests {
     }
 
     #[test]
+    fn c03_pedestrian_signal_advances_calculated_phases() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c03-s05-03-pedestrian-signal.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        advance_steps(&project, &mut state, 1);
+        for _ in 0..4 {
+            apply_actions(
+                &mut project,
+                &baseline,
+                &mut state,
+                &[
+                    Action::SetControl {
+                        component: ComponentId("S1".into()),
+                        state: ControlState::ButtonPressed,
+                    },
+                    Action::SingleStep,
+                    Action::SetControl {
+                        component: ComponentId("S1".into()),
+                        state: ControlState::ButtonReleased,
+                    },
+                    Action::SingleStep,
+                ],
+            );
+        }
+        assert_eq!(state.digital_states[&ComponentId("U1".into())] & 0x3ff, 4);
+    }
+
+    #[test]
     fn c03_shift_register_calculates_shift_then_latch() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c03-s04-05-shift-register.json"

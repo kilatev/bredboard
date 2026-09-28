@@ -61,6 +61,7 @@ pub(crate) fn items() -> Vec<Item> {
         Item::Circuit(C03S04_09),
         Item::Circuit(C03S05_01),
         Item::Circuit(C03S05_02),
+        Item::Circuit(C03S05_03),
         Item::Circuit(E1),
         Item::Circuit(E2),
         Item::Circuit(E3),
