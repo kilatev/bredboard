@@ -114,6 +114,10 @@ cargo run -p bredboard-tools --locked -- validate-catalog breadboard-circuits/sp
   edge/reset contract or an explicit bounded lesson disposition.
 - LM358/LM3914/LM386, microphone, bargraph, crystal, SRAM, and multi-board
   supply/presentation contracts are not yet available.
+- S04-06 is explicitly blocked by the current level-sensitive D flip-flop and
+  missing reaction-timing/diode-OR contract; S04-07 is blocked by the missing
+  op-amp, microphone, and bargraph contracts; S04-08 is blocked by the missing
+  LM386, input-jack, and powered-speaker contracts.
 - Manual interaction and real-breadboard evidence are pending for every new
   fixture.
 
