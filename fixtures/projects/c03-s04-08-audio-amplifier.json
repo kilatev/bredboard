@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "title": "C03-S04-08: Audio Amplifier",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 9.0 } },
+    { "id": "POT1", "kind": "potentiometer", "pins": { "a": "TP+:2", "b": "A1" }, "parameters": { "min_resistance": 100.0, "max_resistance": 10000.0 } },
+    { "id": "R_IN", "kind": "resistor", "pins": { "a": "B1", "b": "TP-:2" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "AMP1", "kind": "audio_amplifier", "pins": { "gnd": "TP-:3", "input": "C1", "output": "C10", "vcc": "TP+:3" }, "parameters": { "gain": 1.5, "output_resistance": 10.0 } },
+    { "id": "R_OUT", "kind": "resistor", "pins": { "a": "D10", "b": "F10" }, "parameters": { "resistance": 10.0 } },
+    { "id": "SPK1", "kind": "speaker", "pins": { "positive": "F11", "negative": "TP-:4" }, "parameters": { "resistance": 8.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "negative": "TP-:10", "positive": "TP+:10" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "C2", "kind": "capacitor", "pins": { "negative": "TP-:11", "positive": "TP+:11" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "C3", "kind": "capacitor", "pins": { "negative": "TP-:12", "positive": "TP+:12" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "C4", "kind": "capacitor", "pins": { "negative": "TP-:13", "positive": "TP+:13" }, "parameters": { "capacitance": 0.0000001 } }
+  ],
+  "wires": [
+    { "id": "W_SPK", "from": "G10", "to": "G11" }
+  ],
+  "initial_conditions": { "control_ratios": { "POT1": 0.0 } }
+}

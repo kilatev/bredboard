@@ -873,6 +873,35 @@ mod tests {
     }
 
     #[test]
+    fn c03_audio_amplifier_transfers_calculated_input_level_to_speaker_load() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c03-s04-08-audio-amplifier.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::SingleStep]);
+        let loud =
+            state.last_valid.as_ref().unwrap().resistor_currents[&ComponentId("SPK1".into())];
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControlRatio {
+                    component: ComponentId("POT1".into()),
+                    ratio: 1.0,
+                },
+                Action::SingleStep,
+            ],
+        );
+        let quiet =
+            state.last_valid.as_ref().unwrap().resistor_currents[&ComponentId("SPK1".into())];
+        assert!(loud > quiet);
+        assert!(quiet > 0.0);
+    }
+
+    #[test]
     fn c03_counter_fixture_drives_a_calculated_display_digit() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c03-s04-03-button-counter.json"

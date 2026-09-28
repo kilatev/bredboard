@@ -151,6 +151,8 @@ pub enum ComponentKind {
     FourBitAdder,
     /// Ten-segment voltage-level display with calculated threshold outputs.
     BargraphDisplay,
+    /// Bounded voltage amplifier used for the LM386-style educational fixture.
+    AudioAmplifier,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Wire {
@@ -547,6 +549,7 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
             "gnd", "input", "seg0", "seg1", "seg2", "seg3", "seg4", "seg5", "seg6", "seg7", "seg8",
             "seg9", "vcc",
         ],
+        ComponentKind::AudioAmplifier => &["gnd", "input", "output", "vcc"],
     }
 }
 fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
@@ -573,6 +576,7 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::SevenSegmentDisplay => &["output_resistance"],
         ComponentKind::FourBitAdder => &["output_resistance"],
         ComponentKind::BargraphDisplay => &["output_resistance"],
+        ComponentKind::AudioAmplifier => &["gain", "output_resistance"],
     }
 }
 fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
@@ -613,6 +617,8 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         (ComponentKind::SevenSegmentDisplay, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::FourBitAdder, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::BargraphDisplay, "output_resistance") => Some((1.0, 1e7)),
+        (ComponentKind::AudioAmplifier, "gain") => Some((1.0, 100.0)),
+        (ComponentKind::AudioAmplifier, "output_resistance") => Some((1.0, 1e7)),
         _ => None,
     }
 }

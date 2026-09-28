@@ -191,6 +191,14 @@ enum NonlinearElement {
         gnd: usize,
         resistance: f64,
     },
+    AudioAmplifier {
+        input: usize,
+        output: usize,
+        vcc: usize,
+        gnd: usize,
+        gain: f64,
+        resistance: f64,
+    },
 }
 
 pub const FIXED_STEP_SECONDS: f64 = 100e-6;
@@ -489,6 +497,13 @@ fn solve_internal(
                 pairs.extend(segments.windows(2).map(|pair| (pair[0], pair[1])));
                 pairs
             }
+            NonlinearElement::AudioAmplifier {
+                input,
+                output,
+                vcc,
+                gnd,
+                ..
+            } => vec![(*input, *output), (*vcc, *output), (*gnd, *output)],
         };
         for (a, b) in pairs {
             adjacency[a].push(b);
@@ -750,7 +765,8 @@ fn solve_internal(
             | NonlinearElement::ShiftRegister { .. }
             | NonlinearElement::SevenSegmentDisplay { .. }
             | NonlinearElement::FourBitAdder { .. }
-            | NonlinearElement::BargraphDisplay { .. } => {}
+            | NonlinearElement::BargraphDisplay { .. }
+            | NonlinearElement::AudioAmplifier { .. } => {}
         }
     }
     Ok(SolveResult {
@@ -1107,6 +1123,22 @@ fn make_branches(
                     segments,
                     vcc,
                     gnd,
+                    resistance: component.parameters["output_resistance"],
+                });
+                continue;
+            }
+            ComponentKind::AudioAmplifier => {
+                let input = node("input")?;
+                let output = node("output")?;
+                let vcc = node("vcc")?;
+                let gnd = node("gnd")?;
+                active.extend([input, output, vcc, gnd]);
+                nonlinear.push(NonlinearElement::AudioAmplifier {
+                    input,
+                    output,
+                    vcc,
+                    gnd,
+                    gain: component.parameters["gain"],
                     resistance: component.parameters["output_resistance"],
                 });
                 continue;
@@ -1877,6 +1909,34 @@ fn stamp_element(
                     rhs,
                 );
             }
+        }
+        NonlinearElement::AudioAmplifier {
+            input,
+            output,
+            vcc,
+            gnd,
+            gain,
+            resistance,
+        } => {
+            let supply = voltage(guess, vars, *vcc);
+            let ground = voltage(guess, vars, *gnd);
+            let input_voltage = voltage(guess, vars, *input);
+            let target = (ground + *gain * (input_voltage - ground)).clamp(ground, supply);
+            let conductance = 1.0 / *resistance;
+            let current = conductance * (voltage(guess, vars, *output) - target);
+            stamp_current(
+                (*output, *gnd),
+                current,
+                &[
+                    (*output, conductance),
+                    (*input, -conductance * *gain),
+                    (*gnd, conductance * (*gain - 1.0)),
+                ],
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
         }
     }
 }

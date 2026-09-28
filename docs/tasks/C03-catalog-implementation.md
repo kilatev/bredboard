@@ -1,8 +1,8 @@
 # C03 — Counting, display, and systems fixtures
 
 Status: in_progress; the Section 04 and Section 05 source review is recorded
-and implementation is proceeding in bounded capability slices. Eight Section 04
-and four Section 05 fixtures are admitted; the remaining five entries and all
+and implementation is proceeding in bounded capability slices. Nine Section 04
+and four Section 05 fixtures are admitted; the remaining four entries and all
 manual evidence remain open.
 
 ## Scope
@@ -35,7 +35,8 @@ electrical behavior.
   D-flip-flop chain.
 - S04-07 is admitted with a bounded bargraph and photoresistor input; the
   source microphone/LM358/LM3914 path remains an explicit discrepancy. S04-08
-  still depends on LM386, input-jack, and powered-speaker contracts.
+  is admitted with a bounded gain-transfer amplifier; the source LM386 and
+  input-jack contracts remain explicit discrepancies.
 - S04-09 and S05-07 reuse 555 timing but require multiple timers and a
   calculated control-voltage path; speaker frequency is a readout contract,
   not a wall-clock or audio-script result.
@@ -83,7 +84,7 @@ electrical behavior.
 
 The current slice adds calculated `digital_counter`, `shift_register`,
 `seven_segment_display`, `four_bit_adder`, and stateful edge-triggered
-`d_flip_flop` and `bargraph_display` contracts, eight embedded Section 04 fixtures, four embedded
+`d_flip_flop`, `bargraph_display`, and `audio_amplifier` contracts, nine embedded Section 04 fixtures, four embedded
 Section 05 fixtures, menu entries, and fixed-step regressions for rising-edge
 counting, BCD segment decoding, serial shifting, output latching, binary
 addition, ordered code entry, and reset.
@@ -112,6 +113,8 @@ cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s04-06-r
 cargo test -p bredboard-core c03_reaction_game_latches_the_first_player_and_resets_both_outputs --locked — passed
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s04-07-level-indicator.json — passed; 24 components, 10 wires, 23 derived nodes
 cargo test -p bredboard-core c03_level_indicator_calculates_segment_count_from_input_ratio --locked — passed
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s04-08-audio-amplifier.json — passed; 10 components, 1 wire, 5 derived nodes
+cargo test -p bredboard-core c03_audio_amplifier_transfers_calculated_input_level_to_speaker_load --locked — passed
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s05-04-code-lock.json — passed; 24 components, 6 wires, 17 derived nodes
 cargo test -p bredboard-core d_flip_flop_captures_data_only_on_a_calculated_rising_edge --locked — passed
 cargo test -p bredboard-core c03_code_lock_requires_ordered_edges_and_calculates_reset_and_unlock_outputs --locked — passed
@@ -122,7 +125,7 @@ cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes 
 cargo test -p bredboard-app each_circuit_uses_core_controls_and_reset --locked — passed
 cargo fmt --all --check — passed after `cargo fmt --all`
 cargo clippy --workspace --all-targets --locked -- -D warnings — passed
-cargo test --workspace --locked — passed (49 app, 84 core, 3 tools, 0 doc-tests)
+cargo test --workspace --locked — passed (49 app, 85 core, 3 tools, 0 doc-tests)
 cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked — passed
 cargo build -p bredboard-app --target wasm32-unknown-unknown --locked — passed
 cargo run -p bredboard-tools --locked -- validate-catalog breadboard-circuits/spec/catalog.json breadboard-circuits/spec/catalog.schema.json — passed; 20 sections, 212 schematics
@@ -132,8 +135,6 @@ cargo run -p bredboard-tools --locked -- validate-catalog breadboard-circuits/sp
 
 - LM358/LM3914/LM386, microphone, bargraph, crystal, SRAM, and multi-board
   supply/presentation contracts are not yet available.
-- S04-08 is blocked by the missing
-  LM386, input-jack, and powered-speaker contracts.
 - Manual interaction and real-breadboard evidence are pending for every new
   fixture.
 
