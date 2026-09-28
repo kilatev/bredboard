@@ -1,0 +1,26 @@
+{
+  "format_version": 1,
+  "title": "C10-S18-07: Diode logic OR",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 4.5 } },
+    { "id": "B1", "kind": "momentary_button", "pins": { "a": "A5", "b": "A8" }, "parameters": {} },
+    { "id": "B2", "kind": "momentary_button", "pins": { "a": "B5", "b": "B9" }, "parameters": {} },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "C8", "b": "C11" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "D9", "b": "D12" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "D1", "kind": "diode", "pins": { "anode": "E11", "cathode": "D15" }, "parameters": { "forward_voltage": 0.7, "series_resistance": 10.0 } },
+    { "id": "D2", "kind": "diode", "pins": { "anode": "F12", "cathode": "E15" }, "parameters": { "forward_voltage": 0.7, "series_resistance": 10.0 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "A15", "b": "B20" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "base": "A16", "collector": "A29", "emitter": "A20" }, "parameters": { "beta": 100.0, "saturation_current": 1e-12 } },
+    { "id": "R4", "kind": "resistor", "pins": { "a": "C23", "b": "C26" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D3", "kind": "led", "pins": { "anode": "D26", "cathode": "D29" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "C5", "to": "TP+:5" },
+    { "id": "W2", "from": "C20", "to": "TP-:20" },
+    { "id": "W3", "from": "C15", "to": "C16" },
+    { "id": "W4", "from": "E12", "to": "G12" },
+    { "id": "W5", "from": "E23", "to": "TP+:23" }
+  ],
+  "initial_conditions": { "controls": { "B1": "button_released", "B2": "button_released" } }
+}

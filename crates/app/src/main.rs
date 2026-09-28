@@ -127,6 +127,8 @@ const C08_S17_03_JSON: &str =
     include_str!("../../../fixtures/projects/c08-s17-03-optocoupler.json");
 const C09_S15_01_JSON: &str =
     include_str!("../../../fixtures/projects/c09-s15-01-relay-switch.json");
+const C10_S18_07_JSON: &str =
+    include_str!("../../../fixtures/projects/c10-s18-07-diode-logic.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -207,6 +209,7 @@ enum Circuit {
     C07S09_03,
     C08S17_03,
     C09S15_01,
+    C10S18_07,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -224,7 +227,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 77] {
+    fn all() -> [Self; 78] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -270,6 +273,7 @@ impl Circuit {
             Self::C07S09_03,
             Self::C08S17_03,
             Self::C09S15_01,
+            Self::C10S18_07,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -384,6 +388,7 @@ impl Circuit {
             Self::C07S09_03 => C07_S09_03_JSON,
             Self::C08S17_03 => C08_S17_03_JSON,
             Self::C09S15_01 => C09_S15_01_JSON,
+            Self::C10S18_07 => C10_S18_07_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -465,6 +470,7 @@ impl Circuit {
             Self::C07S09_03 => "C07-S09-03: TWO-STATION TELEGRAPH",
             Self::C08S17_03 => "C08-S17-03: OPTOCOUPLER",
             Self::C09S15_01 => "C09-S15-01: RELAY SWITCH",
+            Self::C10S18_07 => "C10-S18-07: DIODE LOGIC OR",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -649,6 +655,10 @@ impl Circuit {
             Self::C09S15_01 => (
                 "A calculated 4.5 V relay coil is driven by a momentary button while an isolated 9 V contact circuit lights an LED. Coil current and common-to-NC/NO selection come from the relay's calculated threshold model.",
                 "Task: press B1, run the fixture, and compare the relay coil current with the switched LED current.",
+            ),
+            Self::C10S18_07 => (
+                "Two calculated button inputs feed a diode-input OR path into an NPN transistor. Either button can produce base current and switch the current-limited LED; the source's second AND output is an explicit discrepancy.",
+                "Task: press B1, B2, or both and confirm the LED lights for either input.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -1204,6 +1214,18 @@ impl Circuit {
                 component: "B1",
                 is_switch: false,
             }],
+            Self::C10S18_07 => &[
+                ControlSpec {
+                    label: "B1: INPUT A",
+                    component: "B1",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B2: INPUT B",
+                    component: "B2",
+                    is_switch: false,
+                },
+            ],
             Self::C03S04_06 => &[
                 ControlSpec {
                     label: "RED PLAYER",
@@ -2891,6 +2913,27 @@ fn update_view(
                                     * result
                                         .led_currents
                                         .get(&ComponentId("D1".into()))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                            )
+                        },
+                    )
+                } else if bench.circuit == Circuit::C10S18_07 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Diode OR output: run to measure".into(),
+                        |result| {
+                            format!(
+                                "D3 {:.2} mA   Q1 collector {:.2} mA",
+                                1000.0
+                                    * result
+                                        .led_currents
+                                        .get(&ComponentId("D3".into()))
+                                        .copied()
+                                        .unwrap_or(0.0),
+                                1000.0
+                                    * result
+                                        .transistor_collector_currents
+                                        .get(&ComponentId("Q1".into()))
                                         .copied()
                                         .unwrap_or(0.0)
                             )

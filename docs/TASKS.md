@@ -83,6 +83,7 @@ batches:
 | [C07](tasks/C07-catalog-implementation.md) | The bounded implementation card for section 09, covering 19 hardware-logic and module schemes | C00, plus the module, sensor, actuator, and multi-board contracts named in the card |
 | [C08](tasks/C08-catalog-implementation.md) | The bounded implementation card for sections 12, 14, and 17, covering 22 digital-analog, light-effect, and light-communication schemes | C00, plus the analog measurement, light-effect, and optical-isolation contracts named in the card |
 | [C09](tasks/C09-catalog-implementation.md) | The bounded implementation card for sections 13 and 15, covering 14 biosignal/science and relay-logic schemes | C04, C05, C06, plus the sensor-safety and relay coil/contact contracts named in the card |
+| [C10](tasks/C10-catalog-implementation.md) | The bounded implementation card for section 18, covering 16 improvised-material and circuit-hack schemes | Relevant prior batch for each entry, plus the per-entry physical-prop and scope decisions named in the card |
 
 C00 is documentation-only and is marked `ready_for_fukit` with its exact
 source checks and limitations recorded in the card. C01 remains `pending`;

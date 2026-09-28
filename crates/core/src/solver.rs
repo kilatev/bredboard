@@ -2950,6 +2950,29 @@ mod tests {
             );
             prop_assert!(pressed.is_ok(), "relay range did not converge: {:?}", pressed.err());
         }
+
+        #[test]
+        fn diode_logic_input_resistors_preserve_or_output(resistance in 1_000u32..=100_000) {
+            let mut project: Project = serde_json::from_str(include_str!(
+                "../../../fixtures/projects/c10-s18-07-diode-logic.json"
+            )).unwrap();
+            for id in ["R1", "R2"] {
+                project
+                    .components
+                    .iter_mut()
+                    .find(|component| component.id.0 == id)
+                    .unwrap()
+                    .parameters
+                    .insert("resistance".into(), f64::from(resistance));
+            }
+            let result = solve_transient(
+                &project,
+                &BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]),
+                &BTreeMap::new(),
+                &BTreeMap::new(),
+            ).unwrap();
+            prop_assert!(result.led_currents[&ComponentId("D3".into())] > 0.001);
+        }
     }
 
     #[test]
@@ -3066,6 +3089,42 @@ mod tests {
         assert!(pressed.relay_coil_currents[&ComponentId("K1".into())] > 0.06);
         assert!(pressed.led_currents[&ComponentId("D1".into())] > 0.001);
         assert!(released.led_currents[&ComponentId("D1".into())] < 1e-5);
+    }
+
+    #[test]
+    fn diode_input_or_switches_the_calculated_led_for_either_button() {
+        let project: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c10-s18-07-diode-logic.json"
+        ))
+        .unwrap();
+        let cases = [
+            (BTreeMap::new(), false),
+            (
+                BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]),
+                true,
+            ),
+            (
+                BTreeMap::from([(ComponentId("B2".into()), ControlState::ButtonPressed)]),
+                true,
+            ),
+            (
+                BTreeMap::from([
+                    (ComponentId("B1".into()), ControlState::ButtonPressed),
+                    (ComponentId("B2".into()), ControlState::ButtonPressed),
+                ]),
+                true,
+            ),
+        ];
+        for (states, on) in cases {
+            let result =
+                solve_transient(&project, &states, &BTreeMap::new(), &BTreeMap::new()).unwrap();
+            let current = result.led_currents[&ComponentId("D3".into())];
+            assert_eq!(
+                current > 0.001,
+                on,
+                "states: {states:?}, current: {current}"
+            );
+        }
     }
 
     #[test]
