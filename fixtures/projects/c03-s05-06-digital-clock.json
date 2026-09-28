@@ -1,0 +1,24 @@
+{
+  "format_version": 1,
+  "title": "C03-S05-06: Bounded digital clock core",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "RUN", "kind": "changeover_switch", "pins": { "common": "E20", "normally_closed": "TP-:2", "normally_open": "TP+:2" }, "parameters": {} },
+    { "id": "STEP", "kind": "momentary_button", "pins": { "a": "TP+:3", "b": "A18" }, "parameters": {} },
+    { "id": "RSTEP", "kind": "resistor", "pins": { "a": "B18", "b": "TP-:3" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "U1", "kind": "digital_counter", "pins": { "carry": "A22", "clock": "C18", "enable": "A20", "gnd": "TP-:5", "q0": "A1", "q1": "A2", "q2": "A3", "q3": "A4", "q4": "A17", "q5": "B17", "q6": "C17", "q7": "D17", "q8": "A19", "q9": "B19", "reset": "TP-:19", "vcc": "TP+:5" }, "parameters": { "modulus": 10.0, "output_mode": 0.0, "output_resistance": 100.0 } },
+    { "id": "U2", "kind": "digital_counter", "pins": { "carry": "A23", "clock": "B22", "enable": "B20", "gnd": "TP-:6", "q0": "A5", "q1": "A6", "q2": "A7", "q3": "A8", "q4": "A21", "q5": "B21", "q6": "C21", "q7": "D21", "q8": "E21", "q9": "G21", "reset": "TP-:20", "vcc": "TP+:6" }, "parameters": { "modulus": 6.0, "output_mode": 0.0, "output_resistance": 100.0 } },
+    { "id": "U3", "kind": "digital_counter", "pins": { "carry": "A24", "clock": "B23", "enable": "C20", "gnd": "TP-:7", "q0": "A9", "q1": "A10", "q2": "A11", "q3": "A12", "q4": "E27", "q5": "G27", "q6": "C27", "q7": "D27", "q8": "A28", "q9": "B28", "reset": "TP-:21", "vcc": "TP+:7" }, "parameters": { "modulus": 10.0, "output_mode": 0.0, "output_resistance": 100.0 } },
+    { "id": "U4", "kind": "digital_counter", "pins": { "carry": "A25", "clock": "B24", "enable": "D20", "gnd": "TP-:8", "q0": "A13", "q1": "A14", "q2": "A15", "q3": "A16", "q4": "A29", "q5": "B29", "q6": "C29", "q7": "D29", "q8": "F29", "q9": "G29", "reset": "TP-:22", "vcc": "TP+:8" }, "parameters": { "modulus": 6.0, "output_mode": 0.0, "output_resistance": 100.0 } },
+    { "id": "U5", "kind": "digital_counter", "pins": { "carry": "A26", "clock": "B25", "enable": "TP+:9", "gnd": "TP-:9", "q0": "A30", "q1": "B30", "q2": "C30", "q3": "D30", "q4": "E30", "q5": "H17", "q6": "I17", "q7": "J17", "q8": "H18", "q9": "I18", "reset": "TP-:23", "vcc": "TP+:14" }, "parameters": { "modulus": 10.0, "output_mode": 0.0, "output_resistance": 100.0 } },
+    { "id": "U6", "kind": "digital_counter", "pins": { "carry": "A27", "clock": "B26", "enable": "TP+:10", "gnd": "TP-:10", "q0": "TP-:25", "q1": "TP-:26", "q2": "TP-:27", "q3": "TP-:28", "q4": "TP-:29", "q5": "TP-:30", "q6": "TP+:4", "q7": "TP+:17", "q8": "TP+:18", "q9": "TP+:19", "reset": "TP-:24", "vcc": "TP+:15" }, "parameters": { "modulus": 10.0, "output_mode": 0.0, "output_resistance": 100.0 } },
+    { "id": "CARRY_SINK", "kind": "resistor", "pins": { "a": "B27", "b": "TP-:4" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "DISP1", "kind": "seven_segment_display", "pins": { "a": "F1", "b": "F2", "c": "F3", "common": "TP-:11", "d": "F4", "e": "F5", "f": "F6", "g": "F7", "gnd": "TP-:12", "input_b0": "B1", "input_b1": "B2", "input_b2": "B3", "input_b3": "B4", "vcc": "TP+:11" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "DISP2", "kind": "seven_segment_display", "pins": { "a": "F8", "b": "F9", "c": "F10", "common": "TP-:13", "d": "F11", "e": "F12", "f": "F13", "g": "F14", "gnd": "TP-:14", "input_b0": "B5", "input_b1": "B6", "input_b2": "B7", "input_b3": "B8", "vcc": "TP+:12" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "DISP3", "kind": "seven_segment_display", "pins": { "a": "F15", "b": "F16", "c": "F17", "common": "TP-:15", "d": "F18", "e": "F19", "f": "F20", "g": "F21", "gnd": "TP-:16", "input_b0": "B9", "input_b1": "B10", "input_b2": "B11", "input_b3": "B12", "vcc": "TP+:13" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "DISP4", "kind": "seven_segment_display", "pins": { "a": "F22", "b": "F23", "c": "F24", "common": "TP-:17", "d": "F25", "e": "F26", "f": "F27", "g": "F28", "gnd": "TP-:18", "input_b0": "B13", "input_b1": "B14", "input_b2": "B15", "input_b3": "B16", "vcc": "TP+:16" }, "parameters": { "output_resistance": 100.0 } }
+  ],
+  "wires": [],
+  "initial_conditions": { "controls": { "RUN": "switch_normally_closed", "STEP": "button_released" } }
+}

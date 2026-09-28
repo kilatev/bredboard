@@ -1197,6 +1197,60 @@ mod tests {
     }
 
     #[test]
+    fn c03_clock_core_cascades_six_calculated_stages() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c03-s05-06-digital-clock.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("RUN".into()),
+                    state: ControlState::SwitchNormallyOpen,
+                },
+                Action::Run,
+            ],
+        );
+        for _ in 0..12 {
+            apply_actions(
+                &mut project,
+                &baseline,
+                &mut state,
+                &[
+                    Action::SetControl {
+                        component: ComponentId("STEP".into()),
+                        state: ControlState::ButtonPressed,
+                    },
+                    Action::SingleStep,
+                    Action::SetControl {
+                        component: ComponentId("STEP".into()),
+                        state: ControlState::ButtonReleased,
+                    },
+                    Action::SingleStep,
+                ],
+            );
+        }
+        assert_eq!(state.digital_states[&ComponentId("U1".into())] & 0x3ff, 2);
+        assert_eq!(state.digital_states[&ComponentId("U2".into())] & 0x3ff, 1);
+        assert_eq!(state.digital_states[&ComponentId("U3".into())] & 0x3ff, 0);
+        assert_eq!(state.digital_states[&ComponentId("U4".into())] & 0x3ff, 0);
+        assert_eq!(state.digital_states[&ComponentId("U5".into())] & 0x3ff, 0);
+        assert_eq!(state.digital_states[&ComponentId("U6".into())] & 0x3ff, 0);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Reset]);
+        assert!(
+            state
+                .digital_states
+                .values()
+                .all(|value| value & 0x3ff == 0)
+        );
+    }
+
+    #[test]
     fn c03_shift_register_calculates_shift_then_latch() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c03-s04-05-shift-register.json"
