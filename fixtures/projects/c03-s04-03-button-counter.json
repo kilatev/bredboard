@@ -1,0 +1,14 @@
+{
+  "format_version": 1,
+  "title": "C03-S04-03: Button counter to seven-segment display",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "S1", "kind": "momentary_button", "pins": { "a": "TP+:2", "b": "A1" }, "parameters": {} },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "B1", "b": "TP-:2" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "U1", "kind": "digital_counter", "pins": { "carry": "D1", "clock": "C1", "enable": "TP+:3", "gnd": "TP-:3", "q0": "C2", "q1": "C3", "q2": "C4", "q3": "C5", "q4": "C6", "q5": "C7", "q6": "C8", "q7": "C9", "q8": "C10", "q9": "C11", "reset": "TP-:4", "vcc": "TP+:4" }, "parameters": { "modulus": 10.0, "output_mode": 0.0, "output_resistance": 100.0 } },
+    { "id": "DISP1", "kind": "seven_segment_display", "pins": { "a": "F20", "b": "F21", "c": "F22", "common": "TP-:5", "d": "F23", "e": "F24", "f": "F25", "g": "F26", "gnd": "TP-:6", "input_b0": "D2", "input_b1": "D3", "input_b2": "D4", "input_b3": "D5", "vcc": "TP+:5" }, "parameters": { "output_resistance": 100.0 } }
+  ],
+  "wires": [],
+  "initial_conditions": { "controls": { "S1": "button_released" } }
+}

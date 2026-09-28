@@ -1,0 +1,17 @@
+{
+  "format_version": 1,
+  "title": "C03-S04-05: Manual eight-bit shift register",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 4.5 } },
+    { "id": "S_DATA", "kind": "momentary_button", "pins": { "a": "TP+:2", "b": "A1" }, "parameters": {} },
+    { "id": "R_DATA", "kind": "resistor", "pins": { "a": "B1", "b": "TP-:2" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "S_CLOCK", "kind": "momentary_button", "pins": { "a": "TP+:3", "b": "A2" }, "parameters": {} },
+    { "id": "R_CLOCK", "kind": "resistor", "pins": { "a": "B2", "b": "TP-:3" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "S_LATCH", "kind": "momentary_button", "pins": { "a": "TP+:4", "b": "A3" }, "parameters": {} },
+    { "id": "R_LATCH", "kind": "resistor", "pins": { "a": "B3", "b": "TP-:4" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "U1", "kind": "shift_register", "pins": { "clear": "TP+:6", "clock": "C2", "data": "C1", "gnd": "TP-:6", "latch": "C3", "q0": "F10", "q1": "F11", "q2": "F12", "q3": "F13", "q4": "F14", "q5": "F15", "q6": "F16", "q7": "F17", "vcc": "TP+:5" }, "parameters": { "output_resistance": 100.0 } }
+  ],
+  "wires": [],
+  "initial_conditions": { "controls": { "S_DATA": "button_released", "S_CLOCK": "button_released", "S_LATCH": "button_released" } }
+}

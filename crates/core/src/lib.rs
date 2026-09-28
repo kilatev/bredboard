@@ -141,6 +141,12 @@ pub enum ComponentKind {
     /// D-type flip-flop primitive. Its stateful edge contract is completed by
     /// the simulation layer; the pin contract is validated here.
     DFlipFlop,
+    /// Bounded binary or one-hot digital counter advanced by rising clock edges.
+    DigitalCounter,
+    /// Eight-bit serial-in, parallel-out shift register with a separate latch.
+    ShiftRegister,
+    /// Common-cathode seven-segment display represented as a calculated load.
+    SevenSegmentDisplay,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Wire {
@@ -502,6 +508,18 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
             "vcc",
         ],
         ComponentKind::DFlipFlop => &["clock", "data", "gnd", "not_q", "q", "reset", "set", "vcc"],
+        ComponentKind::DigitalCounter => &[
+            "clock", "carry", "enable", "gnd", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7",
+            "q8", "q9", "reset", "vcc",
+        ],
+        ComponentKind::ShiftRegister => &[
+            "clear", "clock", "data", "gnd", "latch", "q0", "q1", "q2", "q3", "q4", "q5", "q6",
+            "q7", "vcc",
+        ],
+        ComponentKind::SevenSegmentDisplay => &[
+            "a", "b", "c", "common", "d", "e", "f", "g", "gnd", "input_b0", "input_b1", "input_b2",
+            "input_b3", "vcc",
+        ],
     }
 }
 fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
@@ -523,6 +541,9 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::Comparator => &["output_resistance"],
         ComponentKind::Timer555 => &["output_resistance", "discharge_resistance"],
         ComponentKind::DFlipFlop => &["output_resistance"],
+        ComponentKind::DigitalCounter => &["modulus", "output_mode", "output_resistance"],
+        ComponentKind::ShiftRegister => &["output_resistance"],
+        ComponentKind::SevenSegmentDisplay => &["output_resistance"],
     }
 }
 fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
@@ -556,6 +577,11 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
             "output_resistance",
         ) => Some((1.0, 1e7)),
         (ComponentKind::Timer555, "discharge_resistance") => Some((1.0, 1e7)),
+        (ComponentKind::DigitalCounter, "modulus") => Some((2.0, 10.0)),
+        (ComponentKind::DigitalCounter, "output_mode") => Some((0.0, 1.0)),
+        (ComponentKind::DigitalCounter, "output_resistance") => Some((1.0, 1e7)),
+        (ComponentKind::ShiftRegister, "output_resistance") => Some((1.0, 1e7)),
+        (ComponentKind::SevenSegmentDisplay, "output_resistance") => Some((1.0, 1e7)),
         _ => None,
     }
 }

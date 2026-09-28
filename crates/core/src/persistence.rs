@@ -199,6 +199,24 @@ pub fn restore_snapshot(
             "snapshot control ratio state is incomplete or out of range",
         ));
     }
+    let digital_ids: BTreeSet<_> = snapshot
+        .project
+        .components
+        .iter()
+        .filter(|c| {
+            matches!(
+                c.kind,
+                ComponentKind::DigitalCounter | ComponentKind::ShiftRegister
+            )
+        })
+        .map(|c| c.id.clone())
+        .collect();
+    if digital_ids != snapshot.state.digital_states.keys().cloned().collect() {
+        return Err(persistence_error(
+            "invalid_digital_state",
+            "snapshot digital state is incomplete",
+        ));
+    }
     if snapshot.state.stale && snapshot.state.running {
         return Err(persistence_error(
             "invalid_run_state",

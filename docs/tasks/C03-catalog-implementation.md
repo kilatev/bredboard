@@ -1,9 +1,9 @@
 # C03 — Counting, display, and systems fixtures
 
 Status: in_progress; the Section 04 and Section 05 source review is recorded
-and implementation is proceeding in bounded capability slices. Manual Linux
-interaction and representative real-breadboard evidence remain open until the
-fixtures exist.
+and implementation is proceeding in bounded capability slices. Two Section 04
+fixtures are admitted; the remaining 15 entries and all manual evidence remain
+open.
 
 ## Scope
 
@@ -77,6 +77,29 @@ electrical behavior.
   catalog/schema validation, and per-fixture validation results are recorded.
 - [ ] Required manual Linux interaction and representative breadboard checks
   are recorded separately; builds and tests are not treated as manual proof.
+
+## Implementation evidence so far
+
+The current slice adds calculated `digital_counter`, `shift_register`, and
+`seven_segment_display` contracts, two embedded Section 04 fixtures, menu
+entries, and fixed-step regressions for rising-edge counting, BCD segment
+decoding, serial shifting, and output latching.
+
+```text
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s04-03-button-counter.json — passed; 5 components, 0 wires, 20 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c03-s04-05-shift-register.json — passed; 8 components, 0 wires, 13 derived nodes
+cargo test -p bredboard-core digital_counter_advances_once_per_calculated_rising_edge --locked — passed
+cargo test -p bredboard-core c03_counter_fixture_drives_a_calculated_display_digit --locked — passed
+cargo test -p bredboard-core c03_shift_register_calculates_shift_then_latch --locked — passed
+cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
+cargo test -p bredboard-app each_circuit_uses_core_controls_and_reset --locked — passed
+cargo fmt --all --check — passed after `cargo fmt --all`
+cargo clippy --workspace --all-targets --locked -- -D warnings — passed
+cargo test --workspace --locked — passed (49 app, 76 core, 3 tools, 0 doc-tests)
+cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked — passed
+cargo build -p bredboard-app --target wasm32-unknown-unknown --locked — passed
+cargo run -p bredboard-tools --locked -- validate-catalog breadboard-circuits/spec/catalog.json breadboard-circuits/spec/catalog.schema.json — passed; 20 sections, 212 schematics
+```
 
 ## Current blockers
 

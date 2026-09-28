@@ -142,6 +142,36 @@ enum NonlinearElement {
         gnd: usize,
         resistance: f64,
     },
+    DigitalCounter {
+        clock: usize,
+        carry: usize,
+        enable: usize,
+        outputs: [usize; 10],
+        reset: usize,
+        vcc: usize,
+        gnd: usize,
+        mode: u8,
+        modulus: u8,
+        resistance: f64,
+        state: u32,
+    },
+    ShiftRegister {
+        clock: usize,
+        data: usize,
+        outputs: [usize; 8],
+        vcc: usize,
+        gnd: usize,
+        resistance: f64,
+        state: u32,
+    },
+    SevenSegmentDisplay {
+        inputs: [usize; 4],
+        segments: [usize; 7],
+        common: usize,
+        vcc: usize,
+        gnd: usize,
+        resistance: f64,
+    },
 }
 
 pub const FIXED_STEP_SECONDS: f64 = 100e-6;
@@ -163,6 +193,7 @@ pub fn solve_dc(
         states,
         &BTreeMap::new(),
         ratios,
+        &BTreeMap::new(),
         None,
         MAX_NONLINEAR_ITERATIONS,
     )
@@ -175,20 +206,22 @@ pub fn solve_transient(
     capacitor_voltages: &BTreeMap<ComponentId, f64>,
     ratios: &BTreeMap<ComponentId, f64>,
 ) -> Result<SolveResult, ElectricalError> {
-    solve_transient_with_iteration_limit(
+    solve_transient_with_digital_states(
         project,
         states,
         capacitor_voltages,
         ratios,
+        &BTreeMap::new(),
         MAX_NONLINEAR_ITERATIONS,
     )
 }
 
-pub(crate) fn solve_transient_with_iteration_limit(
+pub(crate) fn solve_transient_with_digital_states(
     project: &Project,
     states: &BTreeMap<ComponentId, ControlState>,
     capacitor_voltages: &BTreeMap<ComponentId, f64>,
     ratios: &BTreeMap<ComponentId, f64>,
+    digital_states: &BTreeMap<ComponentId, u32>,
     max_iterations: usize,
 ) -> Result<SolveResult, ElectricalError> {
     solve_internal(
@@ -196,6 +229,7 @@ pub(crate) fn solve_transient_with_iteration_limit(
         states,
         capacitor_voltages,
         ratios,
+        digital_states,
         Some(FIXED_STEP_SECONDS),
         max_iterations,
     )
@@ -206,6 +240,7 @@ fn solve_internal(
     states: &BTreeMap<ComponentId, ControlState>,
     capacitor_voltages: &BTreeMap<ComponentId, f64>,
     ratios: &BTreeMap<ComponentId, f64>,
+    digital_states: &BTreeMap<ComponentId, u32>,
     dt: Option<f64>,
     max_iterations: usize,
 ) -> Result<SolveResult, ElectricalError> {
@@ -222,6 +257,7 @@ fn solve_internal(
         &control_state,
         &cap_state,
         &ratio_state,
+        digital_states,
         dt,
     )?;
     let coupled_transient = dt.is_some()
@@ -347,6 +383,55 @@ fn solve_internal(
                 (*vcc, *q),
                 (*gnd, *q),
             ],
+            NonlinearElement::DigitalCounter {
+                clock,
+                enable,
+                outputs,
+                reset,
+                vcc,
+                gnd,
+                ..
+            } => {
+                let mut pairs = vec![
+                    (*clock, outputs[0]),
+                    (*enable, outputs[0]),
+                    (*reset, outputs[0]),
+                    (*vcc, outputs[0]),
+                    (*gnd, outputs[0]),
+                ];
+                pairs.extend(outputs.windows(2).map(|pair| (pair[0], pair[1])));
+                pairs
+            }
+            NonlinearElement::ShiftRegister {
+                clock,
+                data,
+                outputs,
+                vcc,
+                gnd,
+                ..
+            } => {
+                let mut pairs = vec![
+                    (*clock, outputs[0]),
+                    (*data, outputs[0]),
+                    (*vcc, outputs[0]),
+                    (*gnd, outputs[0]),
+                ];
+                pairs.extend(outputs.windows(2).map(|pair| (pair[0], pair[1])));
+                pairs
+            }
+            NonlinearElement::SevenSegmentDisplay {
+                inputs,
+                segments,
+                common,
+                vcc,
+                gnd,
+                ..
+            } => {
+                let mut pairs = vec![(*common, *gnd), (*vcc, *gnd)];
+                pairs.extend(inputs.iter().map(|input| (*input, *gnd)));
+                pairs.extend(segments.iter().map(|segment| (*segment, *common)));
+                pairs
+            }
         };
         for (a, b) in pairs {
             adjacency[a].push(b);
@@ -603,7 +688,10 @@ fn solve_internal(
             | NonlinearElement::SchmittInverter { .. }
             | NonlinearElement::Comparator { .. }
             | NonlinearElement::Timer555 { .. }
-            | NonlinearElement::DFlipFlop { .. } => {}
+            | NonlinearElement::DFlipFlop { .. }
+            | NonlinearElement::DigitalCounter { .. }
+            | NonlinearElement::ShiftRegister { .. }
+            | NonlinearElement::SevenSegmentDisplay { .. } => {}
         }
     }
     Ok(SolveResult {
@@ -647,6 +735,7 @@ fn make_branches(
     states: &BTreeMap<ComponentId, ControlState>,
     capacitor_voltages: &BTreeMap<ComponentId, f64>,
     ratios: &BTreeMap<ComponentId, f64>,
+    digital_states: &BTreeMap<ComponentId, u32>,
     dt: Option<f64>,
 ) -> Result<CompiledBranches, ElectricalError> {
     let node_contacts: Vec<_> = topology.iter().map(|n| n.contacts.clone()).collect();
@@ -815,6 +904,91 @@ fn make_branches(
                     q,
                     reset,
                     set,
+                    vcc,
+                    gnd,
+                    resistance: component.parameters["output_resistance"],
+                });
+                continue;
+            }
+            ComponentKind::DigitalCounter => {
+                let clock = node("clock")?;
+                let carry = node("carry")?;
+                let enable = node("enable")?;
+                let gnd = node("gnd")?;
+                let reset = node("reset")?;
+                let vcc = node("vcc")?;
+                let outputs: [Result<usize, ElectricalError>; 10] =
+                    ["q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9"].map(node);
+                let outputs = outputs.into_iter().collect::<Result<Vec<_>, _>>()?;
+                let outputs: [usize; 10] = outputs.try_into().expect("ten counter outputs");
+                active.extend([clock, carry, enable, gnd, reset, vcc]);
+                active.extend(outputs);
+                nonlinear.push(NonlinearElement::DigitalCounter {
+                    clock,
+                    carry,
+                    enable,
+                    outputs,
+                    reset,
+                    vcc,
+                    gnd,
+                    mode: component.parameters["output_mode"] as u8,
+                    modulus: component.parameters["modulus"] as u8,
+                    resistance: component.parameters["output_resistance"],
+                    state: digital_states
+                        .get(&component.id)
+                        .copied()
+                        .unwrap_or_default(),
+                });
+                continue;
+            }
+            ComponentKind::ShiftRegister => {
+                let clear = node("clear")?;
+                let clock = node("clock")?;
+                let data = node("data")?;
+                let gnd = node("gnd")?;
+                let latch = node("latch")?;
+                let vcc = node("vcc")?;
+                let outputs: [Result<usize, ElectricalError>; 8] =
+                    ["q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7"].map(node);
+                let outputs = outputs.into_iter().collect::<Result<Vec<_>, _>>()?;
+                let outputs: [usize; 8] = outputs.try_into().expect("eight shift outputs");
+                active.extend([clear, clock, data, gnd, latch, vcc]);
+                active.extend(outputs);
+                nonlinear.push(NonlinearElement::ShiftRegister {
+                    clock,
+                    data,
+                    outputs,
+                    vcc,
+                    gnd,
+                    resistance: component.parameters["output_resistance"],
+                    state: digital_states
+                        .get(&component.id)
+                        .copied()
+                        .unwrap_or_default(),
+                });
+                continue;
+            }
+            ComponentKind::SevenSegmentDisplay => {
+                let inputs = ["input_b0", "input_b1", "input_b2", "input_b3"]
+                    .into_iter()
+                    .map(node)
+                    .collect::<Result<Vec<_>, _>>()?;
+                let inputs: [usize; 4] = inputs.try_into().expect("four display inputs");
+                let segments = ["a", "b", "c", "d", "e", "f", "g"]
+                    .into_iter()
+                    .map(node)
+                    .collect::<Result<Vec<_>, _>>()?;
+                let segments: [usize; 7] = segments.try_into().expect("seven display segments");
+                let common = node("common")?;
+                let vcc = node("vcc")?;
+                let gnd = node("gnd")?;
+                active.extend(inputs);
+                active.extend(segments);
+                active.extend([common, vcc, gnd]);
+                nonlinear.push(NonlinearElement::SevenSegmentDisplay {
+                    inputs,
+                    segments,
+                    common,
                     vcc,
                     gnd,
                     resistance: component.parameters["output_resistance"],
@@ -1404,6 +1578,117 @@ fn stamp_element(
                 matrix,
                 rhs,
             );
+        }
+        NonlinearElement::DigitalCounter {
+            carry,
+            outputs,
+            reset,
+            vcc,
+            gnd,
+            mode,
+            modulus,
+            resistance,
+            state,
+            ..
+        } => {
+            let supply = voltage(guess, vars, *vcc);
+            let value = *state & 0x3ff;
+            let reset_high = voltage(guess, vars, *reset) > supply * 0.5;
+            for (index, output) in outputs.iter().enumerate() {
+                let high = !reset_high
+                    && if *mode == 1 {
+                        value == index as u32
+                    } else {
+                        index < 4 && value & (1 << index) != 0
+                    };
+                stamp_logic_output(
+                    *output,
+                    *vcc,
+                    *gnd,
+                    high,
+                    *resistance,
+                    guess,
+                    vars,
+                    matrix,
+                    rhs,
+                );
+            }
+            stamp_logic_output(
+                *carry,
+                *vcc,
+                *gnd,
+                !reset_high && value + 1 >= u32::from(*modulus),
+                *resistance,
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
+        NonlinearElement::ShiftRegister {
+            outputs,
+            vcc,
+            gnd,
+            resistance,
+            state,
+            ..
+        } => {
+            let output_state = (*state >> 8) & 0xff;
+            for (index, output) in outputs.iter().enumerate() {
+                stamp_logic_output(
+                    *output,
+                    *vcc,
+                    *gnd,
+                    output_state & (1 << index) != 0,
+                    *resistance,
+                    guess,
+                    vars,
+                    matrix,
+                    rhs,
+                );
+            }
+        }
+        NonlinearElement::SevenSegmentDisplay {
+            inputs,
+            segments,
+            vcc,
+            gnd,
+            resistance,
+            ..
+        } => {
+            let supply = voltage(guess, vars, *vcc);
+            let digit = inputs
+                .iter()
+                .enumerate()
+                .fold(0u8, |digit, (index, input)| {
+                    digit | u8::from(voltage(guess, vars, *input) > supply * 0.5) << index
+                });
+            let segments_on = match digit {
+                0 => [true, true, true, true, true, true, false],
+                1 => [false, true, true, false, false, false, false],
+                2 => [true, true, false, true, true, false, true],
+                3 => [true, true, true, true, false, false, true],
+                4 => [false, true, true, false, false, true, true],
+                5 => [true, false, true, true, false, true, true],
+                6 => [true, false, true, true, true, true, true],
+                7 => [true, true, true, false, false, false, false],
+                8 => [true, true, true, true, true, true, true],
+                9 => [true, true, true, true, false, true, true],
+                _ => [false; 7],
+            };
+            for (segment, high) in segments.iter().zip(segments_on) {
+                stamp_logic_output(
+                    *segment,
+                    *vcc,
+                    *gnd,
+                    high,
+                    *resistance,
+                    guess,
+                    vars,
+                    matrix,
+                    rhs,
+                );
+            }
         }
     }
 }

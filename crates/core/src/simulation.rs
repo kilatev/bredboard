@@ -1,7 +1,6 @@
 use crate::{
     ComponentId, ComponentKind, ControlState, Diagnostic, ElectricalDiagnostic, ElectricalError,
     MAX_NONLINEAR_ITERATIONS, Project, SolveResult, compile_topology,
-    solver::solve_transient_with_iteration_limit,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -47,6 +46,11 @@ pub struct SimulationState {
     pub step: u64,
     pub running: bool,
     pub capacitor_voltages: BTreeMap<ComponentId, f64>,
+    /// Stateful digital component values. Counter bits occupy the low ten
+    /// bits; shift-register storage uses low and high bytes for shift and
+    /// latched outputs. Edge-history bits are implementation state.
+    #[serde(default)]
+    pub digital_states: BTreeMap<ComponentId, u32>,
     pub controls: BTreeMap<ComponentId, ControlState>,
     /// Continuous 0.0..=1.0 control ratio per variable resistor.
     #[serde(default)]
@@ -65,6 +69,7 @@ fn solve_required() -> bool {
 impl SimulationState {
     pub fn new(project: &Project) -> Self {
         let mut capacitor_voltages = BTreeMap::new();
+        let mut digital_states = BTreeMap::new();
         let mut controls = BTreeMap::new();
         let mut control_ratios = BTreeMap::new();
         for component in &project.components {
@@ -115,6 +120,9 @@ impl SimulationState {
                             .unwrap_or(0.5),
                     );
                 }
+                ComponentKind::DigitalCounter | ComponentKind::ShiftRegister => {
+                    digital_states.insert(component.id.clone(), 0);
+                }
                 _ => {}
             }
         }
@@ -122,6 +130,7 @@ impl SimulationState {
             step: 0,
             running: false,
             capacitor_voltages,
+            digital_states,
             controls,
             control_ratios,
             last_valid: None,
@@ -262,14 +271,39 @@ fn step_once_with_iteration_limit(
         state.step += 1;
         return true;
     }
-    match solve_transient_with_iteration_limit(
+    match crate::solver::solve_transient_with_digital_states(
         project,
         &state.controls,
         &state.capacitor_voltages,
         &state.control_ratios,
+        &state.digital_states,
         max_iterations,
     ) {
-        Ok(result) => {
+        Ok(mut result) => {
+            update_digital_states(project, &mut state.digital_states, &result);
+            if !state.digital_states.is_empty() {
+                result = match crate::solver::solve_transient_with_digital_states(
+                    project,
+                    &state.controls,
+                    &state.capacitor_voltages,
+                    &state.control_ratios,
+                    &state.digital_states,
+                    max_iterations,
+                ) {
+                    Ok(result) => result,
+                    Err(error) => {
+                        state.running = false;
+                        state.stale = true;
+                        state.diagnostics = match error {
+                            ElectricalError::Structure(errors) => {
+                                errors.into_iter().map(structural_diagnostic).collect()
+                            }
+                            ElectricalError::Calculation(e) => vec![electrical_diagnostic(e)],
+                        };
+                        return false;
+                    }
+                };
+            }
             state
                 .capacitor_voltages
                 .extend(result.capacitor_voltages.clone());
@@ -290,6 +324,71 @@ fn step_once_with_iteration_limit(
                 ElectricalError::Calculation(e) => vec![electrical_diagnostic(e)],
             };
             false
+        }
+    }
+}
+
+fn update_digital_states(
+    project: &Project,
+    states: &mut BTreeMap<ComponentId, u32>,
+    result: &SolveResult,
+) {
+    let voltage = |id: &ComponentId, pin: &str| {
+        result
+            .node_voltages
+            .iter()
+            .find(|node| {
+                node.contacts.contains(&crate::Contact::ComponentPin(
+                    id.clone(),
+                    crate::PinId(pin.into()),
+                ))
+            })
+            .map_or(0.0, |node| node.voltage)
+    };
+    for component in &project.components {
+        let entry = match component.kind {
+            ComponentKind::DigitalCounter | ComponentKind::ShiftRegister => {
+                states.entry(component.id.clone()).or_default()
+            }
+            _ => continue,
+        };
+        let supply = voltage(&component.id, "vcc").max(1e-6);
+        let clock_high = voltage(&component.id, "clock") > supply * 0.5;
+        let old_clock_high = *entry & (1 << 16) != 0;
+        let rising = clock_high && !old_clock_high;
+        match component.kind {
+            ComponentKind::DigitalCounter => {
+                if rising
+                    && voltage(&component.id, "reset") < supply * 0.5
+                    && voltage(&component.id, "enable") > supply * 0.5
+                {
+                    let modulus = component.parameters["modulus"] as u32;
+                    let value = *entry & 0x3ff;
+                    *entry = (if value + 1 >= modulus { 0 } else { value + 1 }) | (1 << 16);
+                } else {
+                    *entry = (*entry & 0x3ff) | u32::from(clock_high) << 16;
+                }
+            }
+            ComponentKind::ShiftRegister => {
+                let old_latch_high = *entry & (1 << 17) != 0;
+                let latch_high = voltage(&component.id, "latch") > supply * 0.5;
+                let clear_high = voltage(&component.id, "clear") > supply * 0.5;
+                let mut value = *entry & 0xffff;
+                if !clear_high {
+                    value = 0;
+                } else if rising {
+                    let data = u32::from(voltage(&component.id, "data") > supply * 0.5);
+                    value = ((value << 1) | data) & 0xff | (value & 0xff00);
+                }
+                if latch_high && !old_latch_high {
+                    value = (value & 0xff) | ((value & 0xff) << 8);
+                }
+                value = (value & !(1 << 16 | 1 << 17))
+                    | u32::from(clock_high) << 16
+                    | u32::from(latch_high) << 17;
+                *entry = value;
+            }
+            _ => {}
         }
     }
 }
@@ -321,6 +420,80 @@ mod tests {
         state.capacitor_voltages[&ComponentId("C1".into())]
     }
 
+    fn counter_project() -> Project {
+        let pins = |pairs: &[(&str, &str)]| {
+            pairs
+                .iter()
+                .map(|(pin, hole)| (crate::PinId((*pin).into()), crate::HoleId((*hole).into())))
+                .collect()
+        };
+        let mut counter_pins = vec![
+            ("clock", "A1"),
+            ("carry", "B1"),
+            ("enable", "TP+:3"),
+            ("gnd", "TP-:3"),
+            ("reset", "TP-:4"),
+            ("vcc", "TP+:4"),
+        ];
+        counter_pins.extend([
+            ("q0", "C1"),
+            ("q1", "C2"),
+            ("q2", "C3"),
+            ("q3", "C4"),
+            ("q4", "C5"),
+            ("q5", "C6"),
+            ("q6", "C7"),
+            ("q7", "C8"),
+            ("q8", "C9"),
+            ("q9", "C10"),
+        ]);
+        Project {
+            format_version: 1,
+            title: "counter test".into(),
+            board: crate::Board {
+                model: crate::BoardModel::HalfSizeSolderless,
+            },
+            components: vec![
+                crate::Component {
+                    id: ComponentId("V1".into()),
+                    kind: ComponentKind::DcVoltageSource,
+                    pins: pins(&[("positive", "TP+:1"), ("negative", "TP-:1")]),
+                    parameters: BTreeMap::from([("voltage".into(), 5.0)]),
+                },
+                crate::Component {
+                    id: ComponentId("S1".into()),
+                    kind: ComponentKind::MomentaryButton,
+                    pins: pins(&[("a", "TP+:2"), ("b", "A1")]),
+                    parameters: BTreeMap::new(),
+                },
+                crate::Component {
+                    id: ComponentId("R1".into()),
+                    kind: ComponentKind::Resistor,
+                    pins: pins(&[("a", "A1"), ("b", "TP-:2")]),
+                    parameters: BTreeMap::from([("resistance".into(), 10_000.0)]),
+                },
+                crate::Component {
+                    id: ComponentId("U1".into()),
+                    kind: ComponentKind::DigitalCounter,
+                    pins: pins(&counter_pins),
+                    parameters: BTreeMap::from([
+                        ("modulus".into(), 10.0),
+                        ("output_mode".into(), 0.0),
+                        ("output_resistance".into(), 100.0),
+                    ]),
+                },
+            ],
+            wires: Vec::new(),
+            initial_conditions: crate::InitialConditions {
+                controls: BTreeMap::from([(
+                    ComponentId("S1".into()),
+                    ControlState::ButtonReleased,
+                )]),
+                ..crate::InitialConditions::default()
+            },
+        }
+    }
+
     #[test]
     fn run_pause_single_step_and_reset_are_discrete() {
         let baseline = rc();
@@ -342,6 +515,187 @@ mod tests {
         assert!(!state.running);
         assert_eq!(capacitor_voltage(&state), 0.0);
         assert!(state.last_valid.is_none());
+    }
+
+    #[test]
+    fn digital_counter_advances_once_per_calculated_rising_edge() {
+        let baseline = counter_project();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Run]);
+        advance_steps(&project, &mut state, 1);
+        assert_eq!(state.digital_states[&ComponentId("U1".into())] & 0x3ff, 0);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("S1".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::SingleStep,
+            ],
+        );
+        let clock = state
+            .last_valid
+            .as_ref()
+            .unwrap()
+            .node_voltages
+            .iter()
+            .find(|node| {
+                node.contacts.contains(&crate::Contact::ComponentPin(
+                    ComponentId("U1".into()),
+                    crate::PinId("clock".into()),
+                ))
+            })
+            .unwrap()
+            .voltage;
+        assert!(clock > 4.0);
+        assert_eq!(state.digital_states[&ComponentId("U1".into())] & 0x3ff, 1);
+        let q0 = state
+            .last_valid
+            .as_ref()
+            .unwrap()
+            .node_voltages
+            .iter()
+            .find(|node| {
+                node.contacts.contains(&crate::Contact::ComponentPin(
+                    ComponentId("U1".into()),
+                    crate::PinId("q0".into()),
+                ))
+            })
+            .unwrap()
+            .voltage;
+        assert!(q0 > 4.0);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[Action::SetControl {
+                component: ComponentId("S1".into()),
+                state: ControlState::ButtonReleased,
+            }],
+        );
+        advance_steps(&project, &mut state, 1);
+        assert_eq!(state.digital_states[&ComponentId("U1".into())] & 0x3ff, 1);
+    }
+
+    #[test]
+    fn c03_counter_fixture_drives_a_calculated_display_digit() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c03-s04-03-button-counter.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Run]);
+        advance_steps(&project, &mut state, 1);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("S1".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::SingleStep,
+            ],
+        );
+        let clock = state
+            .last_valid
+            .as_ref()
+            .unwrap()
+            .node_voltages
+            .iter()
+            .find(|node| {
+                node.contacts.contains(&crate::Contact::ComponentPin(
+                    ComponentId("U1".into()),
+                    crate::PinId("clock".into()),
+                ))
+            })
+            .unwrap()
+            .voltage;
+        assert!(clock > 4.0);
+        assert_eq!(state.digital_states[&ComponentId("U1".into())] & 0x3ff, 1);
+        let segment_a = state
+            .last_valid
+            .as_ref()
+            .unwrap()
+            .node_voltages
+            .iter()
+            .find(|node| {
+                node.contacts.contains(&crate::Contact::ComponentPin(
+                    ComponentId("DISP1".into()),
+                    crate::PinId("a".into()),
+                ))
+            })
+            .unwrap()
+            .voltage;
+        let segment_f = state
+            .last_valid
+            .as_ref()
+            .unwrap()
+            .node_voltages
+            .iter()
+            .find(|node| {
+                node.contacts.contains(&crate::Contact::ComponentPin(
+                    ComponentId("DISP1".into()),
+                    crate::PinId("f".into()),
+                ))
+            })
+            .unwrap()
+            .voltage;
+        assert!(segment_a < 1.0);
+        assert!(segment_f < 1.0);
+    }
+
+    #[test]
+    fn c03_shift_register_calculates_shift_then_latch() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c03-s04-05-shift-register.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Run]);
+        advance_steps(&project, &mut state, 1);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("S_DATA".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::SetControl {
+                    component: ComponentId("S_CLOCK".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::SingleStep,
+            ],
+        );
+        let digital = state.digital_states[&ComponentId("U1".into())];
+        assert_eq!(digital & 0xff, 1);
+        assert_eq!((digital >> 8) & 0xff, 0);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("S_LATCH".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::SingleStep,
+            ],
+        );
+        assert_eq!(
+            (state.digital_states[&ComponentId("U1".into())] >> 8) & 0xff,
+            1
+        );
     }
 
     #[test]

@@ -84,7 +84,10 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
         | ComponentKind::SchmittInverter
         | ComponentKind::Comparator
         | ComponentKind::Timer555
-        | ComponentKind::DFlipFlop => Some(&ic::IntegratedCircuit),
+        | ComponentKind::DFlipFlop
+        | ComponentKind::DigitalCounter
+        | ComponentKind::ShiftRegister
+        | ComponentKind::SevenSegmentDisplay => Some(&ic::IntegratedCircuit),
     }
 }
 

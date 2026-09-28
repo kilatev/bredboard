@@ -77,6 +77,10 @@ const C02_S03_05_JSON: &str = include_str!("../../../fixtures/projects/c02-s03-0
 const C02_S03_06_JSON: &str = include_str!("../../../fixtures/projects/c02-s03-06-thermostat.json");
 const C02_S03_07_JSON: &str =
     include_str!("../../../fixtures/projects/c02-s03-07-light-theremin.json");
+const C03_S04_03_JSON: &str =
+    include_str!("../../../fixtures/projects/c03-s04-03-button-counter.json");
+const C03_S04_05_JSON: &str =
+    include_str!("../../../fixtures/projects/c03-s04-05-shift-register.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -129,6 +133,8 @@ enum Circuit {
     C02S03_05,
     C02S03_06,
     C02S03_07,
+    C03S04_03,
+    C03S04_05,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -146,7 +152,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 49] {
+    fn all() -> [Self; 51] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -164,6 +170,8 @@ impl Circuit {
             Self::C02S03_05,
             Self::C02S03_06,
             Self::C02S03_07,
+            Self::C03S04_03,
+            Self::C03S04_05,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -250,6 +258,8 @@ impl Circuit {
             Self::C02S03_05 => C02_S03_05_JSON,
             Self::C02S03_06 => C02_S03_06_JSON,
             Self::C02S03_07 => C02_S03_07_JSON,
+            Self::C03S04_03 => C03_S04_03_JSON,
+            Self::C03S04_05 => C03_S04_05_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -303,6 +313,8 @@ impl Circuit {
             Self::C02S03_05 => "C02-S03-05: SCHMITT DEBOUNCE",
             Self::C02S03_06 => "C02-S03-06: COMPARATOR THERMOSTAT",
             Self::C02S03_07 => "C02-S03-07: LIGHT THEREMIN",
+            Self::C03S04_03 => "C03-S04-03: BUTTON COUNTER DISPLAY",
+            Self::C03S04_05 => "C03-S04-05: MANUAL SHIFT REGISTER",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -375,6 +387,14 @@ impl Circuit {
             Self::C02S03_07 => (
                 "An NE555 timer and photoresistor form a calculated light-controlled oscillator driving the speaker load.",
                 "Task: drag TH1 from dark to bright and compare the calculated timer transition rate.",
+            ),
+            Self::C03S04_03 => (
+                "A button supplies calculated clock edges to a bounded decimal counter. Four electrical bit outputs drive a common-cathode seven-segment decoder.",
+                "Task: press S1 one edge at a time and verify that the calculated display advances from 0 through 9.",
+            ),
+            Self::C03S04_05 => (
+                "A calculated eight-bit shift register samples DATA on each rising CLOCK edge and copies the stored pattern to its outputs on LATCH.",
+                "Task: set DATA, press CLOCK once, then press LATCH and inspect the calculated output state.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -619,6 +639,24 @@ impl Circuit {
                 },
             ],
             Self::C02S03_05 => S1_BUTTON,
+            Self::C03S04_03 => S1_BUTTON,
+            Self::C03S04_05 => &[
+                ControlSpec {
+                    label: "S_DATA: PRESS / RELEASE",
+                    component: "S_DATA",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "S_CLOCK: PRESS / RELEASE",
+                    component: "S_CLOCK",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "S_LATCH: PRESS / RELEASE",
+                    component: "S_LATCH",
+                    is_switch: false,
+                },
+            ],
             Self::E28 => E24_SWITCH,
             Self::E29 => S1_BUTTON,
             Self::E1
@@ -1535,6 +1573,11 @@ fn component_summary(component: &Component) -> String {
             "{id}  D flip-flop  Q {}",
             component.pins[&bredboard_core::PinId("q".into())].0
         ),
+        ComponentKind::DigitalCounter => format!("{id}  digital counter  Q0–Q9/CARRY"),
+        ComponentKind::ShiftRegister => format!("{id}  8-bit shift register  Q0–Q7"),
+        ComponentKind::SevenSegmentDisplay => {
+            format!("{id}  seven-segment display  A–G/common cathode")
+        }
     }
 }
 
@@ -2337,7 +2380,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            49
+            51
         );
         assert!(matches!(
             items[0],
