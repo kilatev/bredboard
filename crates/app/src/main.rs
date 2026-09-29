@@ -64,6 +64,10 @@ const C01_S02_01_JSON: &str =
     include_str!("../../../fixtures/projects/c01-s02-01-transistor-key.json");
 const C01_S02_02_JSON: &str =
     include_str!("../../../fixtures/projects/c01-s02-02-dusk-night-light.json");
+const C01_S02_03_JSON: &str =
+    include_str!("../../../fixtures/projects/c01-s02-03-touch-button.json");
+const C01_S02_04_JSON: &str =
+    include_str!("../../../fixtures/projects/c01-s02-04-water-sensor.json");
 const C01_S02_06_JSON: &str =
     include_str!("../../../fixtures/projects/c01-s02-06-transistor-logic.json");
 const C02_S03_03_JSON: &str =
@@ -197,6 +201,8 @@ enum Circuit {
     C01S01_06,
     C01S02_01,
     C01S02_02,
+    C01S02_03,
+    C01S02_04,
     C01S02_06,
     C02S03_03,
     C02S03_01,
@@ -256,15 +262,15 @@ struct ControlSpec {
     component: &'static str,
     is_switch: bool,
 }
-/// A continuous dial/slider control: its label and the potentiometer or
-/// photoresistor component it drives.
+/// A continuous dial/slider control: its label and the controlled-resistance
+/// component it drives.
 struct DialSpec {
     label: &'static str,
     component: &'static str,
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 91] {
+    fn all() -> [Self; 93] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -274,6 +280,8 @@ impl Circuit {
             Self::C01S01_06,
             Self::C01S02_01,
             Self::C01S02_02,
+            Self::C01S02_03,
+            Self::C01S02_04,
             Self::C01S02_06,
             Self::C02S03_03,
             Self::C02S03_01,
@@ -402,6 +410,8 @@ impl Circuit {
             Self::C01S01_06 => C01_S01_06_JSON,
             Self::C01S02_01 => C01_S02_01_JSON,
             Self::C01S02_02 => C01_S02_02_JSON,
+            Self::C01S02_03 => C01_S02_03_JSON,
+            Self::C01S02_04 => C01_S02_04_JSON,
             Self::C01S02_06 => C01_S02_06_JSON,
             Self::C02S03_03 => C02_S03_03_JSON,
             Self::C02S03_01 => C02_S03_01_JSON,
@@ -497,6 +507,8 @@ impl Circuit {
             Self::C01S01_06 => "C01-S01-06: SMOOTH FADE",
             Self::C01S02_01 => "C01-S02-01: BC547 TRANSISTOR KEY",
             Self::C01S02_02 => "C01-S02-02: DUSK NIGHT LIGHT",
+            Self::C01S02_03 => "C01-S02-03: TOUCH BUTTON",
+            Self::C01S02_04 => "C01-S02-04: WATER SENSOR",
             Self::C01S02_06 => "C01-S02-06: TRANSISTOR LOGIC",
             Self::C02S03_03 => "C02-S03-03: 74HC LOGIC GATES",
             Self::C02S03_01 => "C02-S03-01: 555 FLASHER",
@@ -587,6 +599,14 @@ impl Circuit {
             Self::C01S02_02 => (
                 "The photoresistor and two-terminal threshold control bias a BC547 so the LED becomes brighter as the simulated room gets darker.",
                 "Task: sweep R3 from bright to dark and adjust RV1; compare the LED current at each threshold.",
+            ),
+            Self::C01S02_03 => (
+                "Two BC547 stages amplify the calculated resistance between the two touch pads; the LED responds only when the explicit touch-resistance control is lowered.",
+                "Task: drag TOUCH from dry to contact and confirm the calculated LED current follows the pad resistance.",
+            ),
+            Self::C01S02_04 => (
+                "The water probes are an explicit conductivity input: dry probes are high resistance, while the selected water range drives the BC547 and active buzzer.",
+                "Task: drag WATER from dry to wet and confirm the calculated buzzer current changes without a hidden trigger.",
             ),
             Self::C01S02_06 => (
                 "Two button input rails drive five BC547 stages: two transistors form AND, two form OR, and the fifth is a calculated NOT output.",
@@ -1070,7 +1090,9 @@ impl Circuit {
             | Self::C01S01_03
             | Self::C01S01_04
             | Self::C01S01_05
-            | Self::C01S02_02 => &[],
+            | Self::C01S02_02
+            | Self::C01S02_03
+            | Self::C01S02_04 => &[],
             Self::C02S03_01 | Self::C02S03_06 | Self::C02S03_07 | Self::C03S04_09 => &[],
             Self::C03S05_01 => &[
                 ControlSpec {
@@ -1416,6 +1438,14 @@ impl Circuit {
                     component: "RV1",
                 },
             ],
+            Self::C01S02_03 => &[DialSpec {
+                label: "TP1: TOUCH RESISTANCE - drag left/right",
+                component: "TP1",
+            }],
+            Self::C01S02_04 => &[DialSpec {
+                label: "WP1: WATER CONDUCTIVITY - drag left/right",
+                component: "WP1",
+            }],
             Self::E5 => &[DialSpec {
                 label: "RV1: BRIGHTNESS DIAL - drag left/right",
                 component: "RV1",
@@ -2361,6 +2391,20 @@ fn component_summary(component: &Component) -> String {
         ),
         ComponentKind::Thermistor => format!(
             "{id}  NTC thermistor {:.0}-{:.0} ohm  {} / {}",
+            component.parameters["min_resistance"],
+            component.parameters["max_resistance"],
+            component.pins[&bredboard_core::PinId("a".into())].0,
+            component.pins[&bredboard_core::PinId("b".into())].0
+        ),
+        ComponentKind::TouchPad => format!(
+            "{id}  touch pad {:.0}-{:.0} ohm  {} / {}",
+            component.parameters["min_resistance"],
+            component.parameters["max_resistance"],
+            component.pins[&bredboard_core::PinId("a".into())].0,
+            component.pins[&bredboard_core::PinId("b".into())].0
+        ),
+        ComponentKind::WaterProbe => format!(
+            "{id}  water probe {:.0}-{:.0} ohm  {} / {}",
             component.parameters["min_resistance"],
             component.parameters["max_resistance"],
             component.pins[&bredboard_core::PinId("a".into())].0,
@@ -3417,7 +3461,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            91
+            93
         );
         assert!(matches!(
             items[0],
@@ -3478,6 +3522,8 @@ mod tests {
             (Circuit::E16, "R3"),
             (Circuit::E17, "R2"),
             (Circuit::E18, "RV1"),
+            (Circuit::C01S02_03, "TP1"),
+            (Circuit::C01S02_04, "WP1"),
         ] {
             let mut app = App::new();
             app.insert_resource(Session {

@@ -13,8 +13,9 @@ Sections 01/02 release decisions remain open.
   component contracts from the accepted MVP and post-MVP cards remain the
   boundary. This card does not authorize a second netlist or scripted result.
 - The diode and PNP model/pin contracts are now present for S01-05 and
-  S02-07; S02-07 still needs a bounded speaker-load fixture. A physical-prop
-  decision is a prerequisite for S02-03 and S02-04.
+  S02-07; S02-07 still needs a bounded speaker-load fixture. The touch-pad and
+  water-probe physical-input contracts are now explicit; their battery-only
+  manual evidence is still required.
 
 ## Outcome and commit boundary
 
@@ -119,24 +120,29 @@ cargo test -p bredboard-app — passed
 The Section 01 rows remain release-blocked until manual continuity, polarity,
 measurement, and visual evidence is recorded. C01 is not `ready_for_fukit`.
 
-The current Section 02 slice adds three fixtures under
+The current Section 02 slice adds five fixtures under
 `fixtures/projects/c01-s02-*.json`, selects the BC547 pin convention, and
 removes the source's unlisted motor behavior from the player-facing contract.
 S02-06 follows the five-NPN topology visible in its SVG; the three-NPN BOM
 count is recorded as a source discrepancy rather than dropping stages. Its
 calculated AND/OR/NOT truth table passes all four button combinations.
+S02-03 and S02-04 now use explicit `touch_pad` and `water_probe` two-terminal
+controlled-resistance contracts. Ratio 0 is the dry/open endpoint and ratio 1
+is the documented contact/wet endpoint; the app exposes both controls as
+dials, and the core tests compare calculated currents at both endpoints. The
+physical pads, cup, and probes still require the battery-only manual protocol.
 The diode and PNP runtime contracts are also present, but no S02-05 candidate
 is admitted: the catalog's 47 kΩ/47 µF cross-coupled oscillator remains
 nonconvergent at a later polarity transition under the fixed-step solver.
-The touch, water, and PNP/speaker entries remain blocked with their ledger
-dispositions intact.
+Only S02-05 and S02-07 remain blocked in this slice; touch and water are
+fixture-ready with manual physical evidence pending.
 
 Latest automated evidence for this slice:
 
 ```text
 cargo fmt --all --check — passed
 cargo clippy --workspace --all-targets --locked -- -D warnings — passed
-cargo test --workspace --locked — passed (49 app, 66 core, 3 tools tests)
+cargo test --workspace --locked — passed (49 app, 109 core, 3 tools tests)
 cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked — passed
 cargo build -p bredboard-app --target wasm32-unknown-unknown --locked — passed
 cargo run -p bredboard-tools --locked -- validate-catalog breadboard-circuits/spec/catalog.json breadboard-circuits/spec/catalog.schema.json — passed; 20 sections, 212 schematics
@@ -148,8 +154,12 @@ cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s01-05-r
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s01-06-smooth-fade.json — passed; 6 components, 3 wires, 5 derived nodes
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s02-01-transistor-key.json — passed; 6 components, 3 wires, 6 derived nodes
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s02-02-dusk-night-light.json — passed; 7 components, 6 wires, 5 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s02-03-touch-button.json — passed; 7 components, 4 wires, 7 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s02-04-water-sensor.json — passed; 5 components, 3 wires, 5 derived nodes
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s02-06-transistor-logic.json — passed; 20 components, 12 wires, 14 derived nodes
 cargo test -p bredboard-core c01_transistor_logic_matches_all_four_input_combinations --locked — passed
+cargo test -p bredboard-core c01_touch_and_water_inputs_follow_explicit_resistance_controls --locked — passed
+cargo test -p bredboard-app --locked — passed (49 app tests)
 cargo test -p bredboard-app e30_asymmetric_initial_state_sustains_multiple_alternating_led_cycles --locked — passed
 ```
 
@@ -164,7 +174,7 @@ substitution. The row remains `blocked_component` until the fixed-step
 transient solve can sustain the calculated polarity transitions.
 
 The current workspace baseline for the already admitted catalog surface is
-`cargo test --workspace --locked` — 49 app tests, 108 core tests, 3 tool tests,
+`cargo test --workspace --locked` — 49 app tests, 109 core tests, 3 tool tests,
 and 0 doc-test failures; C12's 12 fault-pair fixtures are covered separately
 by its published repair-loop regression.
 
@@ -175,7 +185,7 @@ At minimum, record board/rail continuity, approved supply and current limit,
 pin/polarity checks, no-short continuity, startup, every button/switch/control
 state, measured readouts, deviations, and an overview plus close-up visual
 record. S02-03 and S02-04 cannot be accepted without their physical-prop and
-battery-only safety decisions.
+battery-only safety evidence.
 
 ## Known blockers at card creation
 
@@ -190,8 +200,9 @@ battery-only safety decisions.
   transition; it was deleted and is not counted as an implementation.
 - S02-06 uses the five-transistor SVG topology; the three-transistor BOM count
   remains an explicit source discrepancy in the ledger and fixture contract.
-- Touch pads and water probes need a safe, reproducible physical-prop scope
-  decision.
+- Touch pads and water probes now have explicit controlled-resistance fixture
+  contracts; battery-only physical assembly, spill protection, and
+  reproducible manual evidence remain open.
 - S01-06's nominal RC time constant does not support its “couple seconds”
   wording without a documented observable threshold.
 - S02-01 mentions a motor that is absent from its BOM.

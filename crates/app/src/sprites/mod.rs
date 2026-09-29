@@ -18,6 +18,7 @@ mod motor;
 pub mod palette;
 mod photoresistor;
 mod potentiometer;
+mod probe;
 mod relay;
 mod resistor;
 mod source;
@@ -84,6 +85,8 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
         ComponentKind::Potentiometer => Some(&potentiometer::Potentiometer),
         ComponentKind::Photoresistor => Some(&photoresistor::Photoresistor),
         ComponentKind::Thermistor => Some(&photoresistor::Photoresistor),
+        ComponentKind::TouchPad => Some(&probe::TouchPad),
+        ComponentKind::WaterProbe => Some(&probe::WaterProbe),
         ComponentKind::Buzzer => Some(&buzzer::Buzzer),
         ComponentKind::Speaker => Some(&speaker::Speaker),
         ComponentKind::Motor => Some(&motor::Motor),
@@ -279,6 +282,28 @@ mod tests {
         // the golden files are unchanged and now describe a real component.
         golden("future-trimmer-potentiometer", &potentiometer::body());
         golden("future-photoresistor", &photoresistor::body());
+        golden(
+            "touch-pad",
+            &probe::TouchPad.body(
+                &component(
+                    ComponentKind::TouchPad,
+                    &[("a", "A1"), ("b", "A4")],
+                    &[("min_resistance", 1_000.0), ("max_resistance", 1e9)],
+                ),
+                0,
+            ),
+        );
+        golden(
+            "water-probe",
+            &probe::WaterProbe.body(
+                &component(
+                    ComponentKind::WaterProbe,
+                    &[("a", "A1"), ("b", "A4")],
+                    &[("min_resistance", 1_000.0), ("max_resistance", 1e9)],
+                ),
+                0,
+            ),
+        );
     }
 
     /// T17 Part B: design-only references for future parts. None of these is

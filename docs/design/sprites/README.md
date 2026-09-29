@@ -51,10 +51,12 @@ references are authoritative; the mockups are not needed to implement or review.
 | `dc_voltage_source` | 22 x 14 off-board block | 1 | Dark case with a red + and blue - terminal mark and a pixel "5V" label. Position and colored supply wires are unchanged; only the flat rectangle became a sprite. |
 | `potentiometer` | 12 x 12 top-down body | 1 | Promoted unchanged from the T17 Part B "Trimmer potentiometer" design below (same golden file). Blue case, white cross-slot knob. The control ratio is an electrical signal, not a visual state; the body never changes. |
 | `photoresistor` | 12 x 12 top-down body | 1 | Promoted unchanged from the T17 Part B "Photoresistor (LDR)" design below (same golden file). Orange-red disc with a zigzag track. The ambient-light control ratio is an electrical signal, not a visual state. |
+| `touch_pad` | 16 x 8 paired contact pads | 1 | Gold contact pads with a visible insulating gap; the resistance ratio is an explicit external-input control, not a visual output state. |
+| `water_probe` | 16 x 8 paired probe contacts | 1 | Blue probe contacts with a visible insulating gap; the cup and water remain physical props while conductivity is an explicit input control. |
 | `buzzer` | 12 x 16 top-down body (12 x 12 case plus 4 px of headroom for sound-wave marks) | silent, sounding | Round dark plastic case (reusing `changeover_switch`'s case colours) with a silver metal grille (reusing the capacitor's vent colours) and a polarity stripe on the positive side (reusing the capacitor's minus-stripe colour). Sounding adds `SOUND_WAVE` arcs above the case; state comes from calculated current against `buzzer::SOUNDING_CURRENT` (1 mA), the same pattern as the LED's thresholds. T28 adds a real tone (see T28-buzzer-speaker-audio.md); the sprite state itself is still visual only. |
 | `speaker` | 12 x 16 top-down body, same footprint as `buzzer` | silent, sounding | Same case ring as the buzzer, but reads as a cone rather than a flat grilled disc: a metal cone-slope ring lit from the top left and a dark centre dust cap, plus the same positive-side polarity stripe. Shares `buzzer::SOUNDING_CURRENT` and the sounding sound-wave marks. Electrically identical to `buzzer` (`ComponentKind::Speaker`, same pin names and resistor stamp), but with a tighter documented resistance range (1-100 ohm) and a lower, fuller T28 tone. |
 
-Every existing catalog kind now has an 8-bit sprite; the plain fallback
+Every implemented catalog kind now has an 8-bit sprite; the plain fallback
 drawing in `crates/app/src/main.rs` is no longer reachable and has been
 removed.
 

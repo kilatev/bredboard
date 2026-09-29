@@ -183,6 +183,8 @@ pub fn restore_snapshot(
                 ComponentKind::Potentiometer
                     | ComponentKind::Photoresistor
                     | ComponentKind::Thermistor
+                    | ComponentKind::TouchPad
+                    | ComponentKind::WaterProbe
             )
         })
         .map(|c| c.id.clone())

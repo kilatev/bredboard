@@ -104,8 +104,10 @@ manual gate.
 
 - Resolve the source 9 V labels against the product's 5 V fixture baseline.
 - Select exact BC547/2N3904 and BC557/2N3906 packages before placement.
-- Keep the S02-03 touch pads and S02-04 water probes outside the ordinary
-  board-only path until their safety and input contracts are accepted.
+- S02-03 touch pads use the fixture's explicit contact-resistance endpoints;
+  S02-04 water probes use the explicit dry/wet conductivity endpoints. Keep
+  both battery-only and outside the ordinary powered-board path until the
+  physical safety and input measurements are recorded.
 - Do not reproduce S01-01's “LED burns with smoke” behavior on a real board.
 - Treat the S02-07 8 Ω speaker as a power-limited load; stop if the measured
   output can exceed its stated 0.5 W rating.

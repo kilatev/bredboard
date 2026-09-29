@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "title": "C01-S02-03: Touch Button",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A5", "b": "A8" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "B8", "cathode": "A11" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "collector": "B17", "base": "C29", "emitter": "A20" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "Q2", "kind": "npn_transistor", "pins": { "collector": "B11", "base": "C20", "emitter": "A14" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "A23", "b": "B26" }, "parameters": { "resistance": 1000.0 } },
+    { "id": "TP1", "kind": "touch_pad", "pins": { "a": "C26", "b": "A29" }, "parameters": { "min_resistance": 100000.0, "max_resistance": 1000000000.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "B5", "to": "TP+:5" },
+    { "id": "W2", "from": "B14", "to": "TP-:14" },
+    { "id": "W3", "from": "B23", "to": "TP+:23" },
+    { "id": "W4", "from": "D17", "to": "TP+:17" }
+  ],
+  "initial_conditions": { "control_ratios": { "TP1": 0.0 } }
+}

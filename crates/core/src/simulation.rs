@@ -112,7 +112,9 @@ impl SimulationState {
                 }
                 ComponentKind::Potentiometer
                 | ComponentKind::Photoresistor
-                | ComponentKind::Thermistor => {
+                | ComponentKind::Thermistor
+                | ComponentKind::TouchPad
+                | ComponentKind::WaterProbe => {
                     control_ratios.insert(
                         component.id.clone(),
                         project
@@ -237,7 +239,9 @@ pub fn apply_actions(
                     Some(
                         ComponentKind::Potentiometer
                             | ComponentKind::Photoresistor
-                            | ComponentKind::Thermistor,
+                            | ComponentKind::Thermistor
+                            | ComponentKind::TouchPad
+                            | ComponentKind::WaterProbe,
                     )
                 ) && ratio.is_finite()
                     && (0.0..=1.0).contains(ratio);

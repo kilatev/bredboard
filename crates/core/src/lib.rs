@@ -96,9 +96,9 @@ pub struct InitialConditions {
     pub capacitor_voltages: BTreeMap<ComponentId, f64>,
     #[serde(default)]
     pub controls: BTreeMap<ComponentId, ControlState>,
-    /// Continuous 0.0..=1.0 control ratio for a `potentiometer` or
-    /// `photoresistor`. Analogous to `controls`, but a continuous ratio
-    /// instead of a discrete `ControlState`.
+    /// Continuous 0.0..=1.0 control ratio for a variable resistor, including
+    /// external touch pads and water probes. Analogous to `controls`, but a
+    /// continuous ratio instead of a discrete `ControlState`.
     #[serde(default)]
     pub control_ratios: BTreeMap<ComponentId, f64>,
 }
@@ -157,6 +157,12 @@ pub enum ComponentKind {
     /// Two-terminal NTC thermistor whose resistance falls as the temperature
     /// control ratio rises.
     Thermistor,
+    /// Two-terminal external touch-pad resistance. Ratio 0 is an open, dry
+    /// pad and ratio 1 is the configured contact resistance of a finger.
+    TouchPad,
+    /// Two-terminal external water-probe resistance. Ratio 0 is dry and ratio
+    /// 1 is the configured conductivity of the probe medium.
+    WaterProbe,
     /// Fixed-resistance two-terminal load with a current-derived "sounding"
     /// presentation state. The app plays a fixed tone while sounding; the
     /// pitch is a presentation choice, not a calculated electrical result.
@@ -403,7 +409,11 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
         }
         if matches!(
             c.kind,
-            ComponentKind::Potentiometer | ComponentKind::Photoresistor | ComponentKind::Thermistor
+            ComponentKind::Potentiometer
+                | ComponentKind::Photoresistor
+                | ComponentKind::Thermistor
+                | ComponentKind::TouchPad
+                | ComponentKind::WaterProbe
         ) && let (Some(min), Some(max)) = (
             c.parameters.get("min_resistance"),
             c.parameters.get("max_resistance"),
@@ -461,6 +471,8 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                     ComponentKind::Potentiometer
                         | ComponentKind::Photoresistor
                         | ComponentKind::Thermistor
+                        | ComponentKind::TouchPad
+                        | ComponentKind::WaterProbe
                 ) =>
             {
                 if !ratio.is_finite() || !(0.0..=1.0).contains(ratio) {
@@ -550,9 +562,11 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
         }
         ComponentKind::MomentaryButton => &["a", "b"],
         ComponentKind::ChangeoverSwitch => &["common", "normally_closed", "normally_open"],
-        ComponentKind::Potentiometer | ComponentKind::Photoresistor | ComponentKind::Thermistor => {
-            &["a", "b"]
-        }
+        ComponentKind::Potentiometer
+        | ComponentKind::Photoresistor
+        | ComponentKind::Thermistor
+        | ComponentKind::TouchPad
+        | ComponentKind::WaterProbe => &["a", "b"],
         ComponentKind::Buzzer | ComponentKind::Speaker | ComponentKind::Motor => {
             &["positive", "negative"]
         }
@@ -636,9 +650,11 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
             &["beta", "saturation_current"]
         }
         ComponentKind::MomentaryButton | ComponentKind::ChangeoverSwitch => &[],
-        ComponentKind::Potentiometer | ComponentKind::Photoresistor | ComponentKind::Thermistor => {
-            &["min_resistance", "max_resistance"]
-        }
+        ComponentKind::Potentiometer
+        | ComponentKind::Photoresistor
+        | ComponentKind::Thermistor
+        | ComponentKind::TouchPad
+        | ComponentKind::WaterProbe => &["min_resistance", "max_resistance"],
         ComponentKind::Buzzer | ComponentKind::Speaker => &["resistance"],
         ComponentKind::Motor => &["resistance", "rated_voltage", "no_load_speed_rpm"],
         ComponentKind::Optocoupler => &[
@@ -681,6 +697,10 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
             ComponentKind::Potentiometer | ComponentKind::Photoresistor | ComponentKind::Thermistor,
             "min_resistance" | "max_resistance",
         ) => Some((1.0, 1e7)),
+        (
+            ComponentKind::TouchPad | ComponentKind::WaterProbe,
+            "min_resistance" | "max_resistance",
+        ) => Some((1.0, 1e12)),
         (ComponentKind::Buzzer, "resistance") => Some((1.0, 1e7)),
         // Dynamic speakers are low-impedance voice coils (typically 4-32
         // ohms), unlike the piezo buzzer's much wider practical range.
@@ -1019,6 +1039,8 @@ mod tests {
             ComponentKind::Potentiometer,
             ComponentKind::Photoresistor,
             ComponentKind::Thermistor,
+            ComponentKind::TouchPad,
+            ComponentKind::WaterProbe,
         ] {
             let mut p = project();
             p.components = vec![variable_resistor(kind)];
@@ -1036,6 +1058,8 @@ mod tests {
                 ComponentKind::Potentiometer => "\"potentiometer\"",
                 ComponentKind::Photoresistor => "\"photoresistor\"",
                 ComponentKind::Thermistor => "\"thermistor\"",
+                ComponentKind::TouchPad => "\"touch_pad\"",
+                ComponentKind::WaterProbe => "\"water_probe\"",
                 _ => unreachable!(),
             };
             assert!(text.contains(expected), "schema missing {expected}");

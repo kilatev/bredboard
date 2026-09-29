@@ -1,0 +1,18 @@
+{
+  "format_version": 1,
+  "title": "C01-S02-04: Water Sensor",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A14", "b": "B17" }, "parameters": { "resistance": 1000.0 } },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "collector": "C8", "base": "B20", "emitter": "A11" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "BZ1", "kind": "buzzer", "pins": { "positive": "A5", "negative": "B8" }, "parameters": { "resistance": 32.0 } },
+    { "id": "WP1", "kind": "water_probe", "pins": { "a": "C17", "b": "A20" }, "parameters": { "min_resistance": 1000.0, "max_resistance": 1000000000.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "B5", "to": "TP+:5" },
+    { "id": "W2", "from": "B11", "to": "TP-:11" },
+    { "id": "W3", "from": "B14", "to": "TP+:14" }
+  ],
+  "initial_conditions": { "control_ratios": { "WP1": 0.0 } }
+}

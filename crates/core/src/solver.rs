@@ -1600,7 +1600,10 @@ fn component_branch(
                 0.0,
             ))
         }
-        ComponentKind::Photoresistor | ComponentKind::Thermistor => {
+        ComponentKind::Photoresistor
+        | ComponentKind::Thermistor
+        | ComponentKind::TouchPad
+        | ComponentKind::WaterProbe => {
             let min = value("min_resistance")?;
             let max = value("max_resistance")?;
             let ratio = ratios.get(&c.id).copied().unwrap_or(0.5).clamp(0.0, 1.0);
@@ -3362,6 +3365,8 @@ mod tests {
         fixture_json!(C01_S01_06, "c01-s01-06-smooth-fade.json");
         fixture_json!(C01_S02_01, "c01-s02-01-transistor-key.json");
         fixture_json!(C01_S02_02, "c01-s02-02-dusk-night-light.json");
+        fixture_json!(C01_S02_03, "c01-s02-03-touch-button.json");
+        fixture_json!(C01_S02_04, "c01-s02-04-water-sensor.json");
         fixture_json!(C01_S02_06, "c01-s02-06-transistor-logic.json");
         fixture_json!(C02_S03_03, "c02-s03-03-logic-gates.json");
         fixture_json!(C02_S03_01, "c02-s03-01-555-flasher.json");
@@ -3474,6 +3479,48 @@ mod tests {
             assert!(
                 dark.led_currents[&ComponentId("D1".into())]
                     > bright.led_currents[&ComponentId("D1".into())]
+            );
+        }
+
+        #[test]
+        fn c01_touch_and_water_inputs_follow_explicit_resistance_controls() {
+            let touch = fixture(C01_S02_03);
+            let dry = solve_dc(
+                &touch,
+                &BTreeMap::new(),
+                &BTreeMap::from([(ComponentId("TP1".into()), 0.0)]),
+            )
+            .unwrap();
+            let contact = solve_dc(
+                &touch,
+                &BTreeMap::new(),
+                &BTreeMap::from([(ComponentId("TP1".into()), 1.0)]),
+            )
+            .unwrap();
+            assert!(
+                contact.led_currents[&ComponentId("D1".into())]
+                    > dry.led_currents[&ComponentId("D1".into())] + 0.001,
+                "dry={} contact={}",
+                dry.led_currents[&ComponentId("D1".into())],
+                contact.led_currents[&ComponentId("D1".into())]
+            );
+
+            let water = fixture(C01_S02_04);
+            let dry = solve_dc(
+                &water,
+                &BTreeMap::new(),
+                &BTreeMap::from([(ComponentId("WP1".into()), 0.0)]),
+            )
+            .unwrap();
+            let wet = solve_dc(
+                &water,
+                &BTreeMap::new(),
+                &BTreeMap::from([(ComponentId("WP1".into()), 1.0)]),
+            )
+            .unwrap();
+            assert!(
+                wet.resistor_currents[&ComponentId("BZ1".into())].abs()
+                    > dry.resistor_currents[&ComponentId("BZ1".into())].abs() + 0.001
             );
         }
 
