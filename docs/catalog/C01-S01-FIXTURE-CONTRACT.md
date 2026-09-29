@@ -38,10 +38,11 @@ is retained as a catalog discrepancy rather than silently dropping two stages.
 | C01-S02-02 | `c01-s02-02-dusk-night-light.json` | R3 ambient light; RV1 threshold; D1/Q1 current | The photoresistor and potentiometer are two-terminal rheostats; dark raises the base drive and bright lowers it. |
 | C01-S02-03 | `c01-s02-03-touch-button.json` | TP1 touch-resistance dial; D1 current; Q1/Q2 collector currents | `TP1` is a two-terminal controlled resistance: 1 GΩ dry/open at ratio 0 and 100 kΩ calibrated contact at ratio 1. The two NPNs follow the SVG's Darlington emitter-to-base cascade; the app control is an explicit physical-input substitute, not a scripted LED state. |
 | C01-S02-04 | `c01-s02-04-water-sensor.json` | WP1 water-conductivity dial; BZ1 current; Q1 collector current | `WP1` is a two-terminal controlled resistance: 1 GΩ dry at ratio 0 and 1 kΩ wet endpoint at ratio 1. The cup and probes remain a battery-only manual prop. |
+| C01-S02-05 | `c01-s02-05-two-transistor-flasher.json` | C1/C2 voltages; D1/D2 currents; Q1/Q2 collector currents | The SVG cross-coupled topology uses 47 kΩ feedback resistors, 47 µF electrolytics, and a 0.5 V initial C2 state to break symmetry. The bounded transient solve sustains alternating calculated LED transitions. |
 | C01-S02-06 | `c01-s02-06-transistor-logic.json` | S1/S2; D1 AND, D2 OR, D3 NOT currents | The SVG topology is authoritative for the five NPN stages; buttons feed active-high A/B rails through calculated resistor networks, and the DC-only transistor Jacobian is used without changing the fixed transient oscillator path. |
 
-The two-transistor flasher and speaker entries remain blocked in the ledger
-until their numerical or output-load contracts are accepted. Touch-pad and
+The speaker entry remains blocked in the ledger until its output-load contract
+is accepted. Touch-pad and
 water-probe fixtures use explicit controlled resistance and still require the
 battery-only manual protocol; no scripted output is used.
 The core also now has a mirrored `pnp_transistor` model with the same named

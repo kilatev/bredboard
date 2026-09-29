@@ -1,0 +1,33 @@
+{
+  "format_version": 1,
+  "title": "C01-S02-05: Two-Transistor Flasher",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A5", "b": "B8" }, "parameters": { "resistance": 1000.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "C8", "cathode": "A11" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "collector": "B11", "base": "C29", "emitter": "F14" }, "parameters": { "beta": 10.0, "saturation_current": 1e-12 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "A17", "b": "B20" }, "parameters": { "resistance": 1000.0 } },
+    { "id": "D2", "kind": "led", "pins": { "anode": "C20", "cathode": "A23" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "Q2", "kind": "npn_transistor", "pins": { "collector": "B23", "base": "C26", "emitter": "F26" }, "parameters": { "beta": 10.0, "saturation_current": 1e-12 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "A27", "b": "B28" }, "parameters": { "resistance": 47000.0 } },
+    { "id": "R4", "kind": "resistor", "pins": { "a": "A25", "b": "B26" }, "parameters": { "resistance": 47000.0 } },
+    { "id": "R5", "kind": "resistor", "pins": { "a": "E29", "b": "A30" }, "parameters": { "resistance": 47000.0 } },
+    { "id": "R6", "kind": "resistor", "pins": { "a": "E26", "b": "B30" }, "parameters": { "resistance": 47000.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "positive": "F24", "negative": "D29" }, "parameters": { "capacitance": 0.000047 } },
+    { "id": "C2", "kind": "capacitor", "pins": { "positive": "F11", "negative": "D26" }, "parameters": { "capacitance": 0.000047 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "D5", "to": "TP+:5" },
+    { "id": "W2", "from": "D17", "to": "TP+:17" },
+    { "id": "W3", "from": "C27", "to": "TP+:27" },
+    { "id": "W4", "from": "C25", "to": "TP+:25" },
+    { "id": "W5", "from": "G14", "to": "TP-:14" },
+    { "id": "W6", "from": "G26", "to": "TP-:26" },
+    { "id": "W7", "from": "C23", "to": "G24" },
+    { "id": "W8", "from": "C11", "to": "G11" },
+    { "id": "W9", "from": "C28", "to": "B29" },
+    { "id": "W10", "from": "C30", "to": "TP-:30" }
+  ],
+  "initial_conditions": { "capacitor_voltages": { "C1": 0.0, "C2": 0.5 } }
+}

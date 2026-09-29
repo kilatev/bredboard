@@ -68,6 +68,8 @@ const C01_S02_03_JSON: &str =
     include_str!("../../../fixtures/projects/c01-s02-03-touch-button.json");
 const C01_S02_04_JSON: &str =
     include_str!("../../../fixtures/projects/c01-s02-04-water-sensor.json");
+const C01_S02_05_JSON: &str =
+    include_str!("../../../fixtures/projects/c01-s02-05-two-transistor-flasher.json");
 const C01_S02_06_JSON: &str =
     include_str!("../../../fixtures/projects/c01-s02-06-transistor-logic.json");
 const C02_S03_03_JSON: &str =
@@ -203,6 +205,7 @@ enum Circuit {
     C01S02_02,
     C01S02_03,
     C01S02_04,
+    C01S02_05,
     C01S02_06,
     C02S03_03,
     C02S03_01,
@@ -270,7 +273,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 93] {
+    fn all() -> [Self; 94] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -282,6 +285,7 @@ impl Circuit {
             Self::C01S02_02,
             Self::C01S02_03,
             Self::C01S02_04,
+            Self::C01S02_05,
             Self::C01S02_06,
             Self::C02S03_03,
             Self::C02S03_01,
@@ -412,6 +416,7 @@ impl Circuit {
             Self::C01S02_02 => C01_S02_02_JSON,
             Self::C01S02_03 => C01_S02_03_JSON,
             Self::C01S02_04 => C01_S02_04_JSON,
+            Self::C01S02_05 => C01_S02_05_JSON,
             Self::C01S02_06 => C01_S02_06_JSON,
             Self::C02S03_03 => C02_S03_03_JSON,
             Self::C02S03_01 => C02_S03_01_JSON,
@@ -509,6 +514,7 @@ impl Circuit {
             Self::C01S02_02 => "C01-S02-02: DUSK NIGHT LIGHT",
             Self::C01S02_03 => "C01-S02-03: TOUCH BUTTON",
             Self::C01S02_04 => "C01-S02-04: WATER SENSOR",
+            Self::C01S02_05 => "C01-S02-05: TWO-TRANSISTOR FLASHER",
             Self::C01S02_06 => "C01-S02-06: TRANSISTOR LOGIC",
             Self::C02S03_03 => "C02-S03-03: 74HC LOGIC GATES",
             Self::C02S03_01 => "C02-S03-01: 555 FLASHER",
@@ -607,6 +613,10 @@ impl Circuit {
             Self::C01S02_04 => (
                 "The water probes are an explicit conductivity input: dry probes are high resistance, while the selected water range drives the BC547 and active buzzer.",
                 "Task: drag WATER from dry to wet and confirm the calculated buzzer current changes without a hidden trigger.",
+            ),
+            Self::C01S02_05 => (
+                "Two cross-coupled BC547 stages and their 47 uF capacitors form a calculated free-running flasher; the documented 0.5 V initial state on C2 breaks startup symmetry.",
+                "Task: run the fixture long enough to observe several calculated alternating LED cycles.",
             ),
             Self::C01S02_06 => (
                 "Two button input rails drive five BC547 stages: two transistors form AND, two form OR, and the fifth is a calculated NOT output.",
@@ -1092,7 +1102,8 @@ impl Circuit {
             | Self::C01S01_05
             | Self::C01S02_02
             | Self::C01S02_03
-            | Self::C01S02_04 => &[],
+            | Self::C01S02_04
+            | Self::C01S02_05 => &[],
             Self::C02S03_01 | Self::C02S03_06 | Self::C02S03_07 | Self::C03S04_09 => &[],
             Self::C03S05_01 => &[
                 ControlSpec {
@@ -3461,7 +3472,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            93
+            94
         );
         assert!(matches!(
             items[0],
@@ -4612,5 +4623,32 @@ mod tests {
             d2_states.first(),
             d2_states.last()
         );
+    }
+
+    #[test]
+    fn c01_s02_05_source_values_sustain_multiple_alternating_led_cycles() {
+        let mut bench = Bench::new(Circuit::C01S02_05);
+        assert_eq!(
+            bench.project.initial_conditions.capacitor_voltages[&ComponentId("C2".into())],
+            0.5
+        );
+        bench.act(Action::Run);
+        let mut d1_states = Vec::new();
+        let mut d2_states = Vec::new();
+        for _ in 0..60_000 {
+            advance_steps(&bench.project, &mut bench.simulation, 1);
+            assert!(
+                bench.simulation.last_valid.is_some(),
+                "C01-S02-05 stopped: {:?}",
+                bench.simulation.diagnostics
+            );
+            let result = bench.simulation.last_valid.as_ref().unwrap();
+            d1_states.push(result.led_currents[&ComponentId("D1".into())] > 0.001);
+            d2_states.push(result.led_currents[&ComponentId("D2".into())] > 0.001);
+        }
+        let transitions =
+            |states: &[bool]| states.windows(2).filter(|pair| pair[0] != pair[1]).count();
+        assert!(transitions(&d1_states) >= 4);
+        assert!(transitions(&d2_states) >= 4);
     }
 }

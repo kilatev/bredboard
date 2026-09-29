@@ -265,7 +265,7 @@ enum NonlinearElement {
 }
 
 pub const FIXED_STEP_SECONDS: f64 = 100e-6;
-pub const MAX_NONLINEAR_ITERATIONS: usize = 80;
+pub const MAX_NONLINEAR_ITERATIONS: usize = 200;
 /// Under-relaxation keeps coupled LED/NPN transient solves deterministic while
 /// retaining the bounded iteration and explicit nonconvergence diagnostic.
 const NONLINEAR_RELAXATION: f64 = 0.25;

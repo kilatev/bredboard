@@ -131,18 +131,20 @@ controlled-resistance contracts. Ratio 0 is the dry/open endpoint and ratio 1
 is the documented contact/wet endpoint; the app exposes both controls as
 dials, and the core tests compare calculated currents at both endpoints. The
 physical pads, cup, and probes still require the battery-only manual protocol.
-The diode and PNP runtime contracts are also present, but no S02-05 candidate
-is admitted: the catalog's 47 kΩ/47 µF cross-coupled oscillator remains
-nonconvergent at a later polarity transition under the fixed-step solver.
-Only S02-05 and S02-07 remain blocked in this slice; touch and water are
-fixture-ready with manual physical evidence pending.
+The diode and PNP runtime contracts are also present. S02-05 now uses the
+catalog's 47 kΩ/47 µF cross-coupled oscillator with the SVG topology, a 5 V
+normalized supply, and a 0.5 V C2 startup offset. The bounded nonlinear
+iteration cap is 200 for this fixed-step transient solve; the calculated
+fixture sustains alternating LED transitions for 60,000 steps. Only S02-07
+remains blocked in this slice; the other ten fixtures still require manual
+physical evidence.
 
 Latest automated evidence for this slice:
 
 ```text
 cargo fmt --all --check — passed
 cargo clippy --workspace --all-targets --locked -- -D warnings — passed
-cargo test --workspace --locked — passed (49 app, 109 core, 3 tools tests)
+cargo test --workspace --locked — passed (50 app, 109 core, 3 tools tests)
 cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked — passed
 cargo build -p bredboard-app --target wasm32-unknown-unknown --locked — passed
 cargo run -p bredboard-tools --locked -- validate-catalog breadboard-circuits/spec/catalog.json breadboard-circuits/spec/catalog.schema.json — passed; 20 sections, 212 schematics
@@ -156,22 +158,22 @@ cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s02-01-t
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s02-02-dusk-night-light.json — passed; 7 components, 6 wires, 5 derived nodes
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s02-03-touch-button.json — passed; 7 components, 4 wires, 7 derived nodes
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s02-04-water-sensor.json — passed; 5 components, 3 wires, 5 derived nodes
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s02-05-two-transistor-flasher.json — passed; 13 components, 10 wires, 8 derived nodes
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s02-06-transistor-logic.json — passed; 20 components, 12 wires, 14 derived nodes
 cargo test -p bredboard-core c01_transistor_logic_matches_all_four_input_combinations --locked — passed
 cargo test -p bredboard-core c01_touch_and_water_inputs_follow_explicit_resistance_controls --locked — passed
-cargo test -p bredboard-app --locked — passed (49 app tests)
+cargo test -p bredboard-app --locked — passed (50 app tests)
 cargo test -p bredboard-app e30_asymmetric_initial_state_sustains_multiple_alternating_led_cycles --locked — passed
+cargo test -p bredboard-app c01_s02_05_source_values_sustain_multiple_alternating_led_cycles --locked — passed
 ```
 
-The current solver remains bounded at 80 nonlinear iterations. A 2026-09-29
-admission attempt for S02-05 reused the E30 topology and the source's 47 µF
-capacitors: structural validation passed, but
-`cargo run -p bredboard-tools --locked -- simulate
-fixtures/projects/c01-s02-05-two-transistor-flasher.json 4000` stopped with
-`nonconvergence` at step 428. The candidate fixture was not retained, and
-lowering the capacitor or cross-coupling values was rejected as a source-model
-substitution. The row remains `blocked_component` until the fixed-step
-transient solve can sustain the calculated polarity transitions.
+The 2026-09-29 S02-05 admission uses the source's 47 kΩ/47 µF values and
+the E30 cross-coupled topology with a 0.5 V C2 startup offset. The bounded
+nonlinear iteration cap is 200; the fixture validates structurally and the
+app regression records both LED outputs over 60,000 fixed steps, requiring at
+least four transitions for each LED. The former 80-iteration bound stopped at
+step 428, so the higher bound is retained as a solver convergence correction,
+not a source-value substitution.
 
 A separate 2026-09-29 S02-07 attempt followed the source's NPN/PNP/capacitor
 feedback topology with the normalized 5 V supply, 100 kΩ potentiometer, 10 kΩ
@@ -182,7 +184,7 @@ the row remains `blocked_component` until a bounded speaker-output contract
 and a calculated startup/oscillation result are available.
 
 The current workspace baseline for the already admitted catalog surface is
-`cargo test --workspace --locked` — 49 app tests, 109 core tests, 3 tool tests,
+`cargo test --workspace --locked` — 50 app tests, 109 core tests, 3 tool tests,
 and 0 doc-test failures; C12's 12 fault-pair fixtures are covered separately
 by its published repair-loop regression.
 
@@ -203,9 +205,9 @@ battery-only safety evidence.
   convention.
 - The diode and PNP runtime models now have named pin contracts; S02-07 still
   lacks a bounded speaker-load and oscillator-startup fixture.
-- A candidate S02-05 project with the source's 47 kΩ/47 µF values validated
-  structurally but stopped with `nonconvergence` during a later polarity
-  transition; it was deleted and is not counted as an implementation.
+- S02-05 now retains the source's 47 kΩ/47 µF values and uses a bounded
+  200-iteration transient solve to sustain its calculated polarity transitions;
+  manual capacitor polarity and battery-only evidence remain open.
 - S02-06 uses the five-transistor SVG topology; the three-transistor BOM count
   remains an explicit source discrepancy in the ledger and fixture contract.
 - Touch pads and water probes now have explicit controlled-resistance fixture
