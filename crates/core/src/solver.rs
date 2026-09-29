@@ -1574,7 +1574,7 @@ fn component_branch(
                 ));
             }
         },
-        ComponentKind::Buzzer | ComponentKind::Speaker => Some((
+        ComponentKind::Buzzer | ComponentKind::Speaker | ComponentKind::PiezoPassive => Some((
             "positive",
             "negative",
             BranchKind::Resistor,
@@ -3040,6 +3040,40 @@ mod tests {
         assert_eq!(
             pin_voltage(&plain, "R1", "b"),
             pin_voltage(&as_speaker, "R1", "negative")
+        );
+    }
+
+    #[test]
+    fn passive_piezo_matches_a_plain_resistor_of_the_same_value() {
+        let mut plain_project = divider();
+        plain_project.components[1]
+            .parameters
+            .insert("resistance".into(), 32.0);
+        plain_project.components[2]
+            .parameters
+            .insert("resistance".into(), 32.0);
+        let mut piezo = plain_project.clone();
+        piezo.components[1].kind = ComponentKind::PiezoPassive;
+        piezo.components[1].pins = BTreeMap::from([
+            (
+                crate::PinId("positive".into()),
+                crate::HoleId("TP+:2".into()),
+            ),
+            (crate::PinId("negative".into()), crate::HoleId("A1".into())),
+        ]);
+        let plain = solve(&plain_project).unwrap();
+        let as_piezo = solve(&piezo).unwrap();
+        assert_eq!(
+            plain.resistor_currents[&ComponentId("R1".into())],
+            as_piezo.resistor_currents[&ComponentId("R1".into())]
+        );
+        assert_eq!(
+            pin_voltage(&plain, "R1", "a"),
+            pin_voltage(&as_piezo, "R1", "positive")
+        );
+        assert_eq!(
+            pin_voltage(&plain, "R1", "b"),
+            pin_voltage(&as_piezo, "R1", "negative")
         );
     }
 

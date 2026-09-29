@@ -9,13 +9,17 @@ pub use persistence::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 pub use simulation::{
-    Action, STEP_SECONDS, SimulationDiagnostic, SimulationState, advance_steps, apply_actions,
+    Action, PASSIVE_PIEZO_HISTORY_STEPS, STEP_SECONDS, SimulationDiagnostic, SimulationState,
+    advance_steps, apply_actions, passive_piezo_is_sounding,
 };
 pub use solver::{
     ElectricalDiagnostic, ElectricalError, MAX_NONLINEAR_ITERATIONS, NodeVoltage, SolveResult,
     solve_dc, solve_transient,
 };
 use std::collections::{BTreeMap, BTreeSet};
+
+/// Current threshold shared by current-driven sounding presentations.
+pub const SOUNDING_CURRENT: f64 = 0.001;
 
 /// Version of the core crate used by applications and workspace tools.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -172,6 +176,10 @@ pub enum ComponentKind {
     /// rather than a piezo buzzer, with its own sprite and a lower, fuller
     /// tone while sounding.
     Speaker,
+    /// Fixed-resistance two-terminal passive piezo element. Unlike `Buzzer`,
+    /// it has no internal oscillator: the app presents it as sounding only
+    /// when its calculated fixed-step current is actually varying.
+    PiezoPassive,
     /// Two-terminal DC motor. The electrical branch is resistive; the solver
     /// also derives signed shaft speed from terminal voltage using the
     /// component's rated voltage and no-load speed parameters. Inertia,
@@ -567,9 +575,10 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
         | ComponentKind::Thermistor
         | ComponentKind::TouchPad
         | ComponentKind::WaterProbe => &["a", "b"],
-        ComponentKind::Buzzer | ComponentKind::Speaker | ComponentKind::Motor => {
-            &["positive", "negative"]
-        }
+        ComponentKind::Buzzer
+        | ComponentKind::Speaker
+        | ComponentKind::PiezoPassive
+        | ComponentKind::Motor => &["positive", "negative"],
         ComponentKind::Optocoupler => &["input_anode", "input_cathode", "collector", "emitter"],
         ComponentKind::Relay => &[
             "coil_positive",
@@ -655,7 +664,9 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
         | ComponentKind::Thermistor
         | ComponentKind::TouchPad
         | ComponentKind::WaterProbe => &["min_resistance", "max_resistance"],
-        ComponentKind::Buzzer | ComponentKind::Speaker => &["resistance"],
+        ComponentKind::Buzzer | ComponentKind::Speaker | ComponentKind::PiezoPassive => {
+            &["resistance"]
+        }
         ComponentKind::Motor => &["resistance", "rated_voltage", "no_load_speed_rpm"],
         ComponentKind::Optocoupler => &[
             "forward_voltage",
@@ -705,6 +716,7 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         // Dynamic speakers are low-impedance voice coils (typically 4-32
         // ohms), unlike the piezo buzzer's much wider practical range.
         (ComponentKind::Speaker, "resistance") => Some((1.0, 100.0)),
+        (ComponentKind::PiezoPassive, "resistance") => Some((1.0, 1e7)),
         (ComponentKind::Motor, "resistance") => Some((1.0, 1000.0)),
         (ComponentKind::Motor, "rated_voltage") => Some((0.1, 12.0)),
         (ComponentKind::Motor, "no_load_speed_rpm") => Some((1.0, 50_000.0)),
@@ -1214,6 +1226,42 @@ mod tests {
         let text = serde_json::to_string(&serde_json::to_value(schema).unwrap()).unwrap();
         assert!(text.contains("\"speaker\""));
         for value in [0.999, 100.001] {
+            let mut bad = p.clone();
+            bad.components[0]
+                .parameters
+                .insert("resistance".into(), value);
+            assert!(
+                compile_topology(&bad)
+                    .unwrap_err()
+                    .iter()
+                    .any(|d| d.code == "parameter_out_of_range")
+            );
+        }
+        let json = serde_json::to_string(&p).unwrap();
+        let decoded: Project = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, p);
+    }
+
+    #[test]
+    fn passive_piezo_is_a_valid_kind_with_documented_range_and_round_trips() {
+        let mut p = project();
+        p.components = vec![Component {
+            id: ComponentId("PZ1".into()),
+            kind: ComponentKind::PiezoPassive,
+            pins: BTreeMap::from([
+                (PinId("positive".into()), HoleId("A1".into())),
+                (PinId("negative".into()), HoleId("A2".into())),
+            ]),
+            parameters: BTreeMap::from([("resistance".into(), 32.0)]),
+        }];
+        p.wires.clear();
+        assert!(compile_topology(&p).is_ok());
+        let schema =
+            schemars::SchemaGenerator::new(schemars::generate::SchemaSettings::draft2020_12())
+                .into_root_schema_for::<Project>();
+        let text = serde_json::to_string(&serde_json::to_value(schema).unwrap()).unwrap();
+        assert!(text.contains("\"piezo_passive\""));
+        for value in [0.999, 10_000_001.0] {
             let mut bad = p.clone();
             bad.components[0]
                 .parameters

@@ -17,6 +17,7 @@ mod led;
 mod motor;
 pub mod palette;
 mod photoresistor;
+mod piezo_passive;
 mod potentiometer;
 mod probe;
 mod relay;
@@ -45,6 +46,8 @@ pub struct PartContext {
     pub buzzer_current: f64,
     /// Calculated signed motor speed in RPM; 0 when readings are stale.
     pub motor_speed: f64,
+    /// Core-detected oscillating drive for a passive piezo.
+    pub passive_piezo_sounding: bool,
     /// Calculated relay coil state.
     pub relay_energized: bool,
     pub control: Option<ControlState>,
@@ -89,6 +92,7 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
         ComponentKind::WaterProbe => Some(&probe::WaterProbe),
         ComponentKind::Buzzer => Some(&buzzer::Buzzer),
         ComponentKind::Speaker => Some(&speaker::Speaker),
+        ComponentKind::PiezoPassive => Some(&piezo_passive::PiezoPassive),
         ComponentKind::Motor => Some(&motor::Motor),
         ComponentKind::Relay => Some(&relay::Relay),
         ComponentKind::LogicGate
@@ -278,6 +282,8 @@ mod tests {
         golden("buzzer-sounding", &buzzer::body(true));
         golden("speaker-silent", &speaker::body(false));
         golden("speaker-sounding", &speaker::body(true));
+        golden("piezo-passive-silent", &piezo_passive::body(false));
+        golden("piezo-passive-sounding", &piezo_passive::body(true));
         // T19 promotes these two designs from the T17 Part B future references;
         // the golden files are unchanged and now describe a real component.
         golden("future-trimmer-potentiometer", &potentiometer::body());
@@ -306,6 +312,21 @@ mod tests {
         );
     }
 
+    #[test]
+    fn passive_piezo_state_uses_core_drive_flag_and_has_distinct_art() {
+        let piezo = piezo_passive::PiezoPassive;
+        assert_eq!(piezo.state(&PartContext::default()), 0);
+        assert_eq!(
+            piezo.state(&PartContext {
+                passive_piezo_sounding: true,
+                ..Default::default()
+            }),
+            1
+        );
+        assert_ne!(piezo_passive::body(false), buzzer::body(false));
+        assert_ne!(piezo_passive::body(false), speaker::body(false));
+    }
+
     /// T17 Part B: design-only references for future parts. None of these is
     /// a `PartArt` or a `ComponentKind`; `future::*` are plain generator
     /// functions read for review, not simulated.
@@ -321,7 +342,7 @@ mod tests {
 
     #[test]
     fn every_state_of_a_part_has_the_same_size() {
-        let parts: [(&dyn PartArt, Component); 12] = [
+        let parts: [(&dyn PartArt, Component); 13] = [
             (
                 &resistor::Resistor,
                 component(
@@ -415,6 +436,14 @@ mod tests {
                 ),
             ),
             (
+                &piezo_passive::PiezoPassive,
+                component(
+                    ComponentKind::PiezoPassive,
+                    &[("positive", "A1"), ("negative", "A4")],
+                    &[("resistance", 32.0)],
+                ),
+            ),
+            (
                 &motor::Motor,
                 component(
                     ComponentKind::Motor,
@@ -487,7 +516,7 @@ mod tests {
 
         #[test]
         fn placements_cover_every_pin_hole(
-            ax in -8i32..8, ay in -8i32..8, dx in -6i32..=6, dy in -6i32..=6, kind in 0usize..8,
+            ax in -8i32..8, ay in -8i32..8, dx in -6i32..=6, dy in -6i32..=6, kind in 0usize..9,
         ) {
             prop_assume!((dx, dy) != (0, 0));
             let a = Vec2::new(ax as f32, ay as f32) * 16.0;
@@ -500,6 +529,7 @@ mod tests {
                 4 => (&photoresistor::Photoresistor, component(ComponentKind::Photoresistor, &[("a", "A1"), ("b", "A4")], &[("min_resistance", 100.0), ("max_resistance", 1_000_000.0)])),
                 5 => (&buzzer::Buzzer, component(ComponentKind::Buzzer, &[("positive", "A1"), ("negative", "A4")], &[("resistance", 32.0)])),
                 6 => (&speaker::Speaker, component(ComponentKind::Speaker, &[("positive", "A1"), ("negative", "A4")], &[("resistance", 8.0)])),
+                7 => (&piezo_passive::PiezoPassive, component(ComponentKind::PiezoPassive, &[("positive", "A1"), ("negative", "A4")], &[("resistance", 32.0)])),
                 _ => (&motor::Motor, component(ComponentKind::Motor, &[("positive", "A1"), ("negative", "A4")], &[("resistance", 8.0), ("rated_voltage", 3.0), ("no_load_speed_rpm", 10_000.0)])),
             };
             assert_leads_reach_holes(art, &c, &[a, b])?;

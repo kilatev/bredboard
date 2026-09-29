@@ -25,10 +25,11 @@ cannot represent.
 
 ## Source and design review
 
-- S06-01 requires active and passive buzzer behavior; the current electrical
-  models can represent current-driven loads but do not yet distinguish a
-  passive piezo's need for an oscillating drive. Keep this as a component
-  blocker until the distinction is explicit.
+- S06-01's passive-piezo component blocker is closed by T29:
+  `PiezoPassive` is a fixed-resistance load whose visual/audio state is driven
+  by recent calculated fixed-step current variation. The catalog row still
+  needs its bounded fixture, menu entry, and source/buildability evidence;
+  T29 does not authorize implementing that row here.
 - S06-02, S06-04, S06-05, and S06-08 use timer/RC paths that can be expressed
   with existing `timer_555`, capacitor, resistor, button, switch, LED, NPN,
   PNP, diode, and speaker contracts. Dual-timer entries may compose two
@@ -64,7 +65,7 @@ cannot represent.
   focused regression.
 - Keep presentation frequency and audio tone as readouts of calculated
   electrical state; do not use wall-clock timing or scripted sound results.
-- Record unsupported passive-piezo, microphone, input-jack, op-amp,
+- Record unsupported microphone, input-jack, op-amp,
   transformer, analog-multiplier, oscilloscope, and optical-coupling
   requirements in the ledger.
 

@@ -6,7 +6,7 @@ use super::{PartArt, PartContext, PixelCanvas};
 /// Current threshold (amperes) between the silent and sounding sprites.
 /// Same order of magnitude as the LED's dim threshold: a buzzer this small
 /// draws a few milliamps to sound.
-pub const SOUNDING_CURRENT: f64 = 0.001;
+pub use bredboard_core::SOUNDING_CURRENT;
 
 pub struct Buzzer;
 

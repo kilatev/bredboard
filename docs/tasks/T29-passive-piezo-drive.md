@@ -1,6 +1,6 @@
 # T29 — Passive-piezo oscillating-drive distinction
 
-Status: pending
+Status: in_progress
 
 ## Dependencies
 
@@ -62,23 +62,23 @@ Suggested commit title: `feat: add passive-piezo oscillating-drive distinction`.
 
 ## Acceptance criteria
 
-- [ ] `PiezoPassive` is a valid `ComponentKind` with documented pins,
+- [x] `PiezoPassive` is a valid `ComponentKind` with documented pins,
   parameter, and range; JSON Schema output includes it.
-- [ ] The solver treats it as a linear resistive load; a test confirms
+- [x] The solver treats it as a linear resistive load; a test confirms
   current and voltage match a plain resistor of the same value in an
   equivalent circuit, the same pattern as the buzzer's equivalence test.
-- [ ] A regression proves steady DC current, even well above
+- [x] A regression proves steady DC current, even well above
   `SOUNDING_CURRENT`, never reads as sounding for this kind.
-- [ ] A regression proves an oscillating drive (for example, a `timer_555`
+- [x] A regression proves an oscillating drive (for example, a `timer_555`
   square wave into the piezo) reads as sounding, matching an expected
   fixed-step sequence.
-- [ ] The sprite has silent and sounding states driven by the oscillation
+- [x] The sprite has silent and sounding states driven by the oscillation
   rule, matches its committed golden reference, and is visually distinct
   from both `Buzzer` and `Speaker`.
-- [ ] Placement and same-size property tests cover the new kind.
-- [ ] Round-trip persistence for a project containing a passive piezo.
-- [ ] Existing fixtures, tests, and other kinds are unaffected.
-- [ ] `CAT-S06-01`'s row in `docs/catalog/CATALOG-AUDIT-LEDGER.md` and the
+- [x] Placement and same-size property tests cover the new kind.
+- [x] Round-trip persistence for a project containing a passive piezo.
+- [x] Existing fixtures, tests, and other kinds are unaffected.
+- [x] `CAT-S06-01`'s row in `docs/catalog/CATALOG-AUDIT-LEDGER.md` and the
   blocker text in `docs/tasks/C04-catalog-implementation.md` are updated to
   reflect this task's outcome (documentation follow-up, not new code).
 
@@ -132,4 +132,56 @@ actual push result.
 
 ## Evidence
 
-Not started.
+Implementation is present in the working tree; the card remains `in_progress`
+because the required audible/manual Linux checks are unavailable in this
+environment.
+
+- `ComponentKind::PiezoPassive` uses `positive`/`negative` pins and the
+  buzzer resistance range (`1.0..=1e7` ohm). Project schema, validation,
+  JSON round-trip, and passive-piezo range coverage are in
+  `crates/core/src/lib.rs`.
+- The solver stamps `PiezoPassive` through the existing linear resistor arm.
+  `solver::tests::passive_piezo_matches_a_plain_resistor_of_the_same_value`
+  verifies equal current and terminal voltages.
+- `SimulationState` retains 64 calculated fixed-step currents per passive
+  piezo. `passive_piezo_is_sounding` requires repeated threshold/polarity or
+  directional variations, so steady DC stays silent. Core regressions cover
+  steady DC above threshold, an exact square-wave sequence, and a real 555
+  astable drive (`cargo test -p bredboard-core --locked passive_piezo` — 5
+  passed).
+- `crates/app/src/sprites/piezo_passive.rs` adds the distinct silent/sounding
+  rectangular transducer art. Goldens are
+  `docs/design/sprites/piezo-passive-silent.txt` and
+  `docs/design/sprites/piezo-passive-sounding.txt`, generated with
+  `BREDBOARD_BLESS_SPRITES=1`; app sprite tests cover state mapping, distinct
+  art, same-size states, and randomized pin placement.
+- `tests::passive_piezo_view_uses_core_history_for_sprite_and_audio_transition`
+  exercises the app's `update_view` path with a headless `SoundTones` resource:
+  an oscillating current history switches the sprite to sounding and inserts
+  `AudioPlayer<Pitch>`, while a steady history returns it to silent and removes
+  the audio component.
+- App audio reuses the existing T28 `Pitch` wiring and buzzer tone; only the
+  trigger state differs, using the core oscillation result. `cargo clippy
+  --workspace --all-targets --locked -- -D warnings` and `cargo fmt --all
+  --check` pass. The core package suite passes with 114 tests and zero
+  doc-test failures; the tools package suite passes with 3 tests. The newly
+  added app integration test passes, and the previously completed workspace
+  baseline passed with 51 app, 114 core, and 3 tools tests before that test was
+  added. A subsequent full-workspace rerun reached the app suite's two known
+  long transient tests but was interrupted by the runner before completion;
+  it is not counted as a pass.
+- Required builds pass: `cargo build -p bredboard-app --target
+  x86_64-unknown-linux-gnu --locked` and `cargo build -p bredboard-app
+  --target wasm32-unknown-unknown --locked`.
+- `CAT-S06-01` now records `PiezoPassive` as supported in
+  `docs/catalog/CATALOG-AUDIT-LEDGER.md`; C04 records that T29 closes the
+  component-model blocker while leaving bounded fixture/menu work separate.
+
+All task-specific automated checks are complete. The built Linux executable was
+launched in a live session and Bevy logged creation of the `bredboard` window,
+but the UI bridge exposed no native app/window surface (`apps: []`); a current
+system check also finds `/dev/snd` unavailable, and the local browser fallback
+is not running. The passive-piezo visual transition and audibility therefore
+remain unverified and are not counted as passes; a human with working Linux
+display/audio access must exercise the 555 scratch fixture before changing
+this card to `ready_for_fukit`.

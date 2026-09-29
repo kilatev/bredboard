@@ -2489,6 +2489,12 @@ fn component_summary(component: &Component) -> String {
             component.pins[&bredboard_core::PinId("positive".into())].0,
             component.pins[&bredboard_core::PinId("negative".into())].0
         ),
+        ComponentKind::PiezoPassive => format!(
+            "{id}  passive piezo {:.0} ohm  + {} / - {}",
+            component.parameters["resistance"],
+            component.pins[&bredboard_core::PinId("positive".into())].0,
+            component.pins[&bredboard_core::PinId("negative".into())].0
+        ),
         ComponentKind::Motor => format!(
             "{id}  motor {:.0} ohm  + {} / - {}",
             component.parameters["resistance"],
@@ -3322,6 +3328,8 @@ fn update_view(
                 .and_then(|r| r.resistor_currents.get(&part.id))
                 .copied()
                 .unwrap_or(0.0),
+            passive_piezo_sounding: readings.is_some()
+                && bench.simulation.passive_piezo_sounding(&part.id),
             motor_speed: readings
                 .and_then(|r| r.motor_speeds.get(&part.id))
                 .copied()
@@ -3338,10 +3346,13 @@ fn update_view(
             part.shown = state;
         }
         // A buzzer/speaker's sprite state 1 is its current-driven "sounding"
-        // state (see `sprites::buzzer`/`sprites::speaker`); play or stop its
-        // tone exactly when that state changes.
-        let sounding =
-            state == 1 && matches!(part.kind, ComponentKind::Buzzer | ComponentKind::Speaker);
+        // state; a passive piezo's state is the core's fixed-step oscillation
+        // result. Play or stop the tone exactly when that state changes.
+        let sounding = state == 1
+            && matches!(
+                part.kind,
+                ComponentKind::Buzzer | ComponentKind::Speaker | ComponentKind::PiezoPassive
+            );
         if let Some(tones) = &sound_tones
             && sounding != part.sounding
         {
@@ -3914,6 +3925,72 @@ mod tests {
             0,
             "stale readings do not light the LED"
         );
+    }
+
+    #[test]
+    fn passive_piezo_view_uses_core_history_for_sprite_and_audio_transition() {
+        let piezo_id = ComponentId("BZ1".into());
+        let mut bench = Bench::new(Circuit::E7);
+        bench
+            .project
+            .components
+            .iter_mut()
+            .find(|component| component.id == piezo_id)
+            .unwrap()
+            .kind = ComponentKind::PiezoPassive;
+        bench.act(Action::Run);
+        advance_steps(&bench.project, &mut bench.simulation, 1);
+        bench.simulation.piezo_current_history.insert(
+            piezo_id.clone(),
+            vec![0.0, 0.0, 0.005, 0.005, 0.0, 0.0, 0.005],
+        );
+
+        let mut app = App::new();
+        app.insert_resource(Session { bench: Some(bench) })
+            .insert_resource(SoundTones {
+                buzzer: Handle::default(),
+                speaker: Handle::default(),
+            })
+            .init_resource::<Assets<Image>>()
+            .add_systems(Update, update_view);
+        app.world_mut().spawn(Window::default());
+        app.world_mut()
+            .resource_scope(|world, mut images: Mut<Assets<Image>>| {
+                let session = world.resource::<Session>();
+                let bench = session.bench.as_ref().unwrap();
+                let mut queue = bevy::ecs::world::CommandQueue::default();
+                let mut commands = Commands::new(&mut queue, world);
+                spawn_bench(&mut commands, &mut images, bench);
+                queue.apply(world);
+            });
+
+        let view = |app: &mut App| {
+            let mut parts = app
+                .world_mut()
+                .query::<(&PartVisual, Option<&AudioPlayer<Pitch>>)>();
+            parts
+                .iter(app.world())
+                .find(|(part, _)| part.id == piezo_id)
+                .map(|(part, audio)| (part.shown, part.sounding, audio.is_some()))
+                .unwrap()
+        };
+
+        app.update();
+        assert_eq!(view(&mut app), (1, true, true));
+
+        app.world_mut()
+            .resource_mut::<Session>()
+            .bench
+            .as_mut()
+            .unwrap()
+            .simulation
+            .piezo_current_history
+            .insert(
+                piezo_id.clone(),
+                vec![0.005; bredboard_core::PASSIVE_PIEZO_HISTORY_STEPS],
+            );
+        app.update();
+        assert_eq!(view(&mut app), (0, false, false));
     }
 
     #[test]

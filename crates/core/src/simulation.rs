@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 pub const STEP_SECONDS: f64 = 100e-6;
+pub const PASSIVE_PIEZO_HISTORY_STEPS: usize = 64;
+const PASSIVE_PIEZO_REQUIRED_VARIATIONS: usize = 2;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "action", rename_all = "snake_case")]
@@ -58,6 +60,11 @@ pub struct SimulationState {
     /// Continuous 0.0..=1.0 control ratio per variable resistor.
     #[serde(default)]
     pub control_ratios: BTreeMap<ComponentId, f64>,
+    /// Recent calculated currents for passive piezos, in fixed-step order.
+    /// This is presentation input owned by the core so a passive piezo can
+    /// distinguish an oscillating drive from steady DC.
+    #[serde(default)]
+    pub piezo_current_history: BTreeMap<ComponentId, Vec<f64>>,
     pub last_valid: Option<SolveResult>,
     pub stale: bool,
     pub diagnostics: Vec<SimulationDiagnostic>,
@@ -142,6 +149,7 @@ impl SimulationState {
             digital_states,
             controls,
             control_ratios,
+            piezo_current_history: BTreeMap::new(),
             last_valid: None,
             stale: false,
             diagnostics: Vec::new(),
@@ -151,6 +159,49 @@ impl SimulationState {
     pub fn time_seconds(&self) -> f64 {
         self.step as f64 * STEP_SECONDS
     }
+
+    /// Whether a passive piezo's recent calculated current contains an
+    /// oscillating drive rather than steady DC.
+    pub fn passive_piezo_sounding(&self, component: &ComponentId) -> bool {
+        self.piezo_current_history
+            .get(component)
+            .is_some_and(|history| passive_piezo_is_sounding(history))
+    }
+}
+
+/// Detect an externally oscillating passive-piezo drive from one fixed-step
+/// current window. Threshold crossings cover a square wave switching between
+/// silence and load current; magnitude and polarity changes cover drives that
+/// stay above threshold or reverse direction. A constant current has no
+/// variations and therefore never sounds.
+pub fn passive_piezo_is_sounding(history: &[f64]) -> bool {
+    if history.len() < 3 {
+        return false;
+    }
+    let threshold_variations = history
+        .windows(2)
+        .filter(|pair| {
+            let previous = pair[0];
+            let current = pair[1];
+            let threshold_crossed = (previous.abs() >= crate::SOUNDING_CURRENT)
+                != (current.abs() >= crate::SOUNDING_CURRENT);
+            let polarity_changed = previous.signum() != current.signum()
+                && previous.abs() >= crate::SOUNDING_CURRENT
+                && current.abs() >= crate::SOUNDING_CURRENT;
+            threshold_crossed || polarity_changed
+        })
+        .count();
+    let directional_variations = history
+        .windows(3)
+        .filter(|window| {
+            let rising = window[1] - window[0];
+            let falling = window[2] - window[1];
+            rising * falling < 0.0
+                && rising.abs() >= crate::SOUNDING_CURRENT * 0.5
+                && falling.abs() >= crate::SOUNDING_CURRENT * 0.5
+        })
+        .count();
+    threshold_variations + directional_variations >= PASSIVE_PIEZO_REQUIRED_VARIATIONS
 }
 
 /// Reduce actions in order at the current step boundary. Parameter edits are
@@ -183,6 +234,7 @@ pub fn apply_actions(
                     match compile_topology(&candidate) {
                         Ok(_) => {
                             *project = candidate;
+                            state.piezo_current_history.clear();
                             state.needs_solve = true;
                         }
                         Err(errors) => {
@@ -273,6 +325,7 @@ pub fn apply_actions(
                             candidate.faults.retain(|item| item.id != *fault);
                             *project = candidate;
                             state.last_valid = None;
+                            state.piezo_current_history.clear();
                             state.stale = true;
                             state.needs_solve = true;
                             state.diagnostics.clear();
@@ -385,6 +438,9 @@ fn step_once_with_iteration_limit(
     max_iterations: usize,
 ) -> bool {
     if !state.needs_solve && state.last_valid.is_some() && state.capacitor_voltages.is_empty() {
+        if let Some(result) = state.last_valid.clone() {
+            record_piezo_currents(project, state, &result);
+        }
         state.step += 1;
         return true;
     }
@@ -424,6 +480,7 @@ fn step_once_with_iteration_limit(
             state
                 .capacitor_voltages
                 .extend(result.capacitor_voltages.clone());
+            record_piezo_currents(project, state, &result);
             state.last_valid = Some(result);
             state.step += 1;
             state.stale = false;
@@ -441,6 +498,29 @@ fn step_once_with_iteration_limit(
                 ElectricalError::Calculation(e) => vec![electrical_diagnostic(e)],
             };
             false
+        }
+    }
+}
+
+fn record_piezo_currents(project: &Project, state: &mut SimulationState, result: &SolveResult) {
+    for component in project
+        .components
+        .iter()
+        .filter(|component| component.kind == ComponentKind::PiezoPassive)
+    {
+        let history = state
+            .piezo_current_history
+            .entry(component.id.clone())
+            .or_default();
+        history.push(
+            result
+                .resistor_currents
+                .get(&component.id)
+                .copied()
+                .unwrap_or(0.0),
+        );
+        if history.len() > PASSIVE_PIEZO_HISTORY_STEPS {
+            history.remove(0);
         }
     }
 }
@@ -1554,6 +1634,113 @@ mod tests {
         }
         assert!(!state.stale, "diagnostics={:?}", state.diagnostics);
         assert!(max_speaker > 0.004);
+    }
+
+    #[test]
+    fn passive_piezo_steady_dc_stays_silent_even_above_threshold() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/e7-buzzer-doorbell.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        project
+            .components
+            .iter_mut()
+            .find(|component| component.id == ComponentId("BZ1".into()))
+            .unwrap()
+            .kind = ComponentKind::PiezoPassive;
+        let mut state = SimulationState::new(&project);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("S1".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::Run,
+            ],
+        );
+        advance_steps(&project, &mut state, PASSIVE_PIEZO_HISTORY_STEPS as u64 + 4);
+        assert!(
+            state.last_valid.as_ref().unwrap().resistor_currents[&ComponentId("BZ1".into())].abs()
+                > crate::SOUNDING_CURRENT
+        );
+        assert!(!state.passive_piezo_sounding(&ComponentId("BZ1".into())));
+    }
+
+    #[test]
+    fn passive_piezo_detects_the_expected_fixed_step_square_wave() {
+        assert!(!passive_piezo_is_sounding(&[0.0, 0.0, 0.005]));
+        assert!(passive_piezo_is_sounding(&[
+            0.0, 0.0, 0.005, 0.005, 0.0, 0.0, 0.005,
+        ]));
+        assert!(passive_piezo_is_sounding(&[0.005, -0.005, 0.005]));
+        assert!(!passive_piezo_is_sounding(
+            &[0.02; PASSIVE_PIEZO_HISTORY_STEPS]
+        ));
+    }
+
+    #[test]
+    fn passive_piezo_timer_555_is_sounding_from_calculated_drive() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c02-s03-01-555-flasher.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        project
+            .components
+            .iter_mut()
+            .find(|component| component.id == ComponentId("R3".into()))
+            .unwrap()
+            .clone_from(&crate::Component {
+                id: ComponentId("R3".into()),
+                kind: ComponentKind::PiezoPassive,
+                pins: BTreeMap::from([
+                    (crate::PinId("positive".into()), crate::HoleId("G5".into())),
+                    (crate::PinId("negative".into()), crate::HoleId("G8".into())),
+                ]),
+                parameters: BTreeMap::from([("resistance".into(), 470.0)]),
+            });
+        project
+            .components
+            .iter_mut()
+            .find(|component| component.id == ComponentId("R2".into()))
+            .unwrap()
+            .parameters
+            .insert("resistance".into(), 1_000.0);
+        project
+            .components
+            .iter_mut()
+            .find(|component| component.id == ComponentId("C1".into()))
+            .unwrap()
+            .parameters
+            .insert("capacitance".into(), 1e-6);
+        project
+            .components
+            .retain(|component| component.id != ComponentId("D1".into()));
+        project
+            .components
+            .iter_mut()
+            .find(|component| component.id == ComponentId("RV1".into()))
+            .unwrap()
+            .parameters
+            .insert("max_resistance".into(), 1_000.0);
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Run]);
+        let mut sounding_steps = Vec::new();
+        for step in 0..4_000 {
+            advance_steps(&project, &mut state, 1);
+            if state.passive_piezo_sounding(&ComponentId("R3".into())) {
+                sounding_steps.push(step);
+            }
+        }
+        assert!(!state.stale, "diagnostics={:?}", state.diagnostics);
+        assert!(
+            !sounding_steps.is_empty(),
+            "no oscillating-drive steps observed"
+        );
     }
 
     #[test]
