@@ -173,6 +173,14 @@ lowering the capacitor or cross-coupling values was rejected as a source-model
 substitution. The row remains `blocked_component` until the fixed-step
 transient solve can sustain the calculated polarity transitions.
 
+A separate 2026-09-29 S02-07 attempt followed the source's NPN/PNP/capacitor
+feedback topology with the normalized 5 V supply, 100 kΩ potentiometer, 10 kΩ
+resistor, 47 nF capacitor, and 8 Ω speaker. It converged for 10,000 fixed
+steps, but the speaker current settled near 0.556 A (about 2.47 W) and the
+capacitor did not sustain an output transition. The candidate was deleted;
+the row remains `blocked_component` until a bounded speaker-output contract
+and a calculated startup/oscillation result are available.
+
 The current workspace baseline for the already admitted catalog surface is
 `cargo test --workspace --locked` — 49 app tests, 109 core tests, 3 tool tests,
 and 0 doc-test failures; C12's 12 fault-pair fixtures are covered separately
