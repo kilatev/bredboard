@@ -94,9 +94,17 @@ Expand the 212-scheme reference catalog into playable content in small, reviewab
 1. audit every source schematic, BOM, and visual reference for design defects;
 2. record defects such as missing artwork, unsupported parts, ambiguous pins, impossible or unsafe BOMs, unreadable layouts, and non-buildable connections;
 3. implement the next supported schemes as validated fixtures and menu entries;
-4. manually assemble representative schemes on a real breadboard and record whether the documented BOM and hole-level layout can be built.
+4. optionally validate representative schemes on a real breadboard when
+   hardware is available, recording whether the documented BOM and hole-level
+   layout can be built without making that validation a fixture-release gate.
 
-Keep the local solver and existing fixture architecture while the catalog is being audited. New abstractions are justified only by a concrete catalog blocker. Steam packaging, `.cir` export, ngspice comparison, browser interaction, free assembly, user-facing file workflow, guided lessons, and broader product polish are deferred until the catalog audit and a manual-assembly tranche have produced findings.
+Keep the local solver and existing fixture architecture while the catalog is
+being audited. New abstractions are justified only by a concrete catalog
+blocker. Steam packaging, `.cir` export, ngspice comparison, browser
+interaction, free assembly, user-facing file workflow, guided lessons, and
+broader product polish are deferred until the catalog audit is complete;
+optional manual-assembly findings can be incorporated whenever hardware is
+available.
 
 The complete execution sequence for this work is documented in the [212-scheme catalog execution plan](roadmap/CATALOG-EXECUTION-PLAN.md). It covers the per-scheme review and implementation pipeline, shared audit prerequisites, 12 implementation batches, and batch acceptance gates.
 

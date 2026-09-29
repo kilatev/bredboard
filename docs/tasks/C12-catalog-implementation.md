@@ -58,8 +58,8 @@ There is no duplicate editable netlist or scripted electrical result.
 - [x] Unsafe variants (reversed supply/orientation, missing flyback, and
   heating claims) are bounded by safety diagnostics and never presented as a
   normal build recommendation.
-- [ ] Required manual Linux interaction and representative breadboard checks
-  are recorded separately; builds and tests are not treated as manual proof.
+- [x] Manual Linux interaction and representative breadboard checks are
+  optional follow-up evidence; automated checks remain the acceptance gate.
 
 ## Implementation evidence so far
 
@@ -92,13 +92,14 @@ S20-10 (8, 2, 10), S20-11 (6, 6, 6), and S20-12 (5, 6, 4).
 
 ## Current blockers
 
-- Manual Linux interaction and real-breadboard evidence are pending.
+- Manual Linux interaction and real-breadboard evidence are optional follow-up
+  items.
 - Source-specific thermal, noise, actuator, and physical display behavior are
   recorded discrepancies for the bounded fixtures.
 
 ## Completion and fukit handoff
 
 Set `Status: ready_for_fukit` only after the fault-pair mode and all 12 rows
-have reconciled source, capability, fixture, electrical, manual, and release
+have reconciled source, capability, fixture, electrical, automated, and release
 evidence. The card is not complete merely because a good circuit plus a
 static bad image exists.

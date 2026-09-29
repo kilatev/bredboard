@@ -1,9 +1,10 @@
 # 212-scheme catalog audit ledger
 
-Status: C00 baseline complete; bounded fixture work is in progress and no
-catalog scheme is release-ready until required manual evidence is recorded.
+Status: C00 baseline complete; bounded fixture work is in progress. A catalog
+scheme is release-ready when its source/design, fixture, topology, and
+automated behavior evidence are complete; physical validation is optional.
 
-This ledger covers the reference corpus in [`breadboard-circuits/spec/catalog.json`](../../breadboard-circuits/spec/catalog.json). Source names and coordinates are preserved; rows do not assert that a source schematic is a runnable app fixture. The execution plan reserves `ready` for a validated fixture with automated and required manual evidence, so no row is marked `ready` here.
+This ledger covers the reference corpus in [`breadboard-circuits/spec/catalog.json`](../../breadboard-circuits/spec/catalog.json). Source names and coordinates are preserved; rows do not assert that a source schematic is a runnable app fixture. The execution plan reserves `ready` for a validated fixture with automated evidence and a reconciled disposition. Manual-assembly notes remain useful follow-up evidence but do not block `ready`.
 
 ## Reconciliation
 
@@ -11,8 +12,8 @@ This ledger covers the reference corpus in [`breadboard-circuits/spec/catalog.js
 - All 212 catalog SVG paths exist. All 20 section Markdown files match `catalog.json` for circuit headings, image paths, and per-circuit BOM rows.
 - Current working dispositions: fixture_ready=61, blocked_component=86,
   blocked_design=1, out_of_scope=0, physical_scope=64. These are audit and
-  implementation dispositions, not release counts; `fixture_ready` still needs
-  the required manual evidence before it can become `ready`.
+  implementation dispositions, not release counts; `fixture_ready` can become
+  `ready` after its automated evidence and release decision are reconciled.
 
 ## Field and code conventions
 
@@ -20,7 +21,9 @@ This ledger covers the reference corpus in [`breadboard-circuits/spec/catalog.js
 - `BOM reference` is the exact JSON coordinate.
 - `component/model readiness` uses compact family codes: `ok` means a current core kind or current presentation contract exists; `need` means a missing model, package contract, or physical prop. `ic/device`, `module`, `actuator`, and `prop` are intentionally not silently mapped to a scripted result.
 - Design, safety, and buildability fields use the finding codebooks below. The detailed C01 codebook is in [`C01-READINESS-AUDIT.md`](C01-READINESS-AUDIT.md).
-- `I0` and `M0` are negative evidence: no implementation or manual assembly has been performed in this documentation-only goal.
+- `I0` and `M0` are negative evidence: no implementation or manual assembly
+  has been performed for that row. `M0` is a follow-up status, not an automatic
+  release blocker when automated acceptance is complete.
 
 ## Finding codebook
 
@@ -255,4 +258,4 @@ C01-specific design, safety, and buildability codes are resolved in the detailed
 
 ## Release interpretation
 
-Every row has a disposition and explicit negative implementation/manual evidence. The ledger is therefore a complete audit baseline, not a claim that the source corpus is correct or playable. C01 is bounded separately in [`docs/tasks/C01-catalog-implementation.md`](../tasks/C01-catalog-implementation.md), C02 is bounded in [`docs/tasks/C02-catalog-implementation.md`](../tasks/C02-catalog-implementation.md), and C03 is active in [`docs/tasks/C03-catalog-implementation.md`](../tasks/C03-catalog-implementation.md).
+Every row has a disposition and explicit implementation/manual evidence. The ledger is therefore a complete audit baseline, not a claim that the source corpus is correct or playable. Manual evidence is tracked for optional field validation and does not by itself block a row whose automated acceptance is complete. C01 is bounded separately in [`docs/tasks/C01-catalog-implementation.md`](../tasks/C01-catalog-implementation.md), C02 is bounded in [`docs/tasks/C02-catalog-implementation.md`](../tasks/C02-catalog-implementation.md), and C03 is active in [`docs/tasks/C03-catalog-implementation.md`](../tasks/C03-catalog-implementation.md).

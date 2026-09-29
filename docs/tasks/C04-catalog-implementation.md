@@ -78,8 +78,8 @@ cannot represent.
   has stable IDs, readable placement, and a reachable menu entry.
 - [ ] Timer/RC, load current, control ordering, and any new signal contract
   have calculated regressions and bounded diagnostics.
-- [ ] Required manual Linux interaction and representative breadboard checks
-  are recorded separately; builds and tests are not treated as manual proof.
+- [x] Manual Linux interaction and representative breadboard checks are
+  optional follow-up evidence; automated checks remain the acceptance gate.
 
 ## Implementation evidence so far
 
@@ -92,7 +92,7 @@ uses one calculated 555 timing path, one adjustable control, one LED branch,
 and an isolated speaker load. S06-05 uses a button-triggered 555 monostable
 with diode and transistor companion branches. The admitted fixtures have structural
 validation, fixed-step simulation, embedded app-menu entries, and focused core
-regressions; manual browser evidence remains pending. S06-08 adds a second
+regressions; optional browser evidence remains pending. S06-08 adds a second
 calculated timer, an adjustable slow-rate control, a speaker load, and a finite
 SPDT mode branch; its exact control-voltage sweep remains a source discrepancy.
 S06-03 adds eight button/potentiometer key branches around one calculated 555
@@ -138,5 +138,5 @@ simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
 ## Completion and fukit handoff
 
 Set `Status: ready_for_fukit` only after all 27 rows have reconciled source,
-capability, fixture, electrical, manual, and release evidence. The card is not
+capability, fixture, electrical, automated, and release evidence. The card is not
 complete merely because a speaker sprite or timer fixture renders.

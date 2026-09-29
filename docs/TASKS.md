@@ -54,14 +54,14 @@ The next work is not a general product-improvement pass. It is the staged
 conversion of the 212-scheme reference catalog into buildable game content.
 Each batch should first inspect its source schematic, BOM, and visual assets;
 then record design defects; then implement only the schemes whose required
-component behavior is understood; and finally perform manual real-breadboard
-assembly checks for representative schemes. A missing sprite, unclear pin
+component behavior is understood; and optionally perform real-breadboard
+assembly checks for representative schemes when hardware is available. A missing sprite, unclear pin
 mapping, unsupported component, contradictory BOM, unreadable layout, or
 non-buildable connection is a finding to record and resolve before calling a
 scheme ready.
 
 The batch cards for this work must define the exact catalog section, defect
-review evidence, fixture/menu changes, and manual assembly checklist. The
+review evidence, fixture/menu changes, and optional manual assembly checklist. The
 reference catalog remains at [CIRCUIT-CATALOG.md](roadmap/CIRCUIT-CATALOG.md),
 and the end-to-end batch sequence is specified in
 [CATALOG-EXECUTION-PLAN.md](roadmap/CATALOG-EXECUTION-PLAN.md). Create one

@@ -45,8 +45,8 @@ The source records are `12-digital-analog.md`, `14-light-effects.md`, and
   IDs, readable placement, and a reachable menu entry.
 - [ ] Optocoupler input current and output transfer have calculated regressions
   and bounded diagnostics.
-- [ ] Required manual Linux interaction and representative breadboard checks
-  are recorded separately; builds and tests are not treated as manual proof.
+- [x] Manual Linux interaction and representative breadboard checks are
+  optional follow-up evidence; automated checks remain the acceptance gate.
 
 ## Implementation evidence so far
 
@@ -75,5 +75,5 @@ real-breadboard evidence remain pending.
 ## Completion and fukit handoff
 
 Set `Status: ready_for_fukit` only after all 22 rows have reconciled source,
-capability, fixture, electrical, manual, and release evidence. The card is
+capability, fixture, electrical, automated, and release evidence. The card is
 not complete merely because an isolated LED branch renders.

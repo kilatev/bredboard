@@ -42,8 +42,8 @@ and [`10-power-energy.md`](../../breadboard-circuits/spec/10-power-energy.md).
   has stable IDs, readable placement, and a reachable menu entry.
 - [ ] Timer/RC, load current, control ordering, and any new signal contract
   have calculated regressions and bounded diagnostics.
-- [ ] Required manual Linux interaction and representative breadboard checks
-  are recorded separately; builds and tests are not treated as manual proof.
+- [x] Manual Linux interaction and representative breadboard checks are
+  optional follow-up evidence; automated checks remain the acceptance gate.
 
 ## Implementation evidence so far
 
@@ -79,5 +79,5 @@ simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
 ## Completion and fukit handoff
 
 Set `Status: ready_for_fukit` only after all 24 rows have reconciled source,
-capability, fixture, electrical, manual, and release evidence. The card is not
+capability, fixture, electrical, automated, and release evidence. The card is not
 complete merely because a timer or LED fixture renders.

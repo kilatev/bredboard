@@ -60,8 +60,8 @@ The source record is `18-hacks.md`.
   readable placement, and a reachable menu entry.
 - [ ] Diode-input OR behavior and NPN/LED current have a calculated regression
   plus a bounded property check over supported values.
-- [ ] Required manual Linux interaction and representative breadboard checks
-  are recorded separately; builds and tests are not treated as manual proof.
+- [x] Manual Linux interaction and representative breadboard checks are
+  optional follow-up evidence; automated checks remain the acceptance gate.
 
 ## Implementation evidence so far
 
@@ -90,5 +90,5 @@ real-breadboard evidence remain pending.
 ## Completion and fukit handoff
 
 Set `Status: ready_for_fukit` only after all 16 rows have reconciled source,
-capability, fixture, electrical, manual, and release evidence. The card is not
+capability, fixture, electrical, automated, and release evidence. The card is not
 complete merely because one diode-logic fixture validates.

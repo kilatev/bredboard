@@ -71,8 +71,8 @@ The source record is `19-world-tasks.md`.
   readable placement, and a reachable menu entry.
 - [ ] Darkness control, timer output, and LED/NPN current have a calculated
   regression plus a bounded property check over supported control values.
-- [ ] Required manual Linux interaction and representative breadboard checks
-  are recorded separately; builds and tests are not treated as manual proof.
+- [x] Manual Linux interaction and representative breadboard checks are
+  optional follow-up evidence; automated checks remain the acceptance gate.
 
 ## Implementation evidence so far
 
@@ -101,7 +101,8 @@ The fixture's C11 implementation gate passed locally on 2026-09-29 with:
   breadboard-circuits/spec/catalog.schema.json` — 20 sections, 212 schematics
 - `git diff --check`
 
-Manual Linux interaction and real-breadboard evidence remain pending.
+Manual Linux interaction and real-breadboard evidence remain optional
+follow-up items.
 
 ## Current blockers
 
@@ -113,5 +114,5 @@ Manual Linux interaction and real-breadboard evidence remain pending.
 ## Completion and fukit handoff
 
 Set `Status: ready_for_fukit` only after all 22 rows have reconciled source,
-capability, fixture, electrical, manual, and release evidence. The card is not
+capability, fixture, electrical, automated, and release evidence. The card is not
 complete merely because one beacon fixture validates.

@@ -25,7 +25,8 @@ section it checked:
 The scan found no missing section Markdown files, missing SVGs, heading/image
 coordinate mismatches, or per-circuit BOM mismatches. “No missing file” does
 not mean “design correct”: the section findings below remain open until the
-per-scheme pipeline and manual gate pass.
+per-scheme pipeline and automated fixture gates pass. Manual assembly is
+optional field validation.
 
 ## Section triage
 

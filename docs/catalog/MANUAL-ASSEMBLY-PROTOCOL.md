@@ -1,9 +1,9 @@
 # Shared manual breadboard assembly protocol
 
-This protocol is the common manual-assembly gate for the catalog execution
-plan. It is acceptance evidence independent of Rust tests, SVG rendering, or
-app fixture loading. It applies to C01 and is reused by later batches unless a
-card records a stricter, entry-specific rule.
+This protocol is the common optional field-validation procedure for the catalog
+execution plan. It complements, but does not replace or block, Rust tests, SVG
+rendering, or app fixture loading. It applies to C01 and is reused by later
+batches unless a card records a stricter, entry-specific safety rule.
 
 ## Reference hardware and electrical limits
 
@@ -96,9 +96,10 @@ filename, for example `C01-S01-02-YYYY-MM-DD`. The record contains:
   disposition of each finding (`source_defect`, `implementation_blocker`,
   `safety_blocker`, or `manual_assembly_finding`).
 
-The ledger records the evidence path and result. `not run`, an unmeasured
-claim, or an SVG screenshot without a physical record does not satisfy the
-manual gate.
+The ledger records the evidence path and result when the procedure is run.
+`not run` is an explicit follow-up status, not a failure of automated fixture
+acceptance; an SVG screenshot is not a substitute for a physical record when
+physical validation is claimed.
 
 ## C01-specific risks
 

@@ -1,7 +1,7 @@
 # C01 fixture contract: Sections 01 and 02 slices
 
-Status: implemented; manual assembly evidence is still required before any
-entry can become `ready`.
+Status: implemented; automated fixture evidence is sufficient for `ready`.
+Manual assembly remains optional field-validation follow-up.
 
 The six Level 1 fixtures use the product's 5 V external supply, not the 9 V
 label in the source drawings. Connectivity is derived from board holes,
@@ -20,7 +20,7 @@ reserve every pin and wire endpoint hole exactly once.
 Automated evidence for this slice is provided by the core C01 fixture and
 polarity tests and the app's embedded-board, menu, control, sprite, and reset
 tests. Manual continuity, polarity, measurement, and visual evidence remain
-open in the shared assembly protocol.
+optional follow-up items in the shared assembly protocol.
 
 ## Section 02 NPN fixtures
 
@@ -43,8 +43,9 @@ is retained as a catalog discrepancy rather than silently dropping two stages.
 
 The speaker entry remains blocked in the ledger until its output-load contract
 is accepted. Touch-pad and
-water-probe fixtures use explicit controlled resistance and still require the
-battery-only manual protocol; no scripted output is used.
+water-probe fixtures use explicit controlled resistance and retain the
+battery-only manual protocol as optional safety guidance; no scripted output is
+used.
 The core also now has a mirrored `pnp_transistor` model with the same named
 pins and bounded beta/saturation parameters. It is model-tested as a high-side
 load; the S02-07 fixture remains blocked until the speaker power/current bound

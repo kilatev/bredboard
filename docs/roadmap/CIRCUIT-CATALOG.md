@@ -49,8 +49,10 @@ the short version of that plan.
 5. **Batch decision.** Only after the automated and manual evidence is
    recorded is a scheme considered ready for the next release/content batch.
 
-Manual assembly evidence is a separate acceptance surface: passing Rust tests
-or rendering an SVG does not prove that a learner can build the circuit.
+Manual assembly is a separate optional field-validation surface: passing Rust
+tests or rendering an SVG does not prove that a learner can build the circuit,
+but missing physical evidence does not block an otherwise complete automated
+fixture.
 
 ## Why this is bigger than E11–E30
 

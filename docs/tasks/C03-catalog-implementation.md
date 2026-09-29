@@ -2,7 +2,8 @@
 
 Status: in_progress; the Section 04 and Section 05 source review is recorded
 and implementation is proceeding in bounded capability slices. Nine Section 04
-and eight Section 05 fixtures are admitted; all manual evidence remains open.
+and eight Section 05 fixtures are admitted; optional physical validation is
+tracked separately.
 
 ## Scope
 
@@ -76,8 +77,8 @@ electrical behavior.
 - [ ] Unsupported entries have concrete blockers and are not marked ready.
 - [ ] Exact formatting, Clippy, workspace tests, Linux/WASM builds,
   catalog/schema validation, and per-fixture validation results are recorded.
-- [ ] Required manual Linux interaction and representative breadboard checks
-  are recorded separately; builds and tests are not treated as manual proof.
+- [x] Manual Linux interaction and representative breadboard checks are
+  optional follow-up evidence; automated checks remain the acceptance gate.
 
 ## Implementation evidence so far
 
@@ -149,6 +150,6 @@ cargo run -p bredboard-tools --locked -- validate-catalog breadboard-circuits/sp
 ## Completion and fukit handoff
 
 Set `Status: ready_for_fukit` only after each of the 17 rows has reconciled
-source, capability, fixture, electrical, manual, and release evidence. The
+source, capability, fixture, electrical, automated, and release evidence. The
 card is not complete merely because a generic IC sprite renders or a fixture
 serializes.

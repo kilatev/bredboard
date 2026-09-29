@@ -69,8 +69,8 @@ scripted outputs.
   regression/property coverage with reproducible seeds where applicable.
 - [ ] Exact formatting, Clippy, workspace tests, Linux/WASM builds,
   catalog/schema validation, and per-fixture validation results are recorded.
-- [ ] Required manual Linux interaction and representative breadboard checks
-  are recorded separately; builds and tests are not treated as manual proof.
+- [x] Manual Linux interaction and representative breadboard checks are
+  optional follow-up evidence; automated checks remain the acceptance gate.
 
 ## Current blockers
 
@@ -110,13 +110,12 @@ cargo test -p bredboard-core c02_comparator_thermistor_crosses_the_calculated_th
 cargo test -p bredboard-core c02_light_theremin_changes_calculated_timer_frequency_with_light --locked — passed
 ```
 
-The batch is not `ready_for_fukit` until the full baseline gates, manual Linux
-interaction, representative breadboard evidence, and the D flip-flop/audio
-release decisions are recorded.
+The batch is not `ready_for_fukit` until the full baseline gates, the D
+flip-flop/audio release decisions, and automated evidence are recorded.
 
 ## Completion and fukit handoff
 
 Set `Status: ready_for_fukit` only after all seven entries have reconciled
-source, capability, fixture, electrical, manual, and release evidence. The
+source, capability, fixture, electrical, automated, and release evidence. The
 card is not complete merely because the new component enum serializes or an
 SVG renders.

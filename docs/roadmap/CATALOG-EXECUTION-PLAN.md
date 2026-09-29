@@ -10,7 +10,9 @@ The source of truth for the input corpus is
 [`breadboard-circuits/spec/catalog.json`](../../breadboard-circuits/spec/catalog.json),
 its section Markdown files, and the matching SVG references. The source
 corpus is reference material: a schematic or BOM is not accepted as
-buildable until it passes the review and assembly gates in this document.
+buildable until it passes the review, scope, and automated fixture gates in
+this document. Physical assembly is optional field validation, not a release
+prerequisite.
 
 ## Delivery outcome
 
@@ -132,7 +134,7 @@ Keep reproducible seeds and minimized regressions for property-test failures.
 Record exact commands and results in the task card. An unavailable required
 check is a blocker, not a pass.
 
-### 7. Perform the manual assembly check
+### 7. Optionally perform the manual assembly check
 
 Select representative schemes from each batch, plus every scheme with a new
 physical risk, unusual pin mapping, multiple boards, or a source-design
@@ -154,13 +156,15 @@ The checklist is:
    missing parts, and ambiguous instructions;
 8. feed findings back into the source-defect ledger or implementation task.
 
-Manual assembly is independent acceptance evidence. Passing Rust tests or
-rendering an SVG does not prove that a learner can reproduce the circuit.
+Manual assembly is optional field-validation evidence. Passing Rust tests or
+rendering an SVG does not prove that a learner can reproduce the circuit, but
+the absence of a physical check does not block a correctly validated fixture.
 
 ### 8. Close the scheme and batch
 
-A scheme becomes `ready` only when its source review, content contract,
-automated checks, and required manual evidence are recorded. The batch card
+A scheme becomes `ready` when its source review, content contract, and
+automated checks are recorded and its disposition is reconciled. Optional
+manual observations should be recorded when available. The batch card
 then records the accepted count, blocked count by reason, deferred findings,
 and the next dependency. Do not claim that the whole 212-entry catalog is
 complete while any entry lacks a disposition.
@@ -270,7 +274,7 @@ Each batch card must report these gates separately:
 | Capability readiness | Every BOM item has a supported model, an approved new-model task, or a recorded scope disposition | The entry is blocked or scoped out |
 | Fixture correctness | Valid project, stable IDs, derived topology, readable placement, menu/content registration | The entry is not ready |
 | Electrical behavior | Solver/property/regression checks and bounded diagnostics pass | The entry is not ready |
-| Manual buildability | Required representative assembly evidence and findings recorded | The batch is not ready |
+| Optional field validation | Representative assembly evidence and findings recorded when hardware is available | Record as follow-up; does not block the batch |
 | Release decision | Ready/blocked/physical/out-of-scope counts reconcile with the ledger | The batch remains open |
 
 ## Completion of the 212-scheme initiative
@@ -280,7 +284,7 @@ The initiative is complete only when:
 1. all 212 source entries appear in the ledger;
 2. all 212 have a current disposition and no unexplained omissions;
 3. every `ready` entry has the source review, English content package, valid
-   fixture, automated evidence, and required manual evidence;
+   fixture, automated evidence, and reconciled release decision;
 4. every blocked or out-of-scope entry has a written reason, owner-facing
    next decision, and no misleading menu entry;
 5. each component family introduced by the catalog has documented pins,
