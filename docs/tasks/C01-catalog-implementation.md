@@ -1,6 +1,6 @@
 # C01 — Level 1 and transistor reference fixtures
 
-Status: pending; Section 01 fixture slice implemented, manual acceptance and
+Status: in_progress; Section 01 fixture slice implemented, manual acceptance and
 Sections 01/02 release decisions remain open.
 
 ## Dependencies
@@ -152,6 +152,21 @@ cargo run -p bredboard-tools --locked -- validate fixtures/projects/c01-s02-06-t
 cargo test -p bredboard-core c01_transistor_logic_matches_all_four_input_combinations --locked — passed
 cargo test -p bredboard-app e30_asymmetric_initial_state_sustains_multiple_alternating_led_cycles --locked — passed
 ```
+
+The current solver remains bounded at 80 nonlinear iterations. A 2026-09-29
+admission attempt for S02-05 reused the E30 topology and the source's 47 µF
+capacitors: structural validation passed, but
+`cargo run -p bredboard-tools --locked -- simulate
+fixtures/projects/c01-s02-05-two-transistor-flasher.json 4000` stopped with
+`nonconvergence` at step 428. The candidate fixture was not retained, and
+lowering the capacitor or cross-coupling values was rejected as a source-model
+substitution. The row remains `blocked_component` until the fixed-step
+transient solve can sustain the calculated polarity transitions.
+
+The current workspace baseline for the already admitted catalog surface is
+`cargo test --workspace --locked` — 49 app tests, 108 core tests, 3 tool tests,
+and 0 doc-test failures; C12's 12 fault-pair fixtures are covered separately
+by its published repair-loop regression.
 
 ## Manual assembly checklist
 
