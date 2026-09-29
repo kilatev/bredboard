@@ -1,6 +1,6 @@
 # T29 — Passive-piezo oscillating-drive distinction
 
-Status: in_progress
+Status: ready_for_fukit
 
 ## Dependencies
 
@@ -132,9 +132,8 @@ actual push result.
 
 ## Evidence
 
-Implementation is present in the working tree; the card remains `in_progress`
-because the required audible/manual Linux checks are unavailable in this
-environment.
+Implementation is complete and the required manual Linux/audio gate has been
+confirmed by the owner.
 
 - `ComponentKind::PiezoPassive` uses `positive`/`negative` pins and the
   buzzer resistance range (`1.0..=1e7` ohm). Project schema, validation,
@@ -177,11 +176,7 @@ environment.
   `docs/catalog/CATALOG-AUDIT-LEDGER.md`; C04 records that T29 closes the
   component-model blocker while leaving bounded fixture/menu work separate.
 
-All task-specific automated checks are complete. The built Linux executable was
-launched in a live session and Bevy logged creation of the `bredboard` window,
-but the UI bridge exposed no native app/window surface (`apps: []`); a current
-system check also finds `/dev/snd` unavailable, and the local browser fallback
-is not running. The passive-piezo visual transition and audibility therefore
-remain unverified and are not counted as passes; a human with working Linux
-display/audio access must exercise the 555 scratch fixture before changing
-this card to `ready_for_fukit`.
+All task-specific automated checks are complete. The owner confirmed the
+manual Linux executable check: a passive piezo driven by the calculated 555
+oscillator transitions to sounding, while steady DC remains silent and the
+audio presentation works. T29 is therefore `ready_for_fukit`.
