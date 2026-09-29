@@ -123,14 +123,22 @@ const C04_S06_08_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-0
 const C04_S06_03_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-03-piano.json");
 const C05_S07_10_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-10-two-minute-timer.json");
+const C05_S07_09_JSON: &str =
+    include_str!("../../../fixtures/projects/c05-s07-09-refrigerator-guard.json");
 const C05_S07_08_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-08-pulse-generator.json");
 const C06_S08_01_JSON: &str =
     include_str!("../../../fixtures/projects/c06-s08-01-motor-with-switch.json");
+const C06_S08_05_JSON: &str =
+    include_str!("../../../fixtures/projects/c06-s08-05-vibration-bot.json");
 const C07_S09_03_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-03-two-station-telegraph.json");
+const C07_S09_01_JSON: &str =
+    include_str!("../../../fixtures/projects/c07-s09-01-hot-wire-button-counter.json");
 const C08_S17_03_JSON: &str =
     include_str!("../../../fixtures/projects/c08-s17-03-optocoupler.json");
+const C08_S14_01_JSON: &str =
+    include_str!("../../../fixtures/projects/c08-s14-01-candle-flicker.json");
 const C09_S15_01_JSON: &str =
     include_str!("../../../fixtures/projects/c09-s15-01-relay-switch.json");
 const C10_S18_07_JSON: &str =
@@ -236,11 +244,15 @@ enum Circuit {
     C04S06_05,
     C04S06_08,
     C04S06_03,
+    C05S07_09,
     C05S07_10,
     C05S07_08,
     C06S08_01,
+    C06S08_05,
+    C07S09_01,
     C07S09_03,
     C08S17_03,
+    C08S14_01,
     C09S15_01,
     C10S18_07,
     C11S19_01,
@@ -273,7 +285,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 94] {
+    fn all() -> [Self; 98] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -316,11 +328,15 @@ impl Circuit {
             Self::C04S06_05,
             Self::C04S06_08,
             Self::C04S06_03,
+            Self::C05S07_09,
             Self::C05S07_10,
             Self::C05S07_08,
             Self::C06S08_01,
+            Self::C06S08_05,
+            Self::C07S09_01,
             Self::C07S09_03,
             Self::C08S17_03,
+            Self::C08S14_01,
             Self::C09S15_01,
             Self::C10S18_07,
             Self::C11S19_01,
@@ -447,11 +463,15 @@ impl Circuit {
             Self::C04S06_05 => C04_S06_05_JSON,
             Self::C04S06_08 => C04_S06_08_JSON,
             Self::C04S06_03 => C04_S06_03_JSON,
+            Self::C05S07_09 => C05_S07_09_JSON,
             Self::C05S07_10 => C05_S07_10_JSON,
             Self::C05S07_08 => C05_S07_08_JSON,
             Self::C06S08_01 => C06_S08_01_JSON,
+            Self::C06S08_05 => C06_S08_05_JSON,
+            Self::C07S09_01 => C07_S09_01_JSON,
             Self::C07S09_03 => C07_S09_03_JSON,
             Self::C08S17_03 => C08_S17_03_JSON,
+            Self::C08S14_01 => C08_S14_01_JSON,
             Self::C09S15_01 => C09_S15_01_JSON,
             Self::C10S18_07 => C10_S18_07_JSON,
             Self::C11S19_01 => C11_S19_01_JSON,
@@ -545,11 +565,15 @@ impl Circuit {
             Self::C04S06_05 => "C04-S06-05: DOORBELL",
             Self::C04S06_08 => "C04-S06-08: POLICE SIREN",
             Self::C04S06_03 => "C04-S06-03: ELECTRONIC PIANO",
+            Self::C05S07_09 => "C05-S07-09: REFRIGERATOR-DOOR GUARD",
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
             Self::C06S08_01 => "C06-S08-01: MOTOR WITH SWITCH",
+            Self::C06S08_05 => "C06-S08-05: VIBRATION BOT",
+            Self::C07S09_01 => "C07-S09-01: HOT-WIRE COUNTER",
             Self::C07S09_03 => "C07-S09-03: TWO-STATION TELEGRAPH",
             Self::C08S17_03 => "C08-S17-03: OPTOCOUPLER",
+            Self::C08S14_01 => "C08-S14-01: CANDLE FLICKER",
             Self::C09S15_01 => "C09-S15-01: RELAY SWITCH",
             Self::C10S18_07 => "C10-S18-07: DIODE LOGIC OR",
             Self::C11S19_01 => "C11-S19-01: PHOTORESISTOR BEACON",
@@ -738,6 +762,10 @@ impl Circuit {
                 "Eight calculated button-and-potentiometer key branches provide electrical note inputs to a bounded 555 tone path and speaker load. The source's exact musical tuning and one-at-a-time frequency selection remain explicit discrepancies.",
                 "Task: adjust RV1–RV8, press the eight keys, and compare their calculated branch currents with the speaker load.",
             ),
+            Self::C05S07_09 => (
+                "A calculated 555 monostable uses a button as a bounded reed-contact substitute and drives a buzzer load through an RC delay. The physical magnet and refrigerator door remain presentation discrepancies.",
+                "Task: press S1, run the fixture, and compare the calculated capacitor voltage with the buzzer current.",
+            ),
             Self::C05S07_10 => (
                 "A calculated 555 monostable uses a button and adjustable RC path to drive a bounded LED and buzzer load, with a PNP companion branch. The source's two-minute wall-clock calibration remains an explicit discrepancy.",
                 "Task: drag RV1, press S1, run the fixture, and compare the calculated LED, buzzer, and PNP currents.",
@@ -750,6 +778,14 @@ impl Circuit {
                 "A calculated 3 V source drives a two-terminal DC motor through an SPDT switch. Motor current and signed no-load speed are derived from terminal voltage; the source propeller remains a presentation discrepancy.",
                 "Task: toggle S1, run the fixture, and compare the calculated motor current and signed speed readout.",
             ),
+            Self::C06S08_05 => (
+                "A calculated 3 V motor load is switched through an SPDT branch. The electrical current and no-load speed are derived from the motor model; the toothbrush body and vibration are presentation discrepancies.",
+                "Task: toggle S1, run the fixture, and compare the calculated motor current and signed speed.",
+            ),
+            Self::C07S09_01 => (
+                "A calculated button contact feeds a Schmitt inverter and bounded decimal counter. The counter drives a seven-segment display through current-limited resistors; the source wire-ring prop is represented by the explicit button control.",
+                "Task: press S1 repeatedly and inspect the calculated debounce path, counter state, and display segments.",
+            ),
             Self::C07S09_03 => (
                 "Two calculated button stations drive independent LED and active-buzzer branches. The source's long cable is represented by board wiring and remains an explicit presentation discrepancy.",
                 "Task: press B1 or B2, run the fixture, and compare the calculated LED and buzzer currents for each station.",
@@ -757,6 +793,10 @@ impl Circuit {
             Self::C08S17_03 => (
                 "A calculated optocoupler transfers current from a 9 V button domain into an isolated 4.5 V LED domain. The two source rails remain electrically separate; the PC817 package is represented by the bounded optical-transfer contract.",
                 "Task: run the fixture, press B1, and compare the calculated optocoupler input current with the isolated LED current.",
+            ),
+            Self::C08S14_01 => (
+                "Two calculated 555 timing stages modulate a bounded LED path through diode isolation. The source's candle appearance and exact random flicker are presentation discrepancies; all displayed electrical behavior remains calculated.",
+                "Task: run the fixture and compare the two calculated capacitor voltages with the LED branch current.",
             ),
             Self::C09S15_01 => (
                 "A calculated 4.5 V relay coil is driven by a momentary button while an isolated 9 V contact circuit lights an LED. Coil current and common-to-NC/NO selection come from the relay's calculated threshold model.",
@@ -1342,6 +1382,11 @@ impl Circuit {
                     is_switch: false,
                 },
             ],
+            Self::C05S07_09 => &[ControlSpec {
+                label: "S1: DOOR CONTACT",
+                component: "S1",
+                is_switch: false,
+            }],
             Self::C05S07_10 => &[ControlSpec {
                 label: "S1: START / RELEASE",
                 component: "S1",
@@ -1352,6 +1397,16 @@ impl Circuit {
                 label: "S1: MOTOR POWER",
                 component: "S1",
                 is_switch: true,
+            }],
+            Self::C06S08_05 => &[ControlSpec {
+                label: "S1: MOTOR BRANCH",
+                component: "S1",
+                is_switch: true,
+            }],
+            Self::C07S09_01 => &[ControlSpec {
+                label: "S1: CONTACT",
+                component: "S1",
+                is_switch: false,
             }],
             Self::C07S09_03 => &[
                 ControlSpec {
@@ -1370,6 +1425,7 @@ impl Circuit {
                 component: "B1",
                 is_switch: false,
             }],
+            Self::C08S14_01 => &[],
             Self::C09S15_01 => &[ControlSpec {
                 label: "B1: ENERGIZE RELAY",
                 component: "B1",
@@ -3472,7 +3528,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            94
+            98
         );
         assert!(matches!(
             items[0],

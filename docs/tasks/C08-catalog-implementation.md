@@ -19,8 +19,10 @@ The source records are `12-digital-analog.md`, `14-light-effects.md`, and
 
 - S12-01 through S12-07 need DAC/ADC, op-amp, comparator, counter, diode-ROM,
   or oscilloscope/measurement contracts; keep them blocked.
-- S14-01 through S14-05 need oscillator, diode steering, RGB/array, or mode
-  sequencing contracts; keep them blocked.
+- S14-02 through S14-05 need oscillator, diode steering, RGB/array, or mode
+  sequencing contracts; keep them blocked. S14-01 is admitted as a bounded
+  two-timer/diode/LED fixture; its candle appearance and exact random flicker
+  remain presentation discrepancies.
 - S14-06 and S14-08 additionally need a 3D LED cube or POV motion scene; keep
   them physical-scope.
 - S14-07 needs multi-board display and large diode-matrix contracts; keep it
@@ -63,6 +65,21 @@ failures), native and WASM app builds, fixture validation (`7 components, 5
 wires, 7 derived nodes`), 4,000-step simulation, `validate-catalog`
 (`20 sections, 212 schematics`), and `git diff --check`. Manual browser and
 real-breadboard evidence remain pending.
+
+The parallel C08-S14-01 slice adds
+`fixtures/projects/c08-s14-01-candle-flicker.json` and registers it in the app
+menu. It uses two calculated 555 timing stages, diode isolation, a current-
+limited LED branch, and fixed-step capacitor state. The source candle prop
+and exact random flicker are explicit presentation discrepancies; the fixture
+does not script an output.
+
+Focused evidence for the slice:
+
+```text
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c08-s14-01-candle-flicker.json — passed; 13 components, 9 wires, 8 derived nodes
+cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c08-s14-01-candle-flicker.json 1000 — passed; transient state advanced without diagnostics
+cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
+```
 
 ## Current blockers
 

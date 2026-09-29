@@ -1,0 +1,32 @@
+{
+  "format_version": 1,
+  "title": "C08-S14-01: Candle flicker",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 9.0 } },
+    { "id": "U1", "kind": "timer_555", "pins": { "control": "A20", "discharge": "A7", "gnd": "TP-:2", "output": "F5", "reset": "TP+:3", "threshold": "A10", "trigger": "B10", "vcc": "TP+:4" }, "parameters": { "output_resistance": 50.0, "discharge_resistance": 100.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "C5", "b": "C7" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "D7", "b": "D10" }, "parameters": { "resistance": 47000.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "negative": "C12", "positive": "C10" }, "parameters": { "capacitance": 0.00001 } },
+    { "id": "U2", "kind": "timer_555", "pins": { "control": "A27", "discharge": "A17", "gnd": "TP-:24", "output": "F15", "reset": "TP+:25", "threshold": "A21", "trigger": "B21", "vcc": "TP+:24" }, "parameters": { "output_resistance": 50.0, "discharge_resistance": 100.0 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "C15", "b": "C17" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R4", "kind": "resistor", "pins": { "a": "D17", "b": "D21" }, "parameters": { "resistance": 47000.0 } },
+    { "id": "C2", "kind": "capacitor", "pins": { "negative": "C22", "positive": "C21" }, "parameters": { "capacitance": 0.0000105 } },
+    { "id": "D1", "kind": "diode", "pins": { "anode": "G5", "cathode": "H5" }, "parameters": { "forward_voltage": 0.7, "series_resistance": 20.0 } },
+    { "id": "D2", "kind": "diode", "pins": { "anode": "G15", "cathode": "H15" }, "parameters": { "forward_voltage": 0.7, "series_resistance": 20.0 } },
+    { "id": "R5", "kind": "resistor", "pins": { "a": "F25", "b": "F26" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D3", "kind": "led", "pins": { "anode": "G26", "cathode": "H27" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "D12", "to": "TP-:12" },
+    { "id": "W2", "from": "E5", "to": "TP+:5" },
+    { "id": "W3", "from": "D22", "to": "TP-:22" },
+    { "id": "W4", "from": "E15", "to": "TP+:15" },
+    { "id": "W5", "from": "I5", "to": "I15" },
+    { "id": "W6", "from": "J15", "to": "J25" },
+    { "id": "W7", "from": "I27", "to": "TP-:27" },
+    { "id": "W8", "from": "B20", "to": "TP-:20" },
+    { "id": "W9", "from": "B27", "to": "TP-:23" }
+  ],
+  "initial_conditions": { "capacitor_voltages": { "C1": 0.0, "C2": 0.0 } }
+}

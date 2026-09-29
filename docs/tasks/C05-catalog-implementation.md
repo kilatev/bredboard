@@ -18,9 +18,12 @@ and [`10-power-energy.md`](../../breadboard-circuits/spec/10-power-energy.md).
 
 - S07-01, S07-02, S07-03, S07-04, S07-07, S07-11, and S07-12 require probes,
   unknown-device sockets, zener behavior, module contracts, or physical props.
-- S07-05, S07-06, S07-08, S07-09, S07-13, S07-14, and S07-15 require regulator,
+- S07-05, S07-06, S07-08, S07-13, S07-14, and S07-15 require regulator,
   comparator, counter, measurement, or module contracts not present in the
   current core. Keep them blocked rather than presenting scripted readings.
+- S07-09 can use the existing timer/RC, button-as-reed-contact substitute,
+  buzzer, resistor, and capacitor contracts. The physical magnet and door are
+  presentation discrepancies.
 - S07-10 can use the existing timer/RC, button, buzzer, LED, potentiometer,
   and PNP contracts. Its exact two-minute calibration remains a bounded timing
   discrepancy.
@@ -66,6 +69,21 @@ app, 96 core, 3 tools, 0 doc-test failures), native and WASM app builds,
 fixture validation (`11 components, 4 wires, 7 derived nodes`), 4,000-step
 simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
 --check`.
+
+The parallel C05-S07-09 slice adds
+`fixtures/projects/c05-s07-09-refrigerator-guard.json` and registers it in the
+app menu. It uses a calculated 555 monostable, explicit button control as a
+reed-contact substitute, a 330 kΩ delay resistor, a 100 µF capacitor, and a
+bounded buzzer load. The physical magnet and refrigerator door remain
+presentation discrepancies; no scripted electrical outcome is used.
+
+Focused evidence for the slice:
+
+```text
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c05-s07-09-refrigerator-guard.json — passed; 7 components, 5 wires, 5 derived nodes
+cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c05-s07-09-refrigerator-guard.json 4000 — passed; transient state advanced without diagnostics
+cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
+```
 
 ## Current blockers
 

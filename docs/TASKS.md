@@ -43,6 +43,7 @@ No Codex Goal is currently active merely because these files exist. Copy a card'
 | [T26](tasks/T26-fixed-exercises-e21-e25.md) | Five fixed practice exercises (E21–E25) | T21 |
 | [T27](tasks/T27-fixed-exercises-e26-e30.md) | Five fixed practice exercises (E26–E30) | T21 |
 | [T28](tasks/T28-buzzer-speaker-audio.md) | Buzzer/speaker audio and a speaker component kind | T20 |
+| [T29](tasks/T29-passive-piezo-drive.md) | Passive-piezo oscillating-drive distinction | T28 |
 
 T28 is an explicit owner request that reopens T20's "no audio output" scope
 decision; it is not part of the catalog-expansion priority below and does

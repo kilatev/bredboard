@@ -1,0 +1,25 @@
+{
+  "format_version": 1,
+  "title": "C07-S09-01: Hot wire contact counter",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 9.0 } },
+    { "id": "S1", "kind": "momentary_button", "pins": { "a": "TP-:2", "b": "A1" }, "parameters": {} },
+    { "id": "BZ1", "kind": "buzzer", "pins": { "positive": "TP+:3", "negative": "C1" }, "parameters": { "resistance": 100.0 } },
+    { "id": "R_PULLUP", "kind": "resistor", "pins": { "a": "TP+:2", "b": "B1" }, "parameters": { "resistance": 100000.0 } },
+    { "id": "R_DEBOUNCE", "kind": "resistor", "pins": { "a": "D1", "b": "D3" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "negative": "TP-:3", "positive": "B3" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "U1", "kind": "schmitt_inverter", "pins": { "gnd": "TP-:5", "input": "E3", "output": "F3", "vcc": "TP+:5" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "U2", "kind": "digital_counter", "pins": { "carry": "TP-:14", "clock": "G3", "enable": "TP+:7", "gnd": "TP-:6", "q0": "D10", "q1": "D11", "q2": "D12", "q3": "D13", "q4": "TP-:8", "q5": "TP-:9", "q6": "TP-:10", "q7": "TP-:11", "q8": "TP-:12", "q9": "TP-:13", "reset": "TP-:7", "vcc": "TP+:6" }, "parameters": { "modulus": 10.0, "output_mode": 0.0, "output_resistance": 100.0 } },
+    { "id": "DISP1", "kind": "seven_segment_display", "pins": { "a": "F20", "b": "F21", "c": "F22", "common": "TP-:15", "d": "F23", "e": "F24", "f": "F25", "g": "F26", "gnd": "TP-:16", "input_b0": "E10", "input_b1": "E11", "input_b2": "E12", "input_b3": "E13", "vcc": "TP+:17" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "R_A", "kind": "resistor", "pins": { "a": "G20", "b": "TP-:20" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R_B", "kind": "resistor", "pins": { "a": "G21", "b": "TP-:21" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R_C", "kind": "resistor", "pins": { "a": "G22", "b": "TP-:22" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R_D", "kind": "resistor", "pins": { "a": "G23", "b": "TP-:23" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R_E", "kind": "resistor", "pins": { "a": "G24", "b": "TP-:24" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R_F", "kind": "resistor", "pins": { "a": "G25", "b": "TP-:25" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R_G", "kind": "resistor", "pins": { "a": "G26", "b": "TP-:26" }, "parameters": { "resistance": 470.0 } }
+  ],
+  "wires": [],
+  "initial_conditions": { "controls": { "S1": "button_released" } }
+}

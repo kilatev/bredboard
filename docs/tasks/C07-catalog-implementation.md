@@ -15,8 +15,9 @@ The source record is
 
 ## Source and design review
 
-- S09-01 needs Schmitt logic, a counter/display package, and a physical wire
-  ring; keep it blocked.
+- S09-01 is admitted with the existing Schmitt inverter, digital counter,
+  seven-segment display, and button-as-wire-ring substitute. The physical
+  contact prop remains a presentation discrepancy.
 - S09-02 needs an ISD1820 voice module, reed switch, and recorded audio; keep
   it blocked.
 - S09-03 is the first admissible slice: two buttons, two active buzzer loads,
@@ -83,6 +84,21 @@ failures), native and WASM app builds, fixture validation (`9 components, 4
 wires, 6 derived nodes`), 4,000-step simulation, `validate-catalog`
 (`20 sections, 212 schematics`), and `git diff --check`. Manual browser and
 real-breadboard evidence remain pending.
+
+The parallel C07-S09-01 slice adds
+`fixtures/projects/c07-s09-01-hot-wire-button-counter.json` and registers it
+in the app menu. It uses a calculated debounce path, decimal counter, and
+seven-segment display with resistor-limited segment loads. The wire-ring prop
+is represented by an explicit button control; no scripted counter result is
+used.
+
+Focused evidence for the slice:
+
+```text
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c07-s09-01-hot-wire-button-counter.json — passed; 16 components, 0 wires, 16 derived nodes
+cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c07-s09-01-hot-wire-button-counter.json 500 — passed; transient state advanced without diagnostics
+cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
+```
 
 ## Current blockers
 

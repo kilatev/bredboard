@@ -26,7 +26,8 @@ The source record is [`08-motors.md`](../../breadboard-circuits/spec/08-motors.m
   exists.
 - S08-04 needs a motor, TIP120 flyback behavior, and a transient overvoltage
   diagnostic; keep it blocked until the motor transient contract exists.
-- S08-05 needs a vibration motor and a physical base; keep it physical-scope.
+- S08-05 is admitted as an electrical motor-load fixture; the vibration motor
+  base and physical vibration remain presentation discrepancies.
 - S08-06 needs PWM duty-cycle behavior, MOSFET switching, flyback diode, and
   motor averaging; keep it blocked until those contracts exist.
 - S08-07 needs a servo pulse-width-to-angle contract; keep it blocked until a
@@ -83,6 +84,20 @@ failures), native and WASM app builds, fixture validation (`3 components, 2
 wires, 3 derived nodes`), 4,000-step simulation, `validate-catalog`
 (`20 sections, 212 schematics`), and `git diff --check`. Manual browser and
 real-breadboard evidence remain pending.
+
+The parallel C06-S08-05 slice adds
+`fixtures/projects/c06-s08-05-vibration-bot.json` and registers it in the app
+menu. It uses a calculated 3 V motor load and an SPDT branch; motor current
+and voltage-derived no-load speed remain core results. The toothbrush body,
+base, and vibration are presentation discrepancies.
+
+Focused evidence for the slice:
+
+```text
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c06-s08-05-vibration-bot.json — passed; 3 components, 2 wires, 3 derived nodes
+cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c06-s08-05-vibration-bot.json 4000 — passed; transient state advanced without diagnostics
+cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
+```
 
 ## Current blockers
 
