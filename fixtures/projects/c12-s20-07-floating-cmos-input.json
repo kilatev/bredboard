@@ -1,0 +1,18 @@
+{
+  "format_version": 1,
+  "title": "C12-S20-07: Floating CMOS input",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "U1", "kind": "logic_gate", "pins": { "gnd": "TP-:2", "input_a": "TP+:2", "input_b": "A3", "output": "F5", "vcc": "TP+:3" }, "parameters": { "operation": 0.0, "output_resistance": 100.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "G5", "b": "G8" }, "parameters": { "resistance": 330.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "B3", "b": "TP-:4" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "H8", "cathode": "H10" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "I10", "to": "TP-:10" }
+  ],
+  "faults": [
+    { "id": "F1", "description": "U1 input B is floating instead of pulled high", "repairs": [ { "repair": "set_pin", "component": "U1", "pin": "input_b", "hole": "TP+:4" } ] }
+  ]
+}

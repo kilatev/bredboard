@@ -1,0 +1,24 @@
+{
+  "format_version": 1,
+  "title": "C12-S20-01: Reversed LED",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 9.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A5", "b": "A8" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "F10", "cathode": "F8" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "D5", "to": "TP+:5" },
+    { "id": "W2", "from": "G10", "to": "TP-:10" },
+    { "id": "W3", "from": "E8", "to": "G8" }
+  ],
+  "faults": [
+    {
+      "id": "F1",
+      "description": "D1 is installed with its polarity reversed",
+      "repairs": [
+        { "repair": "swap_pins", "component": "D1", "first": "anode", "second": "cathode" }
+      ]
+    }
+  ]
+}

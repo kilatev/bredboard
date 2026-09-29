@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "title": "C12-S20-05: Transistor wrong pin",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 9.0 } },
+    { "id": "S1", "kind": "momentary_button", "pins": { "a": "TP+:2", "b": "A1" }, "parameters": {} },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "B1", "b": "F2" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "base": "G2", "collector": "F8", "emitter": "F5" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "A5", "b": "G5" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "H5", "cathode": "G8" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "D5", "to": "TP+:5" },
+    { "id": "W2", "from": "H8", "to": "TP-:8" }
+  ],
+  "faults": [
+    { "id": "F1", "description": "Q1 collector and emitter are swapped", "repairs": [ { "repair": "swap_pins", "component": "Q1", "first": "collector", "second": "emitter" } ] }
+  ],
+  "initial_conditions": { "controls": { "S1": "button_pressed" } }
+}

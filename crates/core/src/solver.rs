@@ -2559,6 +2559,7 @@ mod tests {
                 },
             ],
             wires: Vec::new(),
+            faults: Vec::new(),
             initial_conditions: Default::default(),
         }
     }

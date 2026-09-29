@@ -1,9 +1,8 @@
 # C12 — Find-the-bug fault-pair content
 
-Status: in_progress; source review is recorded, but the section is not yet
-representable by the current fixed-exercise product surface. Every source
-entry is an intentionally faulty variant or a multi-fault diagnosis task;
-none is admitted as a normal electrical fixture in this batch.
+Status: in_progress; source review is recorded and all 12 fault-pair fixtures
+are now represented by calculated projects. Manual interaction and physical
+assembly evidence remain pending.
 
 ## Scope
 
@@ -40,22 +39,23 @@ The source record is `20-find-the-bug.md`.
 - S20-12 is a level-5 composition with two or three simultaneous faults; it
   needs a bounded multi-fault diagnosis mode and a source project baseline.
 
-All 12 remain `out_of_scope` in the ledger until the fault-pair mode can
-preserve a known-good variant, expose exactly the intended fault(s), identify
-the learner-correctable cause, and apply a correction without scripted
-electrical outcomes.
+The implementation uses a single faulty project plus explicit structural
+repair metadata. `Action::RepairFault` applies pin, parameter, or wire edits,
+removes the repaired fault from the active project, invalidates prior
+readings, recompiles topology, and recalculates through the common solver.
+There is no duplicate editable netlist or scripted electrical result.
 
 ## Acceptance criteria
 
-- [ ] All 12 source records have source, BOM, SVG, pin, supply, safety, and
+- [x] All 12 source records have source, BOM, SVG, pin, supply, safety, and
   discrepancy evidence in the ledger.
-- [ ] The product has an explicit fault-pair representation that preserves a
+- [x] The product has an explicit fault-pair representation that preserves a
   known-good and faulty assembly without duplicating electrical authority.
-- [ ] Fault highlighting identifies the actual learner-correctable cause at
+- [x] Fault highlighting identifies the actual learner-correctable cause at
   hole, component, pin, or board-reference level.
-- [ ] A diagnosis/correction action is routed through the explicit action
+- [x] A diagnosis/correction action is routed through the explicit action
   model and recalculates the electrical result.
-- [ ] Unsafe variants (reversed supply/orientation, missing flyback, and
+- [x] Unsafe variants (reversed supply/orientation, missing flyback, and
   heating claims) are bounded by safety diagnostics and never presented as a
   normal build recommendation.
 - [ ] Required manual Linux interaction and representative breadboard checks
@@ -63,19 +63,38 @@ electrical outcomes.
 
 ## Implementation evidence so far
 
-No C12 fixture is accepted. The ledger records all 12 rows as `out_of_scope`
-with the missing fault-mode, multi-board, actuator, IC, noise, and safety
-contracts named per entry.
+All 12 fixtures are accepted for the current calculated fault-pair surface:
+`c12-s20-01-reversed-led.json` through `c12-s20-12-broken-project.json`.
+Core regressions cover the polarity/value/wiring repairs and the complete
+12-fixture repair loop; the app menu exposes each exercise with the shared
+REPAIR FAULT control. Source-specific thermal, noise, actuator, and display
+behavior remain bounded discrepancies rather than scripted outcomes.
+
+The automated C12 gate passed locally on 2026-09-29 with:
+
+- `cargo fmt --all --check`
+- `cargo clippy --workspace --all-targets --locked -- -D warnings`
+- `cargo test --workspace --locked` — 49 app tests, 108 core tests, 3 tool
+  tests, and 0 doc-test failures
+- `cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked`
+- `cargo build -p bredboard-app --target wasm32-unknown-unknown --locked`
+- `cargo run -p bredboard-tools --locked -- validate` for all 12 C12 fixtures
+  — all schema/topology validations passed
+- `cargo run -p bredboard-tools --locked -- validate-catalog
+  breadboard-circuits/spec/catalog.json
+  breadboard-circuits/spec/catalog.schema.json` — 20 sections, 212 schematics
+- `git diff --check`
+
+The 12 validation results were: S20-01 (3 components, 3 wires, 3 nodes),
+S20-02 (9, 9, 9), S20-03 (4, 2, 5), S20-04 (3, 3, 3), S20-05 (6, 2, 5),
+S20-06 (8, 4, 7), S20-07 (5, 1, 5), S20-08 (6, 2, 5), S20-09 (8, 1, 7),
+S20-10 (8, 2, 10), S20-11 (6, 6, 6), and S20-12 (5, 6, 4).
 
 ## Current blockers
 
-- Fault-pair project/schema contracts, fault highlighting, diagnosis actions,
-  and correction flow do not exist.
-- Missing or unsafe source capabilities include 555/CMOS/counter/display
-  models, motor/inductive behavior, switch bounce, multi-board references,
-  power integrity, and rating/thermal diagnostics.
-- Manual interaction and real-breadboard evidence are unavailable for a
-  fault-mode fixture.
+- Manual Linux interaction and real-breadboard evidence are pending.
+- Source-specific thermal, noise, actuator, and physical display behavior are
+  recorded discrepancies for the bounded fixtures.
 
 ## Completion and fukit handoff
 

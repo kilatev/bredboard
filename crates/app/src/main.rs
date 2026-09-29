@@ -130,6 +130,29 @@ const C09_S15_01_JSON: &str =
 const C10_S18_07_JSON: &str =
     include_str!("../../../fixtures/projects/c10-s18-07-diode-logic.json");
 const C11_S19_01_JSON: &str = include_str!("../../../fixtures/projects/c11-s19-01-beacon.json");
+const C12_S20_01_JSON: &str =
+    include_str!("../../../fixtures/projects/c12-s20-01-reversed-led.json");
+const C12_S20_02_JSON: &str =
+    include_str!("../../../fixtures/projects/c12-s20-02-broken-rail.json");
+const C12_S20_03_JSON: &str = include_str!("../../../fixtures/projects/c12-s20-03-wrong-row.json");
+const C12_S20_04_JSON: &str =
+    include_str!("../../../fixtures/projects/c12-s20-04-wrong-resistor.json");
+const C12_S20_05_JSON: &str =
+    include_str!("../../../fixtures/projects/c12-s20-05-wrong-transistor-pin.json");
+const C12_S20_06_JSON: &str =
+    include_str!("../../../fixtures/projects/c12-s20-06-reversed-555.json");
+const C12_S20_07_JSON: &str =
+    include_str!("../../../fixtures/projects/c12-s20-07-floating-cmos-input.json");
+const C12_S20_08_JSON: &str =
+    include_str!("../../../fixtures/projects/c12-s20-08-missing-flyback.json");
+const C12_S20_09_JSON: &str =
+    include_str!("../../../fixtures/projects/c12-s20-09-missing-decoupling.json");
+const C12_S20_10_JSON: &str =
+    include_str!("../../../fixtures/projects/c12-s20-10-button-bounce.json");
+const C12_S20_11_JSON: &str =
+    include_str!("../../../fixtures/projects/c12-s20-11-missing-ground.json");
+const C12_S20_12_JSON: &str =
+    include_str!("../../../fixtures/projects/c12-s20-12-broken-project.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -212,6 +235,18 @@ enum Circuit {
     C09S15_01,
     C10S18_07,
     C11S19_01,
+    C12S20_01,
+    C12S20_02,
+    C12S20_03,
+    C12S20_04,
+    C12S20_05,
+    C12S20_06,
+    C12S20_07,
+    C12S20_08,
+    C12S20_09,
+    C12S20_10,
+    C12S20_11,
+    C12S20_12,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -229,7 +264,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 79] {
+    fn all() -> [Self; 91] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -277,6 +312,18 @@ impl Circuit {
             Self::C09S15_01,
             Self::C10S18_07,
             Self::C11S19_01,
+            Self::C12S20_01,
+            Self::C12S20_02,
+            Self::C12S20_03,
+            Self::C12S20_04,
+            Self::C12S20_05,
+            Self::C12S20_06,
+            Self::C12S20_07,
+            Self::C12S20_08,
+            Self::C12S20_09,
+            Self::C12S20_10,
+            Self::C12S20_11,
+            Self::C12S20_12,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -393,6 +440,18 @@ impl Circuit {
             Self::C09S15_01 => C09_S15_01_JSON,
             Self::C10S18_07 => C10_S18_07_JSON,
             Self::C11S19_01 => C11_S19_01_JSON,
+            Self::C12S20_01 => C12_S20_01_JSON,
+            Self::C12S20_02 => C12_S20_02_JSON,
+            Self::C12S20_03 => C12_S20_03_JSON,
+            Self::C12S20_04 => C12_S20_04_JSON,
+            Self::C12S20_05 => C12_S20_05_JSON,
+            Self::C12S20_06 => C12_S20_06_JSON,
+            Self::C12S20_07 => C12_S20_07_JSON,
+            Self::C12S20_08 => C12_S20_08_JSON,
+            Self::C12S20_09 => C12_S20_09_JSON,
+            Self::C12S20_10 => C12_S20_10_JSON,
+            Self::C12S20_11 => C12_S20_11_JSON,
+            Self::C12S20_12 => C12_S20_12_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -476,6 +535,18 @@ impl Circuit {
             Self::C09S15_01 => "C09-S15-01: RELAY SWITCH",
             Self::C10S18_07 => "C10-S18-07: DIODE LOGIC OR",
             Self::C11S19_01 => "C11-S19-01: PHOTORESISTOR BEACON",
+            Self::C12S20_01 => "C12-S20-01: REVERSED LED",
+            Self::C12S20_02 => "C12-S20-02: BROKEN POWER RAIL",
+            Self::C12S20_03 => "C12-S20-03: WRONG ROW",
+            Self::C12S20_04 => "C12-S20-04: WRONG RESISTOR BANDS",
+            Self::C12S20_05 => "C12-S20-05: TRANSISTOR WRONG PIN",
+            Self::C12S20_06 => "C12-S20-06: REVERSED 555",
+            Self::C12S20_07 => "C12-S20-07: FLOATING CMOS INPUT",
+            Self::C12S20_08 => "C12-S20-08: MISSING FLYBACK DIODE",
+            Self::C12S20_09 => "C12-S20-09: MISSING DECOUPLING",
+            Self::C12S20_10 => "C12-S20-10: BUTTON BOUNCE",
+            Self::C12S20_11 => "C12-S20-11: MISSING COMMON GROUND",
+            Self::C12S20_12 => "C12-S20-12: BROKEN PROJECT",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -668,6 +739,54 @@ impl Circuit {
             Self::C11S19_01 => (
                 "A calculated photoresistor divider holds a 555 reset low in bright conditions and enables a fixed-step beacon oscillator in darkness. The NPN and LED currents are derived from the electrical state; the ship and white-LED scene remain presentation discrepancies.",
                 "Task: drag R3 from bright to dark, adjust RV1, and compare the beacon LED current and timing behavior.",
+            ),
+            Self::C12S20_01 => (
+                "The fixture preserves a real reversed-LED fault: the calculated current is off until the learner repairs D1's anode/cathode placement. Repair changes the project topology through an explicit core action.",
+                "Task: inspect D1's polarity, then press REPAIR FAULT and verify the calculated LED current.",
+            ),
+            Self::C12S20_02 => (
+                "The right-side LED branches are electrically present but their source rail links are missing. Repair adds the three explicit rail wires and recalculates all four branch currents.",
+                "Task: find the unpowered rail section, press REPAIR FAULT, and compare the branch currents.",
+            ),
+            Self::C12S20_03 => (
+                "R1 is one breadboard row away from the LED path. Repair moves that single pin through the core action so the button-controlled current can flow.",
+                "Task: inspect the row numbers, then press REPAIR FAULT and hold the button.",
+            ),
+            Self::C12S20_04 => (
+                "The calculated LED branch uses a 22 kΩ resistor instead of 220 Ω. Repair changes the modeled component value and recalculates the current.",
+                "Task: read the resistor value, press REPAIR FAULT, and compare brightness.",
+            ),
+            Self::C12S20_05 => (
+                "Q1 has its collector and emitter swapped. Repair swaps those two physical pin placements; the NPN and LED currents remain calculated by the solver.",
+                "Task: compare the transistor pin labels, then press REPAIR FAULT.",
+            ),
+            Self::C12S20_06 => (
+                "The 555 supply pins are reversed as a bounded orientation fault. Repair restores VCC and ground before the timer is allowed to run.",
+                "Task: inspect the 555 orientation warning, then press REPAIR FAULT.",
+            ),
+            Self::C12S20_07 => (
+                "A CMOS gate input is left floating. Repair supplies the intended pull-up connection, changing the gate output and calculated LED current.",
+                "Task: find the unconnected input, then press REPAIR FAULT.",
+            ),
+            Self::C12S20_08 => (
+                "The motor branch includes a diode correction part that is not connected across the inductive load. Repair places its pins across the motor terminals; no destructive outcome is scripted.",
+                "Task: identify the missing flyback path, then press REPAIR FAULT.",
+            ),
+            Self::C12S20_09 => (
+                "The counter fixture has two decoupling capacitors off the supply rails. Repair connects both capacitors to the calculated power rails.",
+                "Task: inspect the two capacitor placements, then press REPAIR FAULT.",
+            ),
+            Self::C12S20_10 => (
+                "The counter clock is wired directly to a button instead of the Schmitt-filtered node. Repair routes the clock to the calculated debounce output.",
+                "Task: trace the clock wire, then press REPAIR FAULT before pressing the button.",
+            ),
+            Self::C12S20_11 => (
+                "Two powered board references are not bonded. Repair adds the explicit ground link; each board remains represented by its own source and derived topology.",
+                "Task: find the missing GND-to-GND wire, then press REPAIR FAULT.",
+            ),
+            Self::C12S20_12 => (
+                "This compact capstone contains two independent calculated faults. REPAIR FAULT advances through them one at a time and leaves the project authoritative after each correction.",
+                "Task: diagnose and repair both faults, pressing REPAIR FAULT once for each.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -1236,6 +1355,18 @@ impl Circuit {
                 },
             ],
             Self::C11S19_01 => &[],
+            Self::C12S20_01
+            | Self::C12S20_02
+            | Self::C12S20_03
+            | Self::C12S20_04
+            | Self::C12S20_05
+            | Self::C12S20_06
+            | Self::C12S20_07
+            | Self::C12S20_08
+            | Self::C12S20_09
+            | Self::C12S20_10
+            | Self::C12S20_11
+            | Self::C12S20_12 => &[],
             Self::C03S04_06 => &[
                 ControlSpec {
                     label: "RED PLAYER",
@@ -1666,6 +1797,7 @@ enum Control {
     RunPause,
     Reset,
     Toggle(usize),
+    RepairFirstFault,
 }
 #[derive(Component)]
 enum Readout {
@@ -2320,6 +2452,15 @@ fn spawn_bench(commands: &mut Commands, images: &mut Assets<Image>, bench: &Benc
         14.0,
         Color::srgb(0.58, 0.76, 0.76),
     );
+    if let Some(fault) = bench.project.faults.first() {
+        label(
+            commands,
+            format!("FAULT {}: {}", fault.id, fault.description),
+            Vec2::new(185.0, 150.0),
+            14.0,
+            Color::srgb(1.0, 0.62, 0.34),
+        );
+    }
     label(
         commands,
         "BUILD LIST",
@@ -2386,7 +2527,15 @@ fn spawn_bench(commands: &mut Commands, images: &mut Assets<Image>, bench: &Benc
     // how many controls a bench has (at most 2, for E9's two buttons); RESET
     // and CIRCUITS always stay at their original fixed positions.
     let controls = bench.circuit.controls();
-    if controls.len() == 1 {
+    if !bench.project.faults.is_empty() {
+        button(
+            commands,
+            "REPAIR FAULT",
+            Vec2::new(205.0, -245.0),
+            Vec2::new(400.0, 53.0),
+            Control::RepairFirstFault,
+        );
+    } else if controls.len() == 1 {
         button(
             commands,
             controls[0].label,
@@ -2703,6 +2852,23 @@ fn handle_mouse(
         Some(Control::Reset) => {
             if let Some(bench) = &mut state.session.bench {
                 bench.act(Action::Reset);
+            }
+        }
+        Some(Control::RepairFirstFault) => {
+            let mut repaired = false;
+            if let Some(bench) = &mut state.session.bench
+                && let Some(fault) = bench.project.faults.first()
+            {
+                bench.act(Action::RepairFault {
+                    fault: fault.id.clone(),
+                });
+                repaired = true;
+            }
+            if repaired {
+                clear_scene(&mut commands, &scene);
+                if let Some(bench) = &state.session.bench {
+                    spawn_bench(&mut commands, &mut images, bench);
+                }
             }
         }
         Some(Control::Toggle(index)) => {
@@ -3251,7 +3417,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            76
+            91
         );
         assert!(matches!(
             items[0],

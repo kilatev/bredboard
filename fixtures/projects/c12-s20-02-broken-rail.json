@@ -1,0 +1,38 @@
+{
+  "format_version": 1,
+  "title": "C12-S20-02: Broken power rail",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 9.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A5", "b": "F5" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "F8", "cathode": "F10" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "A11", "b": "F11" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D2", "kind": "led", "pins": { "anode": "F14", "cathode": "F16" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "A17", "b": "F17" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D3", "kind": "led", "pins": { "anode": "F20", "cathode": "F22" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "R4", "kind": "resistor", "pins": { "a": "A23", "b": "F23" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D4", "kind": "led", "pins": { "anode": "F26", "cathode": "F28" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "G5", "to": "G8" },
+    { "id": "W2", "from": "G10", "to": "TP-:10" },
+    { "id": "W3", "from": "G11", "to": "G14" },
+    { "id": "W4", "from": "G16", "to": "TP-:16" },
+    { "id": "W5", "from": "G17", "to": "G20" },
+    { "id": "W6", "from": "G22", "to": "TP-:22" },
+    { "id": "W7", "from": "G23", "to": "G26" },
+    { "id": "W8", "from": "G28", "to": "TP-:28" },
+    { "id": "W9", "from": "D5", "to": "TP+:5" }
+  ],
+  "faults": [
+    {
+      "id": "F1",
+      "description": "the right-side power rail is not linked to the source",
+      "repairs": [
+        { "repair": "add_wire", "wire": { "id": "W10", "from": "D11", "to": "TP+:11" } },
+        { "repair": "add_wire", "wire": { "id": "W11", "from": "D17", "to": "TP+:17" } },
+        { "repair": "add_wire", "wire": { "id": "W12", "from": "D23", "to": "TP+:23" } }
+      ]
+    }
+  ]
+}

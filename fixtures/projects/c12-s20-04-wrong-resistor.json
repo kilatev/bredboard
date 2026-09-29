@@ -1,0 +1,24 @@
+{
+  "format_version": 1,
+  "title": "C12-S20-04: Wrong resistor bands",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 9.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A5", "b": "F5" }, "parameters": { "resistance": 22000.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "F8", "cathode": "F10" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "G5", "to": "G8" },
+    { "id": "W2", "from": "G10", "to": "TP-:10" },
+    { "id": "W3", "from": "D5", "to": "TP+:5" }
+  ],
+  "faults": [
+    {
+      "id": "F1",
+      "description": "R1 is 22 kΩ instead of the intended 220 Ω",
+      "repairs": [
+        { "repair": "set_parameter", "component": "R1", "name": "resistance", "value": 220.0 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "format_version": 1,
+  "title": "C12-S20-09: Missing decoupling",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "S1", "kind": "momentary_button", "pins": { "a": "TP+:2", "b": "A1" }, "parameters": {} },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "B1", "b": "TP-:2" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "U1", "kind": "digital_counter", "pins": { "carry": "D1", "clock": "C1", "enable": "TP+:3", "gnd": "TP-:3", "q0": "F10", "q1": "F11", "q2": "F12", "q3": "F13", "q4": "TP-:7", "q5": "TP-:8", "q6": "TP-:9", "q7": "TP-:10", "q8": "TP-:11", "q9": "TP-:12", "reset": "TP-:4", "vcc": "TP+:4" }, "parameters": { "modulus": 10.0, "output_mode": 0.0, "output_resistance": 100.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "G10", "b": "H20" }, "parameters": { "resistance": 330.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "I20", "cathode": "J20" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "negative": "TP-:21", "positive": "TP+:21" }, "parameters": { "capacitance": 0.0000000001 } },
+    { "id": "C2", "kind": "capacitor", "pins": { "negative": "TP-:22", "positive": "TP+:22" }, "parameters": { "capacitance": 0.0000000001 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "F20", "to": "TP-:20" }
+  ],
+  "faults": [
+    { "id": "F1", "description": "C1 and C2 have effectively zero decoupling capacitance", "repairs": [ { "repair": "set_parameter", "component": "C1", "name": "capacitance", "value": 0.0000001 }, { "repair": "set_parameter", "component": "C2", "name": "capacitance", "value": 0.0001 } ] }
+  ],
+  "initial_conditions": { "controls": { "S1": "button_released" } }
+}

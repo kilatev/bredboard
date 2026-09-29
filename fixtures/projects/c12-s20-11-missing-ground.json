@@ -1,0 +1,24 @@
+{
+  "format_version": 1,
+  "title": "C12-S20-11: Missing common ground",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "V2", "kind": "dc_voltage_source", "pins": { "positive": "BP+:1", "negative": "BP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A5", "b": "F5" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "F8", "cathode": "F10" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "A15", "b": "F15" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D2", "kind": "led", "pins": { "anode": "F18", "cathode": "F20" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "G5", "to": "G8" },
+    { "id": "W2", "from": "G10", "to": "TP-:10" },
+    { "id": "W3", "from": "G15", "to": "G18" },
+    { "id": "W4", "from": "G20", "to": "BP-:20" },
+    { "id": "W5", "from": "D5", "to": "TP+:5" },
+    { "id": "W6", "from": "D15", "to": "BP+:15" }
+  ],
+  "faults": [
+    { "id": "F1", "description": "the two powered board references are not bonded", "repairs": [ { "repair": "add_wire", "wire": { "id": "W7", "from": "TP-:12", "to": "BP-:12" } } ] }
+  ]
+}

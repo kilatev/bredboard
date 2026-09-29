@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "title": "C12-S20-08: Missing motor flyback diode",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 6.0 } },
+    { "id": "S1", "kind": "momentary_button", "pins": { "a": "TP+:2", "b": "A1" }, "parameters": {} },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "B1", "b": "F2" }, "parameters": { "resistance": 1000.0 } },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "base": "G2", "collector": "F5", "emitter": "F8" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "M1", "kind": "motor", "pins": { "positive": "G5", "negative": "G8" }, "parameters": { "resistance": 8.0, "rated_voltage": 6.0, "no_load_speed_rpm": 10000.0 } },
+    { "id": "D1", "kind": "diode", "pins": { "anode": "TP+:20", "cathode": "TP-:20" }, "parameters": { "forward_voltage": 0.7, "series_resistance": 10.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "D5", "to": "TP+:5" },
+    { "id": "W2", "from": "H8", "to": "TP-:8" }
+  ],
+  "faults": [
+    { "id": "F1", "description": "D1 is present as the correction part but not connected across M1", "repairs": [ { "repair": "set_pin", "component": "D1", "pin": "anode", "hole": "I8" }, { "repair": "set_pin", "component": "D1", "pin": "cathode", "hole": "I5" } ] }
+  ],
+  "initial_conditions": { "controls": { "S1": "button_pressed" } }
+}

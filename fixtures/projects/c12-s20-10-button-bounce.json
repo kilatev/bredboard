@@ -1,0 +1,23 @@
+{
+  "format_version": 1,
+  "title": "C12-S20-10: Button bounce",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "S1", "kind": "momentary_button", "pins": { "a": "TP+:2", "b": "A1" }, "parameters": {} },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "B1", "b": "A15" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "negative": "B16", "positive": "B15" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "U2", "kind": "schmitt_inverter", "pins": { "gnd": "TP-:3", "input": "C15", "output": "F15", "vcc": "TP+:3" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "U1", "kind": "digital_counter", "pins": { "carry": "D1", "clock": "C1", "enable": "TP+:4", "gnd": "TP-:4", "q0": "F10", "q1": "F11", "q2": "F12", "q3": "F13", "q4": "TP-:7", "q5": "TP-:8", "q6": "TP-:9", "q7": "TP-:10", "q8": "TP-:11", "q9": "TP-:12", "reset": "TP-:5", "vcc": "TP+:5" }, "parameters": { "modulus": 10.0, "output_mode": 0.0, "output_resistance": 100.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "H20", "cathode": "H22" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "G20", "b": "G22" }, "parameters": { "resistance": 330.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "D16", "to": "TP-:16" },
+    { "id": "W2", "from": "I22", "to": "TP-:22" }
+  ],
+  "faults": [
+    { "id": "F1", "description": "U1 clock is connected directly to the bouncing button", "repairs": [ { "repair": "set_pin", "component": "U1", "pin": "clock", "hole": "I15" } ] }
+  ],
+  "initial_conditions": { "controls": { "S1": "button_released" } }
+}

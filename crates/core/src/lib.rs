@@ -48,8 +48,46 @@ pub struct Project {
     pub board: Board,
     pub components: Vec<Component>,
     pub wires: Vec<Wire>,
+    /// Optional learner-facing fault metadata. Repairs are structural edits
+    /// applied through `Action::RepairFault`; the project remains the single
+    /// electrical source of truth.
+    #[serde(default)]
+    pub faults: Vec<FaultSpec>,
     #[serde(default)]
     pub initial_conditions: InitialConditions,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct FaultSpec {
+    pub id: String,
+    pub description: String,
+    pub repairs: Vec<FaultRepair>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "repair", rename_all = "snake_case")]
+pub enum FaultRepair {
+    SwapPins {
+        component: ComponentId,
+        first: PinId,
+        second: PinId,
+    },
+    SetPin {
+        component: ComponentId,
+        pin: PinId,
+        hole: HoleId,
+    },
+    SetParameter {
+        component: ComponentId,
+        name: String,
+        value: f64,
+    },
+    AddWire {
+        wire: Wire,
+    },
+    RemoveWire {
+        wire: WireId,
+    },
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -731,6 +769,7 @@ mod tests {
                 from: HoleId("A2".into()),
                 to: HoleId("J30".into()),
             }],
+            faults: Vec::new(),
         }
     }
     proptest! {

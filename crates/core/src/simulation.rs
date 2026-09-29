@@ -1,6 +1,6 @@
 use crate::{
     ComponentId, ComponentKind, ControlState, Diagnostic, ElectricalDiagnostic, ElectricalError,
-    MAX_NONLINEAR_ITERATIONS, Project, SolveResult, compile_topology,
+    FaultRepair, MAX_NONLINEAR_ITERATIONS, Project, SolveResult, compile_topology,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -31,6 +31,9 @@ pub enum Action {
     SetControlRatio {
         component: ComponentId,
         ratio: f64,
+    },
+    RepairFault {
+        fault: String,
     },
 }
 
@@ -249,8 +252,114 @@ pub fn apply_actions(
                     }];
                 }
             }
+            Action::RepairFault { fault } => {
+                let mut candidate = project.clone();
+                let Some(spec) = candidate.faults.iter().find(|item| item.id == *fault) else {
+                    state.diagnostics = vec![SimulationDiagnostic {
+                        code: "unknown_fault".into(),
+                        path: format!("faults.{fault}"),
+                        message: "fault repair refers to an unknown fault".into(),
+                    }];
+                    continue;
+                };
+                let repairs = spec.repairs.clone();
+                match apply_fault_repairs(&mut candidate, &repairs) {
+                    Ok(()) => match compile_topology(&candidate) {
+                        Ok(_) => {
+                            candidate.faults.retain(|item| item.id != *fault);
+                            *project = candidate;
+                            state.last_valid = None;
+                            state.stale = true;
+                            state.needs_solve = true;
+                            state.diagnostics.clear();
+                        }
+                        Err(errors) => {
+                            state.diagnostics =
+                                errors.into_iter().map(structural_diagnostic).collect();
+                        }
+                    },
+                    Err(message) => {
+                        state.diagnostics = vec![SimulationDiagnostic {
+                            code: "invalid_fault_repair".into(),
+                            path: format!("faults.{fault}"),
+                            message,
+                        }];
+                    }
+                }
+            }
         }
     }
+}
+
+fn apply_fault_repairs(project: &mut Project, repairs: &[FaultRepair]) -> Result<(), String> {
+    for repair in repairs {
+        match repair {
+            FaultRepair::SwapPins {
+                component,
+                first,
+                second,
+            } => {
+                let c = project
+                    .components
+                    .iter_mut()
+                    .find(|item| item.id == *component)
+                    .ok_or_else(|| format!("unknown component {}", component.0))?;
+                let first_hole = c
+                    .pins
+                    .get(first)
+                    .cloned()
+                    .ok_or_else(|| format!("unknown pin {}", first.0))?;
+                let second_hole = c
+                    .pins
+                    .get(second)
+                    .cloned()
+                    .ok_or_else(|| format!("unknown pin {}", second.0))?;
+                c.pins.insert(first.clone(), second_hole);
+                c.pins.insert(second.clone(), first_hole);
+            }
+            FaultRepair::SetPin {
+                component,
+                pin,
+                hole,
+            } => {
+                let c = project
+                    .components
+                    .iter_mut()
+                    .find(|item| item.id == *component)
+                    .ok_or_else(|| format!("unknown component {}", component.0))?;
+                if !c.pins.contains_key(pin) {
+                    return Err(format!("unknown pin {}", pin.0));
+                }
+                c.pins.insert(pin.clone(), hole.clone());
+            }
+            FaultRepair::SetParameter {
+                component,
+                name,
+                value,
+            } => {
+                let c = project
+                    .components
+                    .iter_mut()
+                    .find(|item| item.id == *component)
+                    .ok_or_else(|| format!("unknown component {}", component.0))?;
+                c.parameters.insert(name.clone(), *value);
+            }
+            FaultRepair::AddWire { wire } => {
+                if project.wires.iter().any(|item| item.id == wire.id) {
+                    return Err(format!("wire {} already exists", wire.id.0));
+                }
+                project.wires.push(wire.clone());
+            }
+            FaultRepair::RemoveWire { wire } => {
+                let before = project.wires.len();
+                project.wires.retain(|item| item.id != *wire);
+                if before == project.wires.len() {
+                    return Err(format!("unknown wire {}", wire.0));
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Advance exactly `count` fixed steps while running; failures stop the run.
@@ -526,6 +635,7 @@ mod tests {
                 },
             ],
             wires: Vec::new(),
+            faults: Vec::new(),
             initial_conditions: crate::InitialConditions {
                 controls: BTreeMap::from([(
                     ComponentId("S1".into()),
@@ -597,6 +707,7 @@ mod tests {
                 },
             ],
             wires: Vec::new(),
+            faults: Vec::new(),
             initial_conditions: crate::InitialConditions::default(),
         }
     }
@@ -1972,6 +2083,110 @@ mod tests {
         assert!(state.stale);
         assert_eq!(state.diagnostics[0].code, "floating_network");
         assert!(!state.running);
+    }
+
+    #[test]
+    fn repair_fault_action_changes_the_authoritative_project_and_recalculates() {
+        let mut project: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c12-s20-01-reversed-led.json"
+        ))
+        .unwrap();
+        let baseline = project.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::SingleStep]);
+        assert!(state.last_valid.as_ref().unwrap().led_currents[&ComponentId("D1".into())] < 1e-6);
+
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[Action::RepairFault { fault: "F1".into() }],
+        );
+        assert!(state.stale);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::SingleStep]);
+        assert!(!state.stale);
+        let repaired_current =
+            state.last_valid.as_ref().unwrap().led_currents[&ComponentId("D1".into())];
+        assert!(
+            repaired_current > 0.001,
+            "repaired current: {repaired_current}"
+        );
+        assert!(project.faults.is_empty());
+        assert_ne!(project, baseline);
+    }
+
+    #[test]
+    fn c12_fault_fixtures_repair_calculated_outputs() {
+        for (json, led) in [
+            (
+                include_str!("../../../fixtures/projects/c12-s20-02-broken-rail.json"),
+                "D4",
+            ),
+            (
+                include_str!("../../../fixtures/projects/c12-s20-03-wrong-row.json"),
+                "D1",
+            ),
+            (
+                include_str!("../../../fixtures/projects/c12-s20-04-wrong-resistor.json"),
+                "D1",
+            ),
+        ] {
+            let mut project: Project = serde_json::from_str(json).unwrap();
+            let baseline = project.clone();
+            let fault = project.faults[0].id.clone();
+            let mut state = SimulationState::new(&project);
+            apply_actions(&mut project, &baseline, &mut state, &[Action::SingleStep]);
+            let before = state.last_valid.as_ref().unwrap().led_currents[&ComponentId(led.into())];
+            apply_actions(
+                &mut project,
+                &baseline,
+                &mut state,
+                &[Action::RepairFault { fault }],
+            );
+            apply_actions(&mut project, &baseline, &mut state, &[Action::SingleStep]);
+            let after = state.last_valid.as_ref().unwrap().led_currents[&ComponentId(led.into())];
+            assert!(after > 0.001, "{led}: before={before}, after={after}");
+            assert!(
+                after > before + 0.001,
+                "{led}: before={before}, after={after}"
+            );
+        }
+    }
+
+    #[test]
+    fn all_c12_fault_pairs_repair_through_explicit_actions() {
+        for (index, json) in [
+            include_str!("../../../fixtures/projects/c12-s20-05-wrong-transistor-pin.json"),
+            include_str!("../../../fixtures/projects/c12-s20-06-reversed-555.json"),
+            include_str!("../../../fixtures/projects/c12-s20-07-floating-cmos-input.json"),
+            include_str!("../../../fixtures/projects/c12-s20-08-missing-flyback.json"),
+            include_str!("../../../fixtures/projects/c12-s20-09-missing-decoupling.json"),
+            include_str!("../../../fixtures/projects/c12-s20-10-button-bounce.json"),
+            include_str!("../../../fixtures/projects/c12-s20-11-missing-ground.json"),
+            include_str!("../../../fixtures/projects/c12-s20-12-broken-project.json"),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let mut project: Project = serde_json::from_str(json).unwrap();
+            let baseline = project.clone();
+            let mut state = SimulationState::new(&project);
+            while let Some(fault) = project.faults.first().map(|fault| fault.id.clone()) {
+                apply_actions(
+                    &mut project,
+                    &baseline,
+                    &mut state,
+                    &[Action::RepairFault { fault }],
+                );
+                apply_actions(&mut project, &baseline, &mut state, &[Action::SingleStep]);
+                assert!(
+                    !state.stale,
+                    "fixture {index}: diagnostics={:?}",
+                    state.diagnostics
+                );
+            }
+            assert!(state.last_valid.is_some());
+        }
     }
 
     proptest! {

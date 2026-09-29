@@ -1,0 +1,25 @@
+{
+  "format_version": 1,
+  "title": "C12-S20-03: Wrong row",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 9.0 } },
+    { "id": "S1", "kind": "momentary_button", "pins": { "a": "TP+:2", "b": "A1" }, "parameters": {} },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "B1", "b": "A9" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "F8", "cathode": "F10" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "E8", "to": "G8" },
+    { "id": "W2", "from": "G10", "to": "TP-:10" }
+  ],
+  "faults": [
+    {
+      "id": "F1",
+      "description": "R1's second lead is one row away from the LED path",
+      "repairs": [
+        { "repair": "set_pin", "component": "R1", "pin": "b", "hole": "E8" }
+      ]
+    }
+  ],
+  "initial_conditions": { "controls": { "S1": "button_pressed" } }
+}
