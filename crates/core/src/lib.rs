@@ -1,7 +1,12 @@
 //! Platform-independent project model and derived breadboard connectivity.
+mod ic_device;
 mod persistence;
 mod simulation;
 mod solver;
+pub use ic_device::{
+    IC_DEVICE_MAX_RESISTANCE, IC_DEVICE_MIN_RESISTANCE, IcDeviceBehavior, IcDeviceLinearInput,
+    IcDevicePinRole, IcDeviceSpec, IcLogicOperation, MAX_IC_DEVICE_INPUTS, MAX_IC_DEVICE_PINS,
+};
 pub use persistence::{
     ACTION_LOG_FORMAT_VERSION, ActionEvent, ActionLog, MODEL_VERSION, PersistenceError,
     SNAPSHOT_FORMAT_VERSION, SOLVER_VERSION, Snapshot, replay_action_log, restore_snapshot,
@@ -132,6 +137,10 @@ pub struct Component {
     pub kind: ComponentKind,
     pub pins: BTreeMap<PinId, HoleId>,
     pub parameters: BTreeMap<String, f64>,
+    /// Required only for `ComponentKind::IcDevice`. The component pin map
+    /// remains the sole source of physical connectivity.
+    #[serde(default)]
+    pub ic_device: Option<IcDeviceSpec>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -221,6 +230,9 @@ pub enum ComponentKind {
     BargraphDisplay,
     /// Bounded voltage amplifier used for the LM386-style educational fixture.
     AudioAmplifier,
+    /// Configurable pin-level IC/module contract. Its electrical behavior is
+    /// calculated from node voltages by the common solver.
+    IcDevice,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Wire {
@@ -348,11 +360,38 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                 "id must contain 1–64 characters",
             ));
         }
-        let expected = pins_for(c.kind);
+        let expected: Vec<String> = if c.kind == ComponentKind::IcDevice {
+            match &c.ic_device {
+                Some(spec) => {
+                    validate_ic_device(c, spec, &mut errors);
+                    spec.pin_roles.keys().map(|pin| pin.0.clone()).collect()
+                }
+                None => {
+                    errors.push(Diagnostic::new(
+                        "missing_ic_device_spec",
+                        format!("components.{}.ic_device", c.id.0),
+                        "ic_device components require a pin-role and behavior contract",
+                    ));
+                    Vec::new()
+                }
+            }
+        } else {
+            if c.ic_device.is_some() {
+                errors.push(Diagnostic::new(
+                    "unexpected_ic_device_spec",
+                    format!("components.{}.ic_device", c.id.0),
+                    "only ic_device components may carry an ic_device contract",
+                ));
+            }
+            pins_for(c.kind)
+                .iter()
+                .map(|pin| (*pin).to_owned())
+                .collect()
+        };
         if c.pins.len() != expected.len()
             || expected
                 .iter()
-                .any(|p| !c.pins.contains_key(&PinId((*p).into())))
+                .any(|p| !c.pins.contains_key(&PinId(p.clone())))
         {
             errors.push(Diagnostic::new(
                 "invalid_pins",
@@ -361,7 +400,7 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
             ));
         }
         for (pin, hole) in &c.pins {
-            if !expected.contains(&pin.0.as_str()) {
+            if !expected.iter().any(|expected_pin| expected_pin == &pin.0) {
                 errors.push(Diagnostic::new(
                     "unknown_pin",
                     format!("components.{}.pins.{}", c.id.0, pin.0),
@@ -559,6 +598,206 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
     Ok(nodes)
 }
 
+fn validate_ic_device(c: &Component, spec: &IcDeviceSpec, errors: &mut Vec<Diagnostic>) {
+    use IcDeviceBehavior::{Comparator, Linear, Logic};
+    use IcDevicePinRole::{Ground, Input, Output, Reference, Supply};
+
+    if spec.pin_roles.is_empty() || spec.pin_roles.len() > MAX_IC_DEVICE_PINS {
+        errors.push(Diagnostic::new(
+            "ic_device_pin_limit",
+            format!("components.{}.ic_device.pin_roles", c.id.0),
+            format!("an ic_device must declare 1..={MAX_IC_DEVICE_PINS} named pins"),
+        ));
+    }
+    let supply_count = spec
+        .pin_roles
+        .values()
+        .filter(|role| matches!(role, Supply))
+        .count();
+    let ground_count = spec
+        .pin_roles
+        .values()
+        .filter(|role| matches!(role, Ground))
+        .count();
+    if supply_count != 1 || ground_count != 1 {
+        errors.push(Diagnostic::new(
+            "ic_device_supply_contract",
+            format!("components.{}.ic_device.pin_roles", c.id.0),
+            "an ic_device must declare exactly one supply and one ground pin",
+        ));
+    }
+    for pin in spec.referenced_pins() {
+        if !spec.pin_roles.contains_key(pin) || !c.pins.contains_key(pin) {
+            errors.push(Diagnostic::new(
+                "ic_device_unknown_pin",
+                format!("components.{}.ic_device.behavior", c.id.0),
+                format!("behavior references undeclared pin {}", pin.0),
+            ));
+        }
+    }
+    let role_is = |pin: &PinId, expected: fn(&IcDevicePinRole) -> bool| {
+        spec.pin_roles.get(pin).is_some_and(expected)
+    };
+    match &spec.behavior {
+        Linear {
+            output,
+            reference,
+            inputs,
+            offset,
+            min_output,
+            max_output,
+            input_resistance,
+            output_resistance,
+        } => {
+            if !role_is(output, |role| matches!(role, Output)) {
+                errors.push(Diagnostic::new(
+                    "ic_device_output_pin_role",
+                    format!("components.{}.ic_device.behavior.output", c.id.0),
+                    "linear output must have the output pin role",
+                ));
+            }
+            if !role_is(reference, |role| matches!(role, Ground | Reference)) {
+                errors.push(Diagnostic::new(
+                    "ic_device_reference_pin_role",
+                    format!("components.{}.ic_device.behavior.reference", c.id.0),
+                    "reference must have the ground or reference pin role",
+                ));
+            }
+            if inputs.is_empty() || inputs.len() > MAX_IC_DEVICE_INPUTS {
+                errors.push(Diagnostic::new(
+                    "ic_device_input_limit",
+                    format!("components.{}.ic_device.behavior.inputs", c.id.0),
+                    format!("a linear device must declare 1..={MAX_IC_DEVICE_INPUTS} inputs"),
+                ));
+            }
+            for (index, input) in inputs.iter().enumerate() {
+                if !role_is(&input.pin, |role| matches!(role, Input | Reference)) {
+                    errors.push(Diagnostic::new(
+                        "ic_device_input_pin_role",
+                        format!(
+                            "components.{}.ic_device.behavior.inputs[{index}].pin",
+                            c.id.0
+                        ),
+                        "linear inputs must have the input or reference pin role",
+                    ));
+                }
+                validate_ic_device_finite(c, errors, &format!("inputs[{index}].gain"), input.gain);
+            }
+            validate_ic_device_finite(c, errors, "offset", *offset);
+            validate_ic_device_finite(c, errors, "min_output", *min_output);
+            validate_ic_device_finite(c, errors, "max_output", *max_output);
+            if min_output > max_output {
+                errors.push(Diagnostic::new(
+                    "ic_device_output_range",
+                    format!("components.{}.ic_device.behavior", c.id.0),
+                    "min_output must not exceed max_output",
+                ));
+            }
+            validate_ic_device_resistance(c, errors, "input_resistance", *input_resistance);
+            validate_ic_device_resistance(c, errors, "output_resistance", *output_resistance);
+        }
+        Comparator {
+            positive,
+            negative,
+            output,
+            reference,
+            threshold,
+            high_output,
+            low_output,
+            input_resistance,
+            output_resistance,
+        } => {
+            for (name, pin) in [("positive", positive), ("negative", negative)] {
+                if !role_is(pin, |role| matches!(role, Input | Reference)) {
+                    errors.push(Diagnostic::new(
+                        "ic_device_input_pin_role",
+                        format!("components.{}.ic_device.behavior.{name}", c.id.0),
+                        "comparator inputs must have the input or reference pin role",
+                    ));
+                }
+            }
+            if !role_is(output, |role| matches!(role, Output))
+                || !role_is(reference, |role| matches!(role, Ground | Reference))
+            {
+                errors.push(Diagnostic::new(
+                    "ic_device_pin_role",
+                    format!("components.{}.ic_device.behavior", c.id.0),
+                    "comparator output/reference roles do not match the contract",
+                ));
+            }
+            validate_ic_device_finite(c, errors, "threshold", *threshold);
+            validate_ic_device_finite(c, errors, "high_output", *high_output);
+            validate_ic_device_finite(c, errors, "low_output", *low_output);
+            validate_ic_device_resistance(c, errors, "input_resistance", *input_resistance);
+            validate_ic_device_resistance(c, errors, "output_resistance", *output_resistance);
+        }
+        Logic {
+            inputs,
+            output,
+            reference,
+            supply,
+            output_resistance,
+            ..
+        } => {
+            if inputs.is_empty() || inputs.len() > MAX_IC_DEVICE_INPUTS {
+                errors.push(Diagnostic::new(
+                    "ic_device_input_limit",
+                    format!("components.{}.ic_device.behavior.inputs", c.id.0),
+                    format!("a logic device must declare 1..={MAX_IC_DEVICE_INPUTS} inputs"),
+                ));
+            }
+            for pin in inputs {
+                if !role_is(pin, |role| matches!(role, Input | Reference)) {
+                    errors.push(Diagnostic::new(
+                        "ic_device_input_pin_role",
+                        format!("components.{}.ic_device.behavior.inputs", c.id.0),
+                        "logic inputs must have the input or reference pin role",
+                    ));
+                }
+            }
+            if !role_is(output, |role| matches!(role, Output))
+                || !role_is(reference, |role| matches!(role, Ground | Reference))
+                || !role_is(supply, |role| matches!(role, Supply))
+            {
+                errors.push(Diagnostic::new(
+                    "ic_device_pin_role",
+                    format!("components.{}.ic_device.behavior", c.id.0),
+                    "logic output, reference, or supply role does not match the contract",
+                ));
+            }
+            validate_ic_device_resistance(c, errors, "output_resistance", *output_resistance);
+        }
+    }
+}
+
+fn validate_ic_device_finite(c: &Component, errors: &mut Vec<Diagnostic>, path: &str, value: f64) {
+    if !value.is_finite() {
+        errors.push(Diagnostic::new(
+            "ic_device_non_finite_parameter",
+            format!("components.{}.ic_device.behavior.{path}", c.id.0),
+            "device behavior values must be finite",
+        ));
+    }
+}
+
+fn validate_ic_device_resistance(
+    c: &Component,
+    errors: &mut Vec<Diagnostic>,
+    path: &str,
+    value: f64,
+) {
+    if !value.is_finite() || !(IC_DEVICE_MIN_RESISTANCE..=IC_DEVICE_MAX_RESISTANCE).contains(&value)
+    {
+        errors.push(Diagnostic::new(
+            "ic_device_resistance_out_of_range",
+            format!("components.{}.ic_device.behavior.{path}", c.id.0),
+            format!(
+                "resistance must be finite and in {IC_DEVICE_MIN_RESISTANCE}..={IC_DEVICE_MAX_RESISTANCE} ohms"
+            ),
+        ));
+    }
+}
+
 fn pins_for(k: ComponentKind) -> &'static [&'static str] {
     match k {
         ComponentKind::DcVoltageSource => &["negative", "positive"],
@@ -647,6 +886,7 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
             "seg9", "vcc",
         ],
         ComponentKind::AudioAmplifier => &["gnd", "input", "output", "vcc"],
+        ComponentKind::IcDevice => &[],
     }
 }
 fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
@@ -689,6 +929,7 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::FourBitAdder => &["output_resistance"],
         ComponentKind::BargraphDisplay => &["output_resistance"],
         ComponentKind::AudioAmplifier => &["gain", "output_resistance"],
+        ComponentKind::IcDevice => &[],
     }
 }
 fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
@@ -794,6 +1035,7 @@ mod tests {
                     (PinId("b".into()), HoleId("F1".into())),
                 ]),
                 parameters: BTreeMap::from([("resistance".into(), 1000.0)]),
+                ic_device: None,
             }],
             initial_conditions: InitialConditions::default(),
             wires: vec![Wire {
@@ -840,6 +1082,7 @@ mod tests {
                 (PinId("b".into()), HoleId("F3".into())),
             ]),
             parameters: BTreeMap::from([("resistance".into(), 220.0)]),
+            ic_device: None,
         });
         let before = compile_topology(&p).unwrap();
         p.components.reverse();
@@ -1007,6 +1250,7 @@ mod tests {
                     (PinId("b".into()), HoleId("F1".into())),
                 ]),
                 parameters: BTreeMap::from([("resistance".into(), 1000.0)]),
+                ic_device: None,
             })
             .collect();
         assert!(
@@ -1042,6 +1286,7 @@ mod tests {
                 ("min_resistance".into(), 100.0),
                 ("max_resistance".into(), 10_000.0),
             ]),
+            ic_device: None,
         }
     }
 
@@ -1181,6 +1426,7 @@ mod tests {
                 (PinId("negative".into()), HoleId("A2".into())),
             ]),
             parameters: BTreeMap::from([("resistance".into(), 32.0)]),
+            ic_device: None,
         }];
         p.wires.clear();
         assert!(compile_topology(&p).is_ok());
@@ -1217,6 +1463,7 @@ mod tests {
                 (PinId("negative".into()), HoleId("A2".into())),
             ]),
             parameters: BTreeMap::from([("resistance".into(), 8.0)]),
+            ic_device: None,
         }];
         p.wires.clear();
         assert!(compile_topology(&p).is_ok());
@@ -1253,6 +1500,7 @@ mod tests {
                 (PinId("negative".into()), HoleId("A2".into())),
             ]),
             parameters: BTreeMap::from([("resistance".into(), 32.0)]),
+            ic_device: None,
         }];
         p.wires.clear();
         assert!(compile_topology(&p).is_ok());

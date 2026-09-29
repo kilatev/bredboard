@@ -1,6 +1,6 @@
 use crate::{
-    Component, ComponentId, ComponentKind, Contact, ControlState, Diagnostic, Node, Project,
-    compile_topology,
+    Component, ComponentId, ComponentKind, Contact, ControlState, Diagnostic, IcDeviceBehavior,
+    IcLogicOperation, Node, PinId, Project, compile_topology,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -55,6 +55,9 @@ pub struct SolveResult {
     /// Whether each relay's calculated coil voltage reaches its pickup voltage.
     #[serde(default)]
     pub relay_energized: BTreeMap<ComponentId, bool>,
+    /// Calculated output pin voltages for generic IC/device contracts.
+    #[serde(default)]
+    pub ic_device_output_voltages: BTreeMap<ComponentId, BTreeMap<PinId, f64>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -262,6 +265,11 @@ enum NonlinearElement {
         gain: f64,
         resistance: f64,
     },
+    IcDevice {
+        id: ComponentId,
+        pin_nodes: BTreeMap<PinId, usize>,
+        behavior: IcDeviceBehavior,
+    },
 }
 
 pub const FIXED_STEP_SECONDS: f64 = 100e-6;
@@ -383,6 +391,7 @@ fn solve_internal(
             optocoupler_input_currents: BTreeMap::new(),
             relay_coil_currents: BTreeMap::new(),
             relay_energized: BTreeMap::new(),
+            ic_device_output_voltages: BTreeMap::new(),
         });
     }
 
@@ -628,6 +637,11 @@ fn solve_internal(
                 gnd,
                 ..
             } => vec![(*input, *output), (*vcc, *output), (*gnd, *output)],
+            NonlinearElement::IcDevice { pin_nodes, .. } => {
+                let mut nodes = pin_nodes.values().copied();
+                let Some(first) = nodes.next() else { continue };
+                nodes.map(|node| (first, node)).collect()
+            }
         };
         for (a, b) in pairs {
             adjacency[a].push(b);
@@ -792,6 +806,7 @@ fn solve_internal(
     let mut optocoupler_input_currents = BTreeMap::new();
     let mut relay_coil_currents = BTreeMap::new();
     let mut relay_energized = BTreeMap::new();
+    let mut ic_device_output_voltages = BTreeMap::new();
     for branch in &branches {
         let current = match branch.kind {
             BranchKind::Resistor | BranchKind::Motor => {
@@ -914,6 +929,18 @@ fn solve_internal(
                 relay_coil_currents.insert(id.clone(), coil_voltage / coil_resistance);
                 relay_energized.insert(id.clone(), coil_voltage >= *pickup_voltage);
             }
+            NonlinearElement::IcDevice {
+                id,
+                pin_nodes,
+                behavior,
+            } => {
+                let outputs = behavior.output_pins().into_iter().filter_map(|pin| {
+                    pin_nodes
+                        .get(pin)
+                        .map(|node| (pin.clone(), voltage(&solution, &voltage_vars, *node)))
+                });
+                ic_device_output_voltages.insert(id.clone(), outputs.collect());
+            }
             NonlinearElement::LogicGate { .. }
             | NonlinearElement::SchmittInverter { .. }
             | NonlinearElement::Comparator { .. }
@@ -978,6 +1005,7 @@ fn solve_internal(
         optocoupler_input_currents,
         relay_coil_currents,
         relay_energized,
+        ic_device_output_voltages,
     })
 }
 
@@ -1460,6 +1488,25 @@ fn make_branches(
                     gnd,
                     gain: component.parameters["gain"],
                     resistance: component.parameters["output_resistance"],
+                });
+                continue;
+            }
+            ComponentKind::IcDevice => {
+                let spec = component.ic_device.as_ref().ok_or_else(|| {
+                    calc(
+                        "missing_ic_device_spec",
+                        format!("component {} has no ic_device contract", component.id.0),
+                    )
+                })?;
+                let mut pin_nodes = BTreeMap::new();
+                for pin in spec.pin_roles.keys() {
+                    pin_nodes.insert(pin.clone(), node(&pin.0)?);
+                }
+                active.extend(pin_nodes.values().copied());
+                nonlinear.push(NonlinearElement::IcDevice {
+                    id: component.id.clone(),
+                    pin_nodes,
+                    behavior: spec.behavior.clone(),
                 });
                 continue;
             }
@@ -2409,6 +2456,155 @@ fn stamp_element(
                 rhs,
             );
         }
+        NonlinearElement::IcDevice {
+            pin_nodes,
+            behavior,
+            ..
+        } => stamp_ic_device(behavior, pin_nodes, guess, vars, matrix, rhs),
+    }
+}
+
+fn ic_node(pin_nodes: &BTreeMap<PinId, usize>, pin: &PinId) -> usize {
+    *pin_nodes
+        .get(pin)
+        .expect("validated ic_device pin reference")
+}
+
+#[allow(clippy::too_many_arguments)]
+fn stamp_ic_device(
+    behavior: &IcDeviceBehavior,
+    pin_nodes: &BTreeMap<PinId, usize>,
+    guess: &[f64],
+    vars: &BTreeMap<usize, usize>,
+    matrix: &mut [Vec<f64>],
+    rhs: &mut [f64],
+) {
+    match behavior {
+        IcDeviceBehavior::Linear {
+            output,
+            reference,
+            inputs,
+            offset,
+            min_output,
+            max_output,
+            input_resistance,
+            output_resistance,
+        } => {
+            let output = ic_node(pin_nodes, output);
+            let reference = ic_node(pin_nodes, reference);
+            let reference_voltage = voltage(guess, vars, reference);
+            let raw = *offset
+                + inputs.iter().fold(0.0, |sum, input| {
+                    sum + input.gain
+                        * (voltage(guess, vars, ic_node(pin_nodes, &input.pin)) - reference_voltage)
+                });
+            let bounded = raw.clamp(*min_output, *max_output);
+            let target = reference_voltage + bounded;
+            let conductance = 1.0 / *output_resistance;
+            let mut derivatives = vec![(output, conductance)];
+            let target_reference_derivative = if (bounded - raw).abs() < f64::EPSILON {
+                1.0 - inputs.iter().map(|input| input.gain).sum::<f64>()
+            } else {
+                1.0
+            };
+            derivatives.push((reference, -conductance * target_reference_derivative));
+            if (bounded - raw).abs() < f64::EPSILON {
+                derivatives.extend(
+                    inputs
+                        .iter()
+                        .map(|input| (ic_node(pin_nodes, &input.pin), -conductance * input.gain)),
+                );
+            }
+            let current = conductance * (voltage(guess, vars, output) - target);
+            stamp_current(
+                (output, reference),
+                current,
+                &derivatives,
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+            for input in inputs {
+                stamp_conductance(
+                    matrix,
+                    vars,
+                    ic_node(pin_nodes, &input.pin),
+                    reference,
+                    1.0 / *input_resistance,
+                );
+            }
+        }
+        IcDeviceBehavior::Comparator {
+            positive,
+            negative,
+            output,
+            reference,
+            threshold,
+            high_output,
+            low_output,
+            input_resistance,
+            output_resistance,
+        } => {
+            let positive = ic_node(pin_nodes, positive);
+            let negative = ic_node(pin_nodes, negative);
+            let output = ic_node(pin_nodes, output);
+            let reference = ic_node(pin_nodes, reference);
+            let reference_voltage = voltage(guess, vars, reference);
+            let high =
+                voltage(guess, vars, positive) - voltage(guess, vars, negative) >= *threshold;
+            let target = reference_voltage + if high { *high_output } else { *low_output };
+            let conductance = 1.0 / *output_resistance;
+            stamp_current(
+                (output, reference),
+                conductance * (voltage(guess, vars, output) - target),
+                &[(output, conductance), (reference, -conductance)],
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+            for input in [positive, negative] {
+                stamp_conductance(matrix, vars, input, reference, 1.0 / *input_resistance);
+            }
+        }
+        IcDeviceBehavior::Logic {
+            inputs,
+            output,
+            reference,
+            supply,
+            operation,
+            output_resistance,
+        } => {
+            let reference = ic_node(pin_nodes, reference);
+            let supply = ic_node(pin_nodes, supply);
+            let reference_voltage = voltage(guess, vars, reference);
+            let supply_voltage = voltage(guess, vars, supply);
+            let values = inputs.iter().map(|pin| {
+                voltage(guess, vars, ic_node(pin_nodes, pin))
+                    > reference_voltage + (supply_voltage - reference_voltage) * 0.5
+            });
+            let high = match operation {
+                IcLogicOperation::And => values.clone().all(|value| value),
+                IcLogicOperation::Or => values.clone().any(|value| value),
+                IcLogicOperation::Nand => !values.clone().all(|value| value),
+                IcLogicOperation::Nor => !values.clone().any(|value| value),
+                IcLogicOperation::Xor => values.clone().filter(|value| *value).count() % 2 == 1,
+                IcLogicOperation::Xnor => values.clone().filter(|value| *value).count() % 2 == 0,
+                IcLogicOperation::Not => !values.clone().next().unwrap_or(false),
+            };
+            stamp_logic_output(
+                ic_node(pin_nodes, output),
+                supply,
+                reference,
+                high,
+                *output_resistance,
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
     }
 }
 fn dice_output(value: u32, index: usize) -> bool {
@@ -2494,6 +2690,7 @@ fn check_source_cycles(branches: &[Branch]) -> Result<(), ElectricalError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::HoleId;
     use proptest::prelude::*;
 
     fn divider() -> Project {
@@ -2525,6 +2722,7 @@ mod tests {
                         ),
                     ]),
                     parameters: BTreeMap::from([(String::from("voltage"), 5.0)]),
+                    ic_device: None,
                 },
                 Component {
                     id: ComponentId("R1".into()),
@@ -2534,6 +2732,7 @@ mod tests {
                         (crate::PinId("b".into()), crate::HoleId("TP-:4".into())),
                     ]),
                     parameters: BTreeMap::from([(String::from("resistance"), 470.0)]),
+                    ic_device: None,
                 },
                 Component {
                     id: ComponentId("R2".into()),
@@ -2543,6 +2742,7 @@ mod tests {
                         (crate::PinId("b".into()), crate::HoleId("TP-:2".into())),
                     ]),
                     parameters: BTreeMap::from([(String::from("resistance"), 10_000.0)]),
+                    ic_device: None,
                 },
                 Component {
                     id: ComponentId("Q1".into()),
@@ -2559,6 +2759,75 @@ mod tests {
                         (String::from("beta"), 100.0),
                         (String::from("saturation_current"), 1e-15),
                     ]),
+                    ic_device: None,
+                },
+            ],
+            wires: Vec::new(),
+            faults: Vec::new(),
+            initial_conditions: Default::default(),
+        }
+    }
+
+    fn ic_device_linear_project(gain: f64) -> Project {
+        let pin_roles = BTreeMap::from([
+            (PinId("gnd".into()), crate::IcDevicePinRole::Ground),
+            (PinId("vcc".into()), crate::IcDevicePinRole::Supply),
+            (PinId("input".into()), crate::IcDevicePinRole::Input),
+            (PinId("output".into()), crate::IcDevicePinRole::Output),
+        ]);
+        Project {
+            format_version: crate::PROJECT_FORMAT_VERSION,
+            title: "generic IC linear transfer".into(),
+            board: crate::Board {
+                model: crate::BoardModel::HalfSizeSolderless,
+            },
+            components: vec![
+                Component {
+                    id: ComponentId("V1".into()),
+                    kind: ComponentKind::DcVoltageSource,
+                    pins: BTreeMap::from([
+                        (PinId("positive".into()), HoleId("TP+:1".into())),
+                        (PinId("negative".into()), HoleId("TP-:1".into())),
+                    ]),
+                    parameters: BTreeMap::from([("voltage".into(), 5.0)]),
+                    ic_device: None,
+                },
+                Component {
+                    id: ComponentId("U1".into()),
+                    kind: ComponentKind::IcDevice,
+                    pins: BTreeMap::from([
+                        (PinId("gnd".into()), HoleId("TP-:1".into())),
+                        (PinId("vcc".into()), HoleId("TP+:1".into())),
+                        (PinId("input".into()), HoleId("TP+:1".into())),
+                        (PinId("output".into()), HoleId("A1".into())),
+                    ]),
+                    parameters: BTreeMap::new(),
+                    ic_device: Some(crate::IcDeviceSpec {
+                        pin_roles,
+                        behavior: crate::IcDeviceBehavior::Linear {
+                            output: PinId("output".into()),
+                            reference: PinId("gnd".into()),
+                            inputs: vec![crate::IcDeviceLinearInput {
+                                pin: PinId("input".into()),
+                                gain,
+                            }],
+                            offset: 0.0,
+                            min_output: 0.0,
+                            max_output: 5.0,
+                            input_resistance: 1e9,
+                            output_resistance: 10.0,
+                        },
+                    }),
+                },
+                Component {
+                    id: ComponentId("R1".into()),
+                    kind: ComponentKind::Resistor,
+                    pins: BTreeMap::from([
+                        (PinId("a".into()), HoleId("A1".into())),
+                        (PinId("b".into()), HoleId("TP-:1".into())),
+                    ]),
+                    parameters: BTreeMap::from([("resistance".into(), 1_000.0)]),
+                    ic_device: None,
                 },
             ],
             wires: Vec::new(),
@@ -2577,6 +2846,93 @@ mod tests {
         let load = result.resistor_currents[&ComponentId("R1".into())];
         assert!(collector < -0.005);
         assert!((collector + load).abs() < 1e-9);
+    }
+
+    #[test]
+    fn generic_ic_device_linear_transfer_is_calculated_and_bounded() {
+        let result = solve(&ic_device_linear_project(2.0)).unwrap();
+        let output =
+            result.ic_device_output_voltages[&ComponentId("U1".into())][&PinId("output".into())];
+        assert!((0.0..=5.0).contains(&output));
+        assert!(output > 4.9);
+    }
+
+    #[test]
+    fn generic_ic_device_linear_transfer_is_id_rename_invariant() {
+        let mut renamed = ic_device_linear_project(0.5);
+        renamed.components[1].id = ComponentId("AMPLIFIER".into());
+        let first = solve(&ic_device_linear_project(0.5)).unwrap();
+        let second = solve(&renamed).unwrap();
+        let first_output =
+            first.ic_device_output_voltages[&ComponentId("U1".into())][&PinId("output".into())];
+        let second_output = second.ic_device_output_voltages[&ComponentId("AMPLIFIER".into())]
+            [&PinId("output".into())];
+        assert!((first_output - second_output).abs() < 1e-12);
+    }
+
+    #[test]
+    fn generic_ic_device_logic_uses_calculated_supply_threshold() {
+        let mut project = ic_device_linear_project(1.0);
+        project.components[1]
+            .pins
+            .insert(PinId("input_b".into()), HoleId("TP+:1".into()));
+        let spec = project.components[1].ic_device.as_mut().unwrap();
+        spec.pin_roles
+            .insert(PinId("input_b".into()), crate::IcDevicePinRole::Input);
+        spec.behavior = crate::IcDeviceBehavior::Logic {
+            inputs: vec![PinId("input".into()), PinId("input_b".into())],
+            output: PinId("output".into()),
+            reference: PinId("gnd".into()),
+            supply: PinId("vcc".into()),
+            operation: crate::IcLogicOperation::And,
+            output_resistance: 10.0,
+        };
+        let result = solve(&project).unwrap();
+        let output =
+            result.ic_device_output_voltages[&ComponentId("U1".into())][&PinId("output".into())];
+        assert!(output > 4.9);
+    }
+
+    #[test]
+    fn generic_ic_device_comparator_uses_calculated_pin_voltages() {
+        let mut project = ic_device_linear_project(1.0);
+        project.components[1]
+            .pins
+            .insert(PinId("negative".into()), HoleId("TP-:1".into()));
+        let spec = project.components[1].ic_device.as_mut().unwrap();
+        spec.pin_roles
+            .insert(PinId("negative".into()), crate::IcDevicePinRole::Input);
+        spec.behavior = crate::IcDeviceBehavior::Comparator {
+            positive: PinId("input".into()),
+            negative: PinId("negative".into()),
+            output: PinId("output".into()),
+            reference: PinId("gnd".into()),
+            threshold: 1.0,
+            high_output: 5.0,
+            low_output: 0.0,
+            input_resistance: 1e9,
+            output_resistance: 10.0,
+        };
+        let result = solve(&project).unwrap();
+        let output =
+            result.ic_device_output_voltages[&ComponentId("U1".into())][&PinId("output".into())];
+        assert!(output > 4.9);
+    }
+
+    #[test]
+    fn generic_ic_device_linear_property_is_bounded_for_reproducible_seed() {
+        let mut seed = 0x5eed_cafe_u64;
+        for _ in 0..128 {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+            let gain = ((seed >> 16) as f64 / u32::MAX as f64) * 8.0 - 4.0;
+            let result = solve(&ic_device_linear_project(gain)).unwrap();
+            let output = result.ic_device_output_voltages[&ComponentId("U1".into())]
+                [&PinId("output".into())];
+            assert!(
+                (-1e-9..=5.0 + 1e-9).contains(&output),
+                "seed={seed}, gain={gain}"
+            );
+        }
     }
     fn pin_voltage(result: &SolveResult, component: &str, pin: &str) -> f64 {
         result
@@ -2650,6 +3006,7 @@ mod tests {
                 (crate::PinId("b".into()), crate::HoleId("A2".into())),
             ]),
             parameters: BTreeMap::new(),
+            ic_device: None,
         });
         let open = solve(&button).unwrap();
         assert!(
@@ -2682,6 +3039,7 @@ mod tests {
                 ),
             ]),
             parameters: BTreeMap::new(),
+            ic_device: None,
         });
         assert!(
             (solve(&changeover).unwrap().resistor_currents[&ComponentId("R1".into())] - 0.0025)

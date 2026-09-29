@@ -694,18 +694,21 @@ mod tests {
                     kind: ComponentKind::DcVoltageSource,
                     pins: pins(&[("positive", "TP+:1"), ("negative", "TP-:1")]),
                     parameters: BTreeMap::from([("voltage".into(), 5.0)]),
+                    ic_device: None,
                 },
                 crate::Component {
                     id: ComponentId("S1".into()),
                     kind: ComponentKind::MomentaryButton,
                     pins: pins(&[("a", "TP+:2"), ("b", "A1")]),
                     parameters: BTreeMap::new(),
+                    ic_device: None,
                 },
                 crate::Component {
                     id: ComponentId("R1".into()),
                     kind: ComponentKind::Resistor,
                     pins: pins(&[("a", "A1"), ("b", "TP-:2")]),
                     parameters: BTreeMap::from([("resistance".into(), 10_000.0)]),
+                    ic_device: None,
                 },
                 crate::Component {
                     id: ComponentId("U1".into()),
@@ -716,6 +719,7 @@ mod tests {
                         ("output_mode".into(), 0.0),
                         ("output_resistance".into(), 100.0),
                     ]),
+                    ic_device: None,
                 },
             ],
             wires: Vec::new(),
@@ -749,30 +753,35 @@ mod tests {
                     kind: ComponentKind::DcVoltageSource,
                     pins: pins(&[("positive", "TP+:1"), ("negative", "TP-:1")]),
                     parameters: BTreeMap::from([("voltage".into(), 5.0)]),
+                    ic_device: None,
                 },
                 crate::Component {
                     id: ComponentId("S_DATA".into()),
                     kind: ComponentKind::MomentaryButton,
                     pins: pins(&[("a", "TP+:2"), ("b", "A1")]),
                     parameters: BTreeMap::new(),
+                    ic_device: None,
                 },
                 crate::Component {
                     id: ComponentId("R_DATA".into()),
                     kind: ComponentKind::Resistor,
                     pins: pins(&[("a", "A1"), ("b", "TP-:2")]),
                     parameters: BTreeMap::from([("resistance".into(), 10_000.0)]),
+                    ic_device: None,
                 },
                 crate::Component {
                     id: ComponentId("S_CLOCK".into()),
                     kind: ComponentKind::MomentaryButton,
                     pins: pins(&[("a", "TP+:3"), ("b", "A2")]),
                     parameters: BTreeMap::new(),
+                    ic_device: None,
                 },
                 crate::Component {
                     id: ComponentId("R_CLOCK".into()),
                     kind: ComponentKind::Resistor,
                     pins: pins(&[("a", "A2"), ("b", "TP-:3")]),
                     parameters: BTreeMap::from([("resistance".into(), 10_000.0)]),
+                    ic_device: None,
                 },
                 crate::Component {
                     id: ComponentId("U1".into()),
@@ -788,6 +797,7 @@ mod tests {
                         ("vcc", "TP+:4"),
                     ]),
                     parameters: BTreeMap::from([("output_resistance".into(), 100.0)]),
+                    ic_device: None,
                 },
             ],
             wires: Vec::new(),
@@ -1702,6 +1712,7 @@ mod tests {
                     (crate::PinId("negative".into()), crate::HoleId("G8".into())),
                 ]),
                 parameters: BTreeMap::from([("resistance".into(), 470.0)]),
+                ic_device: None,
             });
         project
             .components
@@ -2099,6 +2110,7 @@ mod tests {
                 (crate::PinId("b".into()), crate::HoleId("F1".into())),
             ]),
             parameters: BTreeMap::new(),
+            ic_device: None,
         });
         let baseline = project.clone();
         let mut state = SimulationState::new(&project);

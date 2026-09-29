@@ -1,0 +1,16 @@
+Implemented the shared `ic/device` model in core.
+
+- Added `ComponentKind::IcDevice` with validated pin roles and calculated linear, comparator, and logic behaviors.
+- Integrated topology-derived pin connectivity and fixed-step solver stamping.
+- Added calculated output voltages and backward-compatible serialization.
+- Added deterministic unit/property tests.
+- Added model documentation: [IC-DEVICE-MODEL.md](/home/vetalik/prj/bredboard/.codex-batch-worktrees/ic-device/docs/catalog/IC-DEVICE-MODEL.md).
+- Removed `need:ic/device` from exactly the requested 66 ledger rows; their `blocked_component` dispositions remain.
+
+Verification passed:
+
+- Workspace tests: 174 passed
+- Clippy with `-D warnings`
+- Format and diff checks
+- Native and WASM builds
+- Catalog validation: 20 sections, 212 schematics
