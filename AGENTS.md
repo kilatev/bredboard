@@ -19,7 +19,7 @@
 
 ## Verification
 
-- This is currently documentation-only. Do not claim Cargo checks passed before a workspace exists.
+- The Cargo workspace and its check commands (fmt, Clippy, workspace tests, Linux/WASM builds) are established; see README.md and docs/tasks/T01-workspace.md for the exact commands and their last-verified evidence.
 - T01 establishes and documents exact commands for formatting checks, Clippy, workspace tests, Linux builds, and WASM builds.
 - Later tasks use those commands and add the specialized checks in their cards. Record exact commands and results before marking a task ready.
 - Add meaningful property tests with each feature; use reproducible seeds and retain minimized failing cases as regressions.
