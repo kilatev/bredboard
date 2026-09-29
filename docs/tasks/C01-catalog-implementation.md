@@ -177,11 +177,13 @@ not a source-value substitution.
 
 A separate 2026-09-29 S02-07 attempt followed the source's NPN/PNP/capacitor
 feedback topology with the normalized 5 V supply, 100 kΩ potentiometer, 10 kΩ
-resistor, 47 nF capacitor, and 8 Ω speaker. It converged for 10,000 fixed
-steps, but the speaker current settled near 0.556 A (about 2.47 W) and the
-capacitor did not sustain an output transition. The candidate was deleted;
-the row remains `blocked_component` until a bounded speaker-output contract
-and a calculated startup/oscillation result are available.
+resistor, 47 nF capacitor, and 8 Ω speaker. A sweep over pot ratios 0.00,
+0.01, 0.05, 0.10, 0.20, 0.30, 0.50, 0.70, and 0.90 found that only the
+minimum setting converged; it reached 0.5539 A (about 2.46 W) and the
+capacitor did not sustain an output transition. The higher tested ratios
+failed within 1,000 bounded iterations. The candidate was deleted; the row
+remains `blocked_component` until a bounded speaker-output contract and a
+calculated startup/oscillation result are available.
 
 The current workspace baseline for the already admitted catalog surface is
 `cargo test --workspace --locked` — 50 app tests, 109 core tests, 3 tool tests,
