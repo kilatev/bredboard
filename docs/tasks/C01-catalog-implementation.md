@@ -185,6 +185,13 @@ failed within 1,000 bounded iterations. The candidate was deleted; the row
 remains `blocked_component` until a bounded speaker-output contract and a
 calculated startup/oscillation result are available.
 
+The manual Linux interaction check is currently unavailable in this session:
+`cargo run -p bredboard-app --locked` builds successfully but exits before
+opening a window with `WaylandError(Connection(NoCompositor))`; the explicit
+`WINIT_UNIX_BACKEND=x11` retry selects the same Wayland backend, and no Xvfb
+binary is installed. This is recorded as a blocker, not as interaction
+evidence.
+
 The current workspace baseline for the already admitted catalog surface is
 `cargo test --workspace --locked` — 50 app tests, 109 core tests, 3 tool tests,
 and 0 doc-test failures; C12's 12 fault-pair fixtures are covered separately
