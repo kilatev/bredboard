@@ -3128,6 +3128,46 @@ mod tests {
     }
 
     #[test]
+    fn beacon_darkness_enables_the_calculated_led_output() {
+        let project: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c11-s19-01-beacon.json"
+        ))
+        .unwrap();
+        let bright = solve_transient(
+            &project,
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &BTreeMap::from([
+                (ComponentId("R3".into()), 1.0),
+                (ComponentId("RV1".into()), 0.25),
+            ]),
+        )
+        .unwrap();
+        assert!(bright.led_currents[&ComponentId("D1".into())] < 1e-6);
+
+        let mut capacitors = BTreeMap::new();
+        let mut peak_led_current = 0.0_f64;
+        for _ in 0..3_000 {
+            let result = solve_transient(
+                &project,
+                &BTreeMap::new(),
+                &capacitors,
+                &BTreeMap::from([
+                    (ComponentId("R3".into()), 0.0),
+                    (ComponentId("RV1".into()), 0.25),
+                ]),
+            )
+            .unwrap();
+            peak_led_current = peak_led_current.max(result.led_currents[&ComponentId("D1".into())]);
+            capacitors.extend(result.capacitor_voltages);
+        }
+        assert!(
+            peak_led_current > 0.0005,
+            "peak current: {peak_led_current}"
+        );
+    }
+
+    #[test]
     fn telegraph_button_drives_only_its_calculated_station_loads() {
         let project: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c07-s09-03-two-station-telegraph.json"
@@ -3259,6 +3299,27 @@ mod tests {
                     prop_assert!(i2 <= i1 + 1e-12, "current increased: {i1} -> {i2}");
                 }
             }
+        }
+
+        #[test]
+        fn beacon_supported_control_values_converge(
+            light_bucket in 0u32..=1000,
+            rate_bucket in 0u32..=1000,
+        ) {
+            let project: Project = serde_json::from_str(include_str!(
+                "../../../fixtures/projects/c11-s19-01-beacon.json"
+            )).unwrap();
+            let result = solve_transient(
+                &project,
+                &BTreeMap::new(),
+                &BTreeMap::new(),
+                &BTreeMap::from([
+                    (ComponentId("R3".into()), f64::from(light_bucket) / 1000.0),
+                    (ComponentId("RV1".into()), f64::from(rate_bucket) / 1000.0),
+                ]),
+            ).unwrap();
+            prop_assert!(result.led_currents[&ComponentId("D1".into())].is_finite());
+            prop_assert!(result.transistor_collector_currents[&ComponentId("Q1".into())].is_finite());
         }
     }
 

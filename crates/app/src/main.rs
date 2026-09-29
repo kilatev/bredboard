@@ -129,6 +129,7 @@ const C09_S15_01_JSON: &str =
     include_str!("../../../fixtures/projects/c09-s15-01-relay-switch.json");
 const C10_S18_07_JSON: &str =
     include_str!("../../../fixtures/projects/c10-s18-07-diode-logic.json");
+const C11_S19_01_JSON: &str = include_str!("../../../fixtures/projects/c11-s19-01-beacon.json");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Circuit {
@@ -210,6 +211,7 @@ enum Circuit {
     C08S17_03,
     C09S15_01,
     C10S18_07,
+    C11S19_01,
 }
 
 /// One bench control button: its label, the component it drives, and
@@ -227,7 +229,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 78] {
+    fn all() -> [Self; 79] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -274,6 +276,7 @@ impl Circuit {
             Self::C08S17_03,
             Self::C09S15_01,
             Self::C10S18_07,
+            Self::C11S19_01,
             Self::Led,
             Self::Rc,
             Self::Transistor,
@@ -389,6 +392,7 @@ impl Circuit {
             Self::C08S17_03 => C08_S17_03_JSON,
             Self::C09S15_01 => C09_S15_01_JSON,
             Self::C10S18_07 => C10_S18_07_JSON,
+            Self::C11S19_01 => C11_S19_01_JSON,
         }
     }
     fn label(self) -> &'static str {
@@ -471,6 +475,7 @@ impl Circuit {
             Self::C08S17_03 => "C08-S17-03: OPTOCOUPLER",
             Self::C09S15_01 => "C09-S15-01: RELAY SWITCH",
             Self::C10S18_07 => "C10-S18-07: DIODE LOGIC OR",
+            Self::C11S19_01 => "C11-S19-01: PHOTORESISTOR BEACON",
         }
     }
     /// One-paragraph explanation and a short player task, shown together in
@@ -659,6 +664,10 @@ impl Circuit {
             Self::C10S18_07 => (
                 "Two calculated button inputs feed a diode-input OR path into an NPN transistor. Either button can produce base current and switch the current-limited LED; the source's second AND output is an explicit discrepancy.",
                 "Task: press B1, B2, or both and confirm the LED lights for either input.",
+            ),
+            Self::C11S19_01 => (
+                "A calculated photoresistor divider holds a 555 reset low in bright conditions and enables a fixed-step beacon oscillator in darkness. The NPN and LED currents are derived from the electrical state; the ship and white-LED scene remain presentation discrepancies.",
+                "Task: drag R3 from bright to dark, adjust RV1, and compare the beacon LED current and timing behavior.",
             ),
             Self::E1 => (
                 "A resistor limits current from the 5 V supply so the LED lights safely and stays lit.",
@@ -1226,6 +1235,7 @@ impl Circuit {
                     is_switch: false,
                 },
             ],
+            Self::C11S19_01 => &[],
             Self::C03S04_06 => &[
                 ControlSpec {
                     label: "RED PLAYER",
@@ -1428,6 +1438,16 @@ impl Circuit {
                 label: "RV1: SHARED BRIGHTNESS - drag left/right",
                 component: "RV1",
             }],
+            Self::C11S19_01 => &[
+                DialSpec {
+                    label: "R3: AMBIENT LIGHT - drag left/right",
+                    component: "R3",
+                },
+                DialSpec {
+                    label: "RV1: BEACON RATE - drag left/right",
+                    component: "RV1",
+                },
+            ],
             _ => &[],
         }
     }
@@ -2939,6 +2959,27 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C11S19_01 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Beacon output: run to measure".into(),
+                        |result| {
+                            format!(
+                                "D1 {:.2} mA   Q1 collector {:.2} mA",
+                                1000.0
+                                    * result
+                                        .led_currents
+                                        .get(&ComponentId("D1".into()))
+                                        .copied()
+                                        .unwrap_or(0.0),
+                                1000.0
+                                    * result
+                                        .transistor_collector_currents
+                                        .get(&ComponentId("Q1".into()))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                            )
+                        },
+                    )
                 } else {
                     bench.simulation.last_valid.as_ref().map_or(
                         "LED current: run to measure".into(),
@@ -3114,7 +3155,9 @@ mod tests {
     fn each_circuit_uses_core_controls_and_reset() {
         for circuit in Circuit::all() {
             let mut bench = Bench::new(circuit);
-            bench.toggle(0);
+            if !circuit.controls().is_empty() {
+                bench.toggle(0);
+            }
             bench.act(Action::Run);
             advance_steps(&bench.project, &mut bench.simulation, 100);
             assert_eq!(bench.simulation.step, 100, "{circuit:?}");
