@@ -50,6 +50,8 @@ pub const PROJECT_FORMAT_VERSION: u32 = 1;
 pub const MAX_COMPONENTS: usize = 64;
 pub const MAX_NODES: usize = 128;
 pub const MAX_WIRES: usize = 256;
+pub const MAX_BOARDS: usize = 8;
+pub const DEFAULT_BOARD_ID: &str = "main";
 
 macro_rules! string_id {
     ($name:ident) => {
@@ -64,6 +66,7 @@ string_id!(ComponentId);
 string_id!(PinId);
 string_id!(HoleId);
 string_id!(WireId);
+string_id!(BoardId);
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[schemars(
@@ -147,6 +150,52 @@ pub struct Board {
 #[serde(rename_all = "snake_case")]
 pub enum BoardModel {
     HalfSizeSolderless,
+    /// A named collection of independent solderless boards. Holes in this
+    /// model must use `board_id/local_hole` references; only explicit wire
+    /// endpoints may connect two boards.
+    MultiBoard {
+        boards: Vec<BoardSpec>,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct BoardSpec {
+    pub id: BoardId,
+    pub model: BoardSurfaceModel,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum BoardSurfaceModel {
+    HalfSizeSolderless,
+}
+
+impl BoardModel {
+    /// Return the stable board identities exposed by this project model.
+    pub fn board_ids(&self) -> Vec<BoardId> {
+        match self {
+            Self::HalfSizeSolderless => vec![BoardId(DEFAULT_BOARD_ID.into())],
+            Self::MultiBoard { boards } => boards.iter().map(|board| board.id.clone()).collect(),
+        }
+    }
+
+    pub fn board_count(&self) -> usize {
+        self.board_ids().len()
+    }
+
+    /// Qualify a local hole for this model. The single-board legacy contract
+    /// intentionally keeps its original unqualified JSON spelling.
+    pub fn qualified_hole(&self, board_id: &BoardId, local: &HoleId) -> Option<HoleId> {
+        hole_group(&local.0)?;
+        match self {
+            Self::HalfSizeSolderless if board_id.0 == DEFAULT_BOARD_ID => Some(local.clone()),
+            Self::HalfSizeSolderless => None,
+            Self::MultiBoard { boards } if boards.iter().any(|board| board.id == *board_id) => {
+                Some(HoleId(format!("{}/{}", board_id.0, local.0)))
+            }
+            Self::MultiBoard { .. } => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -302,9 +351,111 @@ pub struct Node {
     pub contacts: Vec<Contact>,
 }
 
+#[derive(Clone, Debug)]
+struct ResolvedHole {
+    canonical: HoleId,
+    local: String,
+}
+
+#[derive(Clone, Debug)]
+struct BoardTopology {
+    board_ids: BTreeSet<BoardId>,
+    multi_board: bool,
+}
+
+impl BoardTopology {
+    fn new(model: &BoardModel, errors: &mut Vec<Diagnostic>) -> Self {
+        let mut board_ids = BTreeSet::new();
+        match model {
+            BoardModel::HalfSizeSolderless => {
+                board_ids.insert(BoardId(DEFAULT_BOARD_ID.into()));
+                Self {
+                    board_ids,
+                    multi_board: false,
+                }
+            }
+            BoardModel::MultiBoard { boards } => {
+                if boards.is_empty() || boards.len() > MAX_BOARDS {
+                    errors.push(Diagnostic::new(
+                        "board_limit",
+                        "board.model.boards",
+                        format!("a multi_board model must contain 1..={MAX_BOARDS} boards"),
+                    ));
+                }
+                for (index, board) in boards.iter().enumerate() {
+                    let path = format!("board.model.boards[{index}]");
+                    if board.id.0.is_empty()
+                        || board.id.0.len() > 64
+                        || !board
+                            .id
+                            .0
+                            .chars()
+                            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_'))
+                    {
+                        errors.push(Diagnostic::new(
+                            "invalid_board_id",
+                            format!("{path}.id"),
+                            "board id must contain 1–64 ASCII letters, digits, '-' or '_'",
+                        ));
+                    }
+                    if !board_ids.insert(board.id.clone()) {
+                        errors.push(Diagnostic::new(
+                            "duplicate_board_id",
+                            format!("{path}.id"),
+                            format!("duplicate board id {}", board.id.0),
+                        ));
+                    }
+                    if !matches!(board.model, BoardSurfaceModel::HalfSizeSolderless) {
+                        errors.push(Diagnostic::new(
+                            "unsupported_board_model",
+                            format!("{path}.model"),
+                            "only half_size_solderless boards are supported",
+                        ));
+                    }
+                }
+                Self {
+                    board_ids,
+                    multi_board: true,
+                }
+            }
+        }
+    }
+
+    fn resolve(&self, hole: &HoleId) -> Option<ResolvedHole> {
+        if self.multi_board {
+            let (board_id, local) = hole.0.split_once('/')?;
+            let board_id = BoardId(board_id.to_owned());
+            if !self.board_ids.contains(&board_id) || hole_group(local).is_none() {
+                return None;
+            }
+            Some(ResolvedHole {
+                canonical: hole.clone(),
+                local: local.to_owned(),
+            })
+        } else if hole_group(&hole.0).is_some() {
+            Some(ResolvedHole {
+                canonical: hole.clone(),
+                local: hole.0.clone(),
+            })
+        } else {
+            None
+        }
+    }
+
+    fn qualify(&self, board_id: &BoardId, local: &str) -> HoleId {
+        if self.multi_board {
+            HoleId(format!("{}/{}", board_id.0, local))
+        } else {
+            HoleId(local.to_owned())
+        }
+    }
+}
+
 /// Validate project references and derive nodes. Rows 1–30 have isolated A–E and F–J
 /// five-hole strips; rows do not connect vertically. Rails TP+/TP- and BP+/BP- are
-/// continuous from rows 1–30. Only wire endpoints connect; geometric crossings do not.
+/// continuous from rows 1–30. In a multi-board model, the same rules apply
+/// independently to each named board. Only wire endpoints connect; geometric
+/// crossings do not.
 pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>> {
     let mut errors = Vec::new();
     if project.format_version != PROJECT_FORMAT_VERSION {
@@ -336,6 +487,8 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
         ));
     }
 
+    let board_topology = BoardTopology::new(&project.board.model, &mut errors);
+
     let mut component_ids = BTreeSet::new();
     let mut wire_ids = BTreeSet::new();
     let mut parent: BTreeMap<HoleId, HoleId> = BTreeMap::new();
@@ -357,7 +510,7 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
             parent.insert(hi, lo);
         }
     }
-    let valid_hole = |h: &HoleId| hole_group(&h.0).is_some();
+    let valid_hole = |h: &HoleId| board_topology.resolve(h).is_some();
     for wire in &project.wires {
         if !wire_ids.insert(wire.id.clone()) {
             errors.push(Diagnostic::new(
@@ -371,12 +524,22 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                 errors.push(Diagnostic::new(
                     "invalid_hole",
                     format!("wires.{}.{}", wire.id.0, field),
-                    format!("unknown board hole {}", hole.0),
+                    if board_topology.multi_board {
+                        format!(
+                            "unknown or unqualified board hole {}; use board_id/local_hole",
+                            hole.0
+                        )
+                    } else {
+                        format!("unknown board hole {}", hole.0)
+                    },
                 ));
             }
         }
-        if valid_hole(&wire.from) && valid_hole(&wire.to) {
-            union(&mut parent, &wire.from, &wire.to);
+        if let (Some(from), Some(to)) = (
+            board_topology.resolve(&wire.from),
+            board_topology.resolve(&wire.to),
+        ) {
+            union(&mut parent, &from.canonical, &to.canonical);
         }
     }
     let mut pin_contacts: BTreeMap<HoleId, Vec<Contact>> = BTreeMap::new();
@@ -529,14 +692,27 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                 errors.push(Diagnostic::new(
                     "invalid_hole",
                     format!("components.{}.pins.{}", c.id.0, pin.0),
-                    format!("unknown board hole {}", hole.0),
+                    if board_topology.multi_board {
+                        format!(
+                            "unknown or unqualified board hole {}; use board_id/local_hole",
+                            hole.0
+                        )
+                    } else {
+                        format!("unknown board hole {}", hole.0)
+                    },
                 ));
             } else {
+                let canonical = board_topology
+                    .resolve(hole)
+                    .expect("valid hole was resolved")
+                    .canonical;
                 pin_contacts
-                    .entry(hole.clone())
+                    .entry(canonical.clone())
                     .or_default()
                     .push(Contact::ComponentPin(c.id.clone(), pin.clone()));
-                parent.entry(hole.clone()).or_insert_with(|| hole.clone());
+                parent
+                    .entry(canonical.clone())
+                    .or_insert_with(|| canonical.clone());
             }
         }
         for (key, value) in &c.parameters {
@@ -659,9 +835,25 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
     let holes: Vec<_> = parent.keys().cloned().collect();
     for i in 0..holes.len() {
         for j in (i + 1)..holes.len() {
-            if hole_group(&holes[i].0).is_some()
-                && hole_group(&holes[i].0) == hole_group(&holes[j].0)
-            {
+            let same_contact_group = match (
+                board_topology.resolve(&holes[i]),
+                board_topology.resolve(&holes[j]),
+            ) {
+                (Some(first), Some(second)) => {
+                    hole_group(&first.local).is_some()
+                        && hole_group(&first.local) == hole_group(&second.local)
+                        && holes[i]
+                            .0
+                            .split_once('/')
+                            .map_or(DEFAULT_BOARD_ID, |(board, _)| board)
+                            == holes[j]
+                                .0
+                                .split_once('/')
+                                .map_or(DEFAULT_BOARD_ID, |(board, _)| board)
+                }
+                _ => false,
+            };
+            if same_contact_group {
                 union(&mut parent, &holes[i], &holes[j]);
             }
         }
@@ -675,10 +867,14 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
         let r = root(&mut parent, &h);
         let contacts = groups.entry(r).or_default();
         contacts.push(Contact::Hole(h.clone()));
-        let group = hole_group(&h.0).expect("validated hole");
+        let resolved = board_topology.resolve(&h).expect("validated hole");
+        let group = hole_group(&resolved.local).expect("validated hole");
+        let board_id = BoardId(h.0.split('/').next().unwrap_or(DEFAULT_BOARD_ID).into());
         if group.starts_with("TP") || group.starts_with("BP") {
             for row in 1..=30 {
-                contacts.push(Contact::Hole(HoleId(format!("{group}:{row}"))));
+                contacts.push(Contact::Hole(
+                    board_topology.qualify(&board_id, &format!("{group}:{row}")),
+                ));
             }
         } else if let Some((strip, row)) = group.split_once(':')
             && strip == "strip"
@@ -686,7 +882,9 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
             let start = if row.starts_with("left") { 'A' } else { 'F' };
             let row = row.rsplit(':').next().unwrap();
             for col in start..=if start == 'A' { 'E' } else { 'J' } {
-                contacts.push(Contact::Hole(HoleId(format!("{col}{row}"))));
+                contacts.push(Contact::Hole(
+                    board_topology.qualify(&board_id, &format!("{col}{row}")),
+                ));
             }
         }
     }
@@ -1658,6 +1856,176 @@ mod tests {
             rail.contacts
                 .contains(&Contact::Hole(HoleId("TP+:30".into())))
         );
+    }
+
+    fn multi_board_model(ids: &[&str]) -> BoardModel {
+        BoardModel::MultiBoard {
+            boards: ids
+                .iter()
+                .map(|id| BoardSpec {
+                    id: BoardId((*id).into()),
+                    model: BoardSurfaceModel::HalfSizeSolderless,
+                })
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn multi_board_contract_requires_qualified_holes_and_keeps_strips_local() {
+        let model = multi_board_model(&["logic", "display"]);
+        assert_eq!(model.board_count(), 2);
+        assert_eq!(
+            model.qualified_hole(&BoardId("logic".into()), &HoleId("A1".into())),
+            Some(HoleId("logic/A1".into()))
+        );
+        assert_eq!(
+            model.qualified_hole(&BoardId("missing".into()), &HoleId("A1".into())),
+            None
+        );
+
+        let mut p = project();
+        p.board.model = model;
+        p.components.clear();
+        p.wires = vec![
+            Wire {
+                id: WireId("same-board".into()),
+                from: HoleId("logic/A1".into()),
+                to: HoleId("logic/A2".into()),
+            },
+            Wire {
+                id: WireId("cross-board".into()),
+                from: HoleId("logic/F1".into()),
+                to: HoleId("display/F1".into()),
+            },
+        ];
+        let json = serde_json::to_string(&p).unwrap();
+        assert_eq!(serde_json::from_str::<Project>(&json).unwrap(), p);
+        let nodes = compile_topology(&p).unwrap();
+        let logic_left = nodes
+            .iter()
+            .find(|node| {
+                node.contacts
+                    .contains(&Contact::Hole(HoleId("logic/A1".into())))
+            })
+            .unwrap();
+        assert!(
+            logic_left
+                .contacts
+                .contains(&Contact::Hole(HoleId("logic/E1".into())))
+        );
+        assert!(
+            !logic_left
+                .contacts
+                .contains(&Contact::Hole(HoleId("display/E1".into())))
+        );
+        let cross_board = nodes
+            .iter()
+            .find(|node| {
+                node.contacts
+                    .contains(&Contact::Hole(HoleId("logic/F1".into())))
+            })
+            .unwrap();
+        assert!(
+            cross_board
+                .contacts
+                .contains(&Contact::Hole(HoleId("display/F1".into())))
+        );
+    }
+
+    #[test]
+    fn multi_board_electrical_path_is_calculated_only_when_wired() {
+        let mut p = project();
+        p.board.model = multi_board_model(&["source", "load"]);
+        p.components = vec![
+            Component {
+                id: ComponentId("V1".into()),
+                kind: ComponentKind::DcVoltageSource,
+                pins: BTreeMap::from([
+                    (PinId("positive".into()), HoleId("source/TP+:1".into())),
+                    (PinId("negative".into()), HoleId("source/TP-:1".into())),
+                ]),
+                parameters: BTreeMap::from([("voltage".into(), 5.0)]),
+                ic_device: None,
+                other_device: None,
+                module: None,
+                diode_model: None,
+            },
+            Component {
+                id: ComponentId("R1".into()),
+                kind: ComponentKind::Resistor,
+                pins: BTreeMap::from([
+                    (PinId("a".into()), HoleId("load/A1".into())),
+                    (PinId("b".into()), HoleId("load/F1".into())),
+                ]),
+                parameters: BTreeMap::from([("resistance".into(), 100.0)]),
+                ic_device: None,
+                other_device: None,
+                module: None,
+                diode_model: None,
+            },
+        ];
+        p.wires = vec![
+            Wire {
+                id: WireId("positive-link".into()),
+                from: HoleId("source/TP+:2".into()),
+                to: HoleId("load/A1".into()),
+            },
+            Wire {
+                id: WireId("negative-link".into()),
+                from: HoleId("load/F1".into()),
+                to: HoleId("source/TP-:2".into()),
+            },
+        ];
+        let result = solve_dc(&p, &BTreeMap::new(), &BTreeMap::new()).unwrap();
+        assert!((result.resistor_currents[&ComponentId("R1".into())] - 0.05).abs() < 1e-10);
+    }
+
+    #[test]
+    fn multi_board_rejects_duplicate_ids_and_unqualified_references() {
+        let mut p = project();
+        p.board.model = multi_board_model(&["logic", "logic"]);
+        p.wires = vec![Wire {
+            id: WireId("bad".into()),
+            from: HoleId("A1".into()),
+            to: HoleId("logic/A2".into()),
+        }];
+        let errors = compile_topology(&p).unwrap_err();
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.code == "duplicate_board_id")
+        );
+        assert!(errors.iter().any(|error| error.code == "invalid_hole"));
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 64,
+            rng_seed: proptest::test_runner::RngSeed::Fixed(0xB04D_2026),
+            ..ProptestConfig::default()
+        })]
+        #[test]
+        fn multi_board_topology_is_invariant_under_wire_order(
+            endpoints in proptest::collection::vec((0usize..4, 0usize..4, 0usize..4, 0usize..4), 1..24)
+        ) {
+            let ids = ["logic", "display", "controls", "power"];
+            let local = ["A1", "E1", "F1", "J1"];
+            let mut p = project();
+            p.board.model = multi_board_model(&ids);
+            p.components.clear();
+            p.wires = endpoints
+                .iter()
+                .enumerate()
+                .map(|(index, &(from_board, from_hole, to_board, to_hole))| Wire {
+                    id: WireId(format!("W{index}")),
+                    from: HoleId(format!("{}/{}", ids[from_board], local[from_hole])),
+                    to: HoleId(format!("{}/{}", ids[to_board], local[to_hole])),
+                })
+                .collect();
+            let expected = compile_topology(&p).unwrap();
+            p.wires.reverse();
+            prop_assert_eq!(compile_topology(&p).unwrap(), expected);
+        }
     }
     #[test]
     fn rejects_bad_reference_version_and_parameters() {

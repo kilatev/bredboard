@@ -14,6 +14,15 @@ are each continuous over rows 1–30. Rail holes use IDs such as `TP+:1` and
 `BP-:30`. Wires connect only their `from` and `to` endpoints; crossing segments
 have no connection unless they share an endpoint hole.
 
+Catalog systems that need more than one physical breadboard use the same
+electrical model with board.model set to multi_board and a list of named
+half_size_solderless boards. Each component pin and wire endpoint must then
+qualify its local hole as board_id/local_hole, for example display/A1 or
+logic/TP+:1. Contact strips and rails are continuous only within their named
+board. A wire endpoint is the only way to create a cross-board electrical
+connection; the solver never joins equal local hole names from different
+boards implicitly. Up to eight boards are supported.
+
 The shared app draws `TP+`/`TP-` as the left pair of rails and `BP+`/`BP-` as the right pair. The four rails remain independent unless a fixture explicitly connects them. The three built-in fixtures in `fixtures/projects/` use unique holes for every lead and wire endpoint; no two physical plugs occupy one hole.
 
 Each component has a stable string `id`, a catalog `kind`, a map from pin name
@@ -67,6 +76,21 @@ Example authoring input (also stored as `fixtures/projects/valid-resistor.json`)
   ]
 }
 ```
+
+A multi-board header has this shape:
+
+    {
+      "board": {
+        "model": {
+          "multi_board": {
+            "boards": [
+              { "id": "logic", "model": "half_size_solderless" },
+              { "id": "display", "model": "half_size_solderless" }
+            ]
+          }
+        }
+      }
+    }
 
 ## Resistive DC solver (T03)
 

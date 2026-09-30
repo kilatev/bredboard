@@ -81,11 +81,20 @@ cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c08-s14-01-c
 cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
 ```
 
+The shared board-model slice now provides a validated multi_board contract
+for up to eight named half_size_solderless boards. Qualified
+board_id/local_hole references preserve per-board strips and rails, while
+explicit wire endpoints can connect boards; deterministic topology and a
+calculated cross-board resistor path are covered by fixed-seed core tests.
+S14-07 remains blocked because its diode matrix, decoder/driver mapping,
+sequencing behavior, and two-board fixture/layout are not implemented.
+
 ## Current blockers
 
 - DAC/ADC, op-amp, comparator, oscillator, diode-ROM, measurement, optical
   sensor, modulated-light, multi-bit light-link, large-array, and motion-scene
-  contracts are not yet available.
+  contracts and S14-07's fixture-specific multi-board display semantics are
+  not yet available.
 - Manual interaction and real-breadboard evidence are pending for any new
   fixture.
 
