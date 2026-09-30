@@ -1,24 +1,18 @@
-Implemented the shared `ComponentKind::Other` electrical model.
+Implemented the shared core diode model.
 
-Key changes:
-
-- Added named-pin contracts with calculated behaviors:
-  - resistive
-  - bounded voltage source
-  - linear transfer
-  - voltage-controlled resistance
-- Integrated topology validation and solver support without Bevy or a second netlist.
-- Added calculated terminal-current/output-voltage readings.
-- Added reproducible property and unit tests.
-- Added model documentation: [OTHER-DEVICE-MODEL.md](/home/vetalik/prj/bredboard/.codex-batch-worktrees/other/docs/catalog/OTHER-DEVICE-MODEL.md).
-- Updated all requested catalog rows with `ok:other_model`; fixture-specific gaps remain `blocked_component`.
-- Left unrelated `need:other` entries unchanged.
-- No individual catalog fixtures were added.
+- Added standard, Schottky, and zener behavior with deterministic smooth linearization and reverse-breakdown support in [diode.rs](/home/vetalik/prj/bredboard/.codex-batch-worktrees/diode/crates/core/src/diode.rs).
+- Integrated it into topology validation and the existing solver without adding a netlist or Bevy dependency.
+- Added reproducible property/unit tests.
+- Updated all 17 requested ledger rows from `need:diode` to `diode×N:modelled`; dispositions remain `blocked_component` with remaining fixture gaps documented.
+- Updated the active C05 task card.
 
 Verification passed:
 
-- Workspace tests: 52 app, 121 core, 3 tools
-- Final core tests: 121 passed
-- Clippy with `-D warnings`
-- Formatting and diff checks
-- Workspace check with `--locked`
+- `cargo fmt --all --check`
+- workspace Clippy with `-D warnings`
+- `cargo test --workspace --locked`
+- native build
+- WASM build
+- `git diff --check`
+
+No individual catalog fixtures were implemented, and no commit or push was performed.
