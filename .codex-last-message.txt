@@ -1,12 +1,18 @@
-Implemented the shared multi-board core model.
+Implemented CAT-S06-06 end to end.
 
-- Added `BoardModel::MultiBoard` with 1–8 named solderless boards.
-- Added qualified hole IDs (`board_id/local_hole`).
-- Preserved legacy single-board JSON and format version 1.
-- Derived topology remains contact/pin/wire-based; cross-board connectivity requires explicit wires.
-- Added calculated cross-board solver coverage and fixed-seed property tests.
-- Updated format docs, C07/C08 task evidence, and both ledger rows.
+- Added [noise-generator fixture](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-06/fixtures/projects/c04-s06-06-noise-generator.json>).
+- Added deterministic reverse-breakdown NPN noise modeling and validation.
+- Registered the circuit, menu entry, and POT1 control in the app.
+- Added focused solver/property regressions.
+- Updated [project format](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-06/docs/PROJECT-FORMAT.md>), task evidence, and [audit ledger](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-06/docs/catalog/CATALOG-AUDIT-LEDGER.md:90>) as `fixture_ready`.
+- Recorded LM386 and three-terminal potentiometer discrepancies with `D-S06 / S-GEN / B-COARSE`.
 
-Both entries remain `blocked_component` with fixture-specific gaps documented; `need:board` was removed.
+Verification passed:
 
-Verification passed: workspace Clippy, formatting, 52 app tests, 133 core tests, 3 tools tests, doc tests, and diff checks.
+- Workspace tests: 52 app, 135 core, 3 tools, 0 failures.
+- Clippy, formatting, native and WASM builds.
+- Fixture validation: 12 components, 3 wires, 10 derived nodes.
+- 4,000-step simulation and catalog validation: 20 sections, 212 schematics.
+- `git diff --check`.
+
+No commit or push was performed.

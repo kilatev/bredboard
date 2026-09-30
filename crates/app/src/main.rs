@@ -121,6 +121,8 @@ const C04_S06_02_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-0
 const C04_S06_05_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-05-doorbell.json");
 const C04_S06_08_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-08-siren.json");
 const C04_S06_03_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-03-piano.json");
+const C04_S06_06_JSON: &str =
+    include_str!("../../../fixtures/projects/c04-s06-06-noise-generator.json");
 const C05_S07_10_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-10-two-minute-timer.json");
 const C05_S07_09_JSON: &str =
@@ -244,6 +246,7 @@ enum Circuit {
     C04S06_05,
     C04S06_08,
     C04S06_03,
+    C04S06_06,
     C05S07_09,
     C05S07_10,
     C05S07_08,
@@ -285,7 +288,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 98] {
+    fn all() -> [Self; 99] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -328,6 +331,7 @@ impl Circuit {
             Self::C04S06_05,
             Self::C04S06_08,
             Self::C04S06_03,
+            Self::C04S06_06,
             Self::C05S07_09,
             Self::C05S07_10,
             Self::C05S07_08,
@@ -463,6 +467,7 @@ impl Circuit {
             Self::C04S06_05 => C04_S06_05_JSON,
             Self::C04S06_08 => C04_S06_08_JSON,
             Self::C04S06_03 => C04_S06_03_JSON,
+            Self::C04S06_06 => C04_S06_06_JSON,
             Self::C05S07_09 => C05_S07_09_JSON,
             Self::C05S07_10 => C05_S07_10_JSON,
             Self::C05S07_08 => C05_S07_08_JSON,
@@ -565,6 +570,7 @@ impl Circuit {
             Self::C04S06_05 => "C04-S06-05: DOORBELL",
             Self::C04S06_08 => "C04-S06-08: POLICE SIREN",
             Self::C04S06_03 => "C04-S06-03: ELECTRONIC PIANO",
+            Self::C04S06_06 => "C04-S06-06: NOISE GENERATOR",
             Self::C05S07_09 => "C05-S07-09: REFRIGERATOR-DOOR GUARD",
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
@@ -761,6 +767,10 @@ impl Circuit {
             Self::C04S06_03 => (
                 "Eight calculated button-and-potentiometer key branches provide electrical note inputs to a bounded 555 tone path and speaker load. The source's exact musical tuning and one-at-a-time frequency selection remain explicit discrepancies.",
                 "Task: adjust RV1–RV8, press the eight keys, and compare their calculated branch currents with the speaker load.",
+            ),
+            Self::C04S06_06 => (
+                "A calculated reverse-breakdown NPN junction produces a deterministic fixed-step noise current, which passes through a common-emitter stage and bounded amplifier into the speaker load. The source LM386 package and three-terminal potentiometer are represented by the existing amplifier and rheostat contracts.",
+                "Task: run the fixture, drag POT1, and compare the calculated Q1 breakdown node variation with the speaker-load current.",
             ),
             Self::C05S07_09 => (
                 "A calculated 555 monostable uses a button as a bounded reed-contact substitute and drives a buzzer load through an RC delay. The physical magnet and refrigerator door remain presentation discrepancies.",
@@ -1382,6 +1392,7 @@ impl Circuit {
                     is_switch: false,
                 },
             ],
+            Self::C04S06_06 => &[],
             Self::C05S07_09 => &[ControlSpec {
                 label: "S1: DOOR CONTACT",
                 component: "S1",
@@ -1654,6 +1665,10 @@ impl Circuit {
                     component: "RV8",
                 },
             ],
+            Self::C04S06_06 => &[DialSpec {
+                label: "POT1: NOISE LEVEL - drag left/right",
+                component: "POT1",
+            }],
             Self::C05S07_10 => &[DialSpec {
                 label: "RV1: TIMER LENGTH - drag left/right",
                 component: "RV1",
@@ -3546,7 +3561,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            98
+            99
         );
         assert!(matches!(
             items[0],

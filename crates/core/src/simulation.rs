@@ -450,6 +450,7 @@ fn step_once_with_iteration_limit(
         &state.capacitor_voltages,
         &state.control_ratios,
         &state.digital_states,
+        state.step,
         max_iterations,
     ) {
         Ok(mut result) => {
@@ -461,6 +462,7 @@ fn step_once_with_iteration_limit(
                     &state.capacitor_voltages,
                     &state.control_ratios,
                     &state.digital_states,
+                    state.step,
                     max_iterations,
                 ) {
                     Ok(result) => result,
@@ -1848,6 +1850,55 @@ mod tests {
         );
         assert!(max_npn > 0.0001);
         assert!(max_pnp > 0.0001);
+    }
+
+    #[test]
+    fn c04_noise_generator_uses_reverse_breakdown_and_drives_speaker() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c04-s06-06-noise-generator.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Run]);
+        let mut min_q1_emitter = f64::INFINITY;
+        let mut max_q1_emitter = f64::NEG_INFINITY;
+        let mut max_speaker = 0.0_f64;
+        for _ in 0..2_000 {
+            advance_steps(&project, &mut state, 1);
+            let solved = state
+                .last_valid
+                .as_ref()
+                .unwrap_or_else(|| panic!("diagnostics={:?}", state.diagnostics));
+            let emitter = solved
+                .node_voltages
+                .iter()
+                .find_map(|node| {
+                    node.contacts
+                        .contains(&crate::Contact::ComponentPin(
+                            ComponentId("Q1".into()),
+                            crate::PinId("emitter".into()),
+                        ))
+                        .then_some(node.voltage)
+                })
+                .unwrap();
+            min_q1_emitter = min_q1_emitter.min(emitter);
+            max_q1_emitter = max_q1_emitter.max(emitter);
+            max_speaker = max_speaker.max(
+                solved
+                    .resistor_currents
+                    .get(&ComponentId("SPK1".into()))
+                    .copied()
+                    .unwrap_or(0.0)
+                    .abs(),
+            );
+        }
+        assert!(!state.stale, "diagnostics={:?}", state.diagnostics);
+        assert!(
+            max_q1_emitter - min_q1_emitter > 0.01,
+            "Q1 emitter range: {min_q1_emitter}..{max_q1_emitter}"
+        );
+        assert!(max_speaker > 0.0001, "speaker current: {max_speaker}");
     }
 
     #[test]

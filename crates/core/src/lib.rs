@@ -739,6 +739,16 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                 _ => {}
             }
         }
+        if c.kind == ComponentKind::NpnTransistor
+            && c.parameters.contains_key("reverse_breakdown_voltage")
+                != c.parameters.contains_key("reverse_breakdown_resistance")
+        {
+            errors.push(Diagnostic::new(
+                "incomplete_reverse_breakdown_contract",
+                format!("components.{}.parameters", c.id.0),
+                "reverse_breakdown_voltage and reverse_breakdown_resistance must be declared together",
+            ));
+        }
         for key in required_parameters(c.kind) {
             if !c.parameters.contains_key(*key) {
                 errors.push(Diagnostic::new(
@@ -1677,6 +1687,8 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         (ComponentKind::NpnTransistor | ComponentKind::PnpTransistor, "saturation_current") => {
             Some((1e-16, 1e-12))
         }
+        (ComponentKind::NpnTransistor, "reverse_breakdown_voltage") => Some((0.1, 12.0)),
+        (ComponentKind::NpnTransistor, "reverse_breakdown_resistance") => Some((1.0, 1e7)),
         (
             ComponentKind::Potentiometer | ComponentKind::Photoresistor | ComponentKind::Thermistor,
             "min_resistance" | "max_resistance",
@@ -2138,6 +2150,37 @@ mod tests {
                 }));
             }
         }
+        transistor
+            .components
+            .iter_mut()
+            .find(|component| component.id.0 == "Q1")
+            .unwrap()
+            .parameters
+            .extend([("beta".into(), 100.0), ("saturation_current".into(), 1e-12)]);
+        transistor
+            .components
+            .iter_mut()
+            .find(|component| component.id.0 == "Q1")
+            .unwrap()
+            .parameters
+            .extend([
+                ("reverse_breakdown_voltage".into(), 8.0),
+                ("reverse_breakdown_resistance".into(), 10_000.0),
+            ]);
+        assert!(compile_topology(&transistor).is_ok());
+        transistor
+            .components
+            .iter_mut()
+            .find(|component| component.id.0 == "Q1")
+            .unwrap()
+            .parameters
+            .remove("reverse_breakdown_resistance");
+        let diagnostics = compile_topology(&transistor).unwrap_err();
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "incomplete_reverse_breakdown_contract")
+        );
     }
     #[test]
     fn rejects_duplicate_ids_and_scope_overflow() {
