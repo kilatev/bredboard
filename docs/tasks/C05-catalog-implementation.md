@@ -78,6 +78,24 @@ reed-contact substitute, a 330 kΩ delay resistor, a 100 µF capacitor, and a
 bounded buzzer load. The physical magnet and refrigerator door remain
 presentation discrepancies; no scripted electrical outcome is used.
 
+The CAT-S07-02 source review remains blocked at the component-contract gate.
+Its SVG and BOM define a 9 V source, 1 kΩ series resistor, and a two-terminal
+socket for an unspecified LED or diode; they do not define the tested part's
+polarity, working/fault state, or insertion/control semantics. The shared
+`Other` contract is therefore insufficient to admit a truthful fixture without
+inventing the tested result. No project, menu registration, or automated
+fixture evidence was added; the ledger remains `blocked_component` with `I0`
+evidence and the shared `S-GEN`/`B-COARSE` findings.
+
+CAT-S07-02 verification on 2026-09-30: `cargo fmt --all --check`, `cargo
+clippy --workspace --all-targets --locked -- -D warnings`, `cargo test
+--workspace --locked` (52 app, 133 core, 3 tools, 0 doc-test failures),
+`cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked`,
+`cargo build -p bredboard-app --target wasm32-unknown-unknown --locked`,
+`cargo run -p bredboard-tools --locked -- validate-catalog
+breadboard-circuits/spec/catalog.json`, and `git diff --check` all passed.
+Fixture validation and simulation were not run because no fixture was admitted.
+
 Focused evidence for the slice:
 
 ```text

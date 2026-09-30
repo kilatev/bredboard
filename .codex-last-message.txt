@@ -1,12 +1,8 @@
-Implemented the shared multi-board core model.
+CAT-S07-02 is correctly recorded as `blocked_component`.
 
-- Added `BoardModel::MultiBoard` with 1–8 named solderless boards.
-- Added qualified hole IDs (`board_id/local_hole`).
-- Preserved legacy single-board JSON and format version 1.
-- Derived topology remains contact/pin/wire-based; cross-board connectivity requires explicit wires.
-- Added calculated cross-board solver coverage and fixed-seed property tests.
-- Updated format docs, C07/C08 task evidence, and both ledger rows.
+- Reviewed source BOM and SVG: 9 V source → 1 kΩ → undefined two-terminal DUT socket.
+- Updated [CATALOG-AUDIT-LEDGER.md](/home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S07-02/docs/catalog/CATALOG-AUDIT-LEDGER.md:99) with the missing DUT polarity/state/control contract.
+- Recorded verification in [C05-catalog-implementation.md](/home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S07-02/docs/tasks/C05-catalog-implementation.md:81).
+- No fixture or menu entry was added, since doing so would invent unsupported electrical behavior.
 
-Both entries remain `blocked_component` with fixture-specific gaps documented; `need:board` was removed.
-
-Verification passed: workspace Clippy, formatting, 52 app tests, 133 core tests, 3 tools tests, doc tests, and diff checks.
+All documented Cargo checks, catalog validation, builds, tests, and `git diff --check` passed.
