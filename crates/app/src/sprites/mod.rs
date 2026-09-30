@@ -108,7 +108,8 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
         | ComponentKind::AudioAmplifier
         | ComponentKind::StepSequencer
         | ComponentKind::Sram
-        | ComponentKind::Optocoupler => Some(&ic::IntegratedCircuit),
+        | ComponentKind::Optocoupler
+        | ComponentKind::IcDevice => Some(&ic::IntegratedCircuit),
     }
 }
 
@@ -220,6 +221,7 @@ mod tests {
                 .iter()
                 .map(|(k, v)| ((*k).into(), *v))
                 .collect::<BTreeMap<_, _>>(),
+            ic_device: None,
         }
     }
 

@@ -53,9 +53,11 @@ ledger_rows() {
 }
 
 run_agent() {
-  local key="$1" prompt="$2" branch="wt/catalog-batch/${key,,}"
-  local wt_dir="$WORKTREE_ROOT/$key"
-  local log_file="$LOG_DIR/${key}.log"
+  local key="$1" prompt="$2"
+  local safe_key="${key//\//-}"
+  local branch="wt/catalog-batch/${safe_key,,}"
+  local wt_dir="$WORKTREE_ROOT/$safe_key"
+  local log_file="$LOG_DIR/${safe_key}.log"
 
   rm -rf "$wt_dir"
   git worktree add -q -b "$branch" "$wt_dir" "$BASE_BRANCH" 2>>"$log_file" \
@@ -83,15 +85,16 @@ run_agent() {
 }
 
 merge_branch() {
-  local key="$1" branch="wt/catalog-batch/${key,,}"
+  local key="$1" safe_key="${1//\//-}"
+  local branch="wt/catalog-batch/${safe_key,,}"
   if git merge --no-ff -q -m "merge: ${key} batch pass" "$branch"; then
     echo "[$key] merged into $BASE_BRANCH"
   else
     git merge --abort || true
-    echo "[$key] MERGE CONFLICT — left worktree at $WORKTREE_ROOT/$key on branch $branch for manual resolution" >&2
+    echo "[$key] MERGE CONFLICT — left worktree at $WORKTREE_ROOT/$safe_key on branch $branch for manual resolution" >&2
     return 1
   fi
-  git worktree remove -f "$WORKTREE_ROOT/$key" 2>/dev/null || true
+  git worktree remove -f "$WORKTREE_ROOT/$safe_key" 2>/dev/null || true
 }
 
 run_batch() {
