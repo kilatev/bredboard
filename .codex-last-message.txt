@@ -1,12 +1,8 @@
-Implemented the shared multi-board core model.
+Implemented and audited S02-07.
 
-- Added `BoardModel::MultiBoard` with 1–8 named solderless boards.
-- Added qualified hole IDs (`board_id/local_hole`).
-- Preserved legacy single-board JSON and format version 1.
-- Derived topology remains contact/pin/wire-based; cross-board connectivity requires explicit wires.
-- Added calculated cross-board solver coverage and fixed-seed property tests.
-- Updated format docs, C07/C08 task evidence, and both ledger rows.
+- Added structural candidate fixture: [c01-s02-07-simple-siren.json](</home/vetalik/prj/bredboard/.codex-batch-worktrees/C01-S02-07/fixtures/projects/c01-s02-07-simple-siren.json>)
+- Updated ledger, readiness audit, and C01 evidence.
+- Candidate settles without sustained oscillation across pot ratios 0.00–0.90; remains `blocked_component`.
+- Not registered in the menu because automated electrical acceptance failed.
 
-Both entries remain `blocked_component` with fixture-specific gaps documented; `need:board` was removed.
-
-Verification passed: workspace Clippy, formatting, 52 app tests, 133 core tests, 3 tools tests, doc tests, and diff checks.
+Verification passed: formatting, Clippy, workspace tests (52 app, 133 core, 3 tools), Linux/WASM builds, fixture validation, and catalog validation.
