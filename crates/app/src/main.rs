@@ -2534,6 +2534,9 @@ fn component_summary(component: &Component) -> String {
         ComponentKind::Sram => format!("{id}  bounded 2×8 SRAM  address/data/output bus"),
         ComponentKind::Optocoupler => format!("{id}  optocoupler  isolated LED / transistor"),
         ComponentKind::IcDevice => format!("{id}  IC/device  calculated pin-level transfer"),
+        ComponentKind::Module => {
+            format!("{id}  module  calculated pin-level contract")
+        }
         ComponentKind::Other => {
             format!("{id}  catalog other device  calculated pin-level contract")
         }

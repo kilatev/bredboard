@@ -696,6 +696,7 @@ mod tests {
                     parameters: BTreeMap::from([("voltage".into(), 5.0)]),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
                 crate::Component {
@@ -705,6 +706,7 @@ mod tests {
                     parameters: BTreeMap::new(),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
                 crate::Component {
@@ -714,6 +716,7 @@ mod tests {
                     parameters: BTreeMap::from([("resistance".into(), 10_000.0)]),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
                 crate::Component {
@@ -727,6 +730,7 @@ mod tests {
                     ]),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
             ],
@@ -763,6 +767,7 @@ mod tests {
                     parameters: BTreeMap::from([("voltage".into(), 5.0)]),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
                 crate::Component {
@@ -772,6 +777,7 @@ mod tests {
                     parameters: BTreeMap::new(),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
                 crate::Component {
@@ -781,6 +787,7 @@ mod tests {
                     parameters: BTreeMap::from([("resistance".into(), 10_000.0)]),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
                 crate::Component {
@@ -790,6 +797,7 @@ mod tests {
                     parameters: BTreeMap::new(),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
                 crate::Component {
@@ -799,6 +807,7 @@ mod tests {
                     parameters: BTreeMap::from([("resistance".into(), 10_000.0)]),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
                 crate::Component {
@@ -817,6 +826,7 @@ mod tests {
                     parameters: BTreeMap::from([("output_resistance".into(), 100.0)]),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
             ],
@@ -1734,6 +1744,7 @@ mod tests {
                 parameters: BTreeMap::from([("resistance".into(), 470.0)]),
                 ic_device: None,
                 other_device: None,
+                module: None,
                 diode_model: None,
             });
         project
@@ -2134,6 +2145,7 @@ mod tests {
             parameters: BTreeMap::new(),
             ic_device: None,
             other_device: None,
+            module: None,
             diode_model: None,
         });
         let baseline = project.clone();

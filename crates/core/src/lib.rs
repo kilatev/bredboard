@@ -1,6 +1,7 @@
 //! Platform-independent project model and derived breadboard connectivity.
 mod diode;
 mod ic_device;
+mod module;
 mod other_device;
 mod persistence;
 mod simulation;
@@ -14,6 +15,10 @@ pub use diode::{
 pub use ic_device::{
     IC_DEVICE_MAX_RESISTANCE, IC_DEVICE_MIN_RESISTANCE, IcDeviceBehavior, IcDeviceLinearInput,
     IcDevicePinRole, IcDeviceSpec, IcLogicOperation, MAX_IC_DEVICE_INPUTS, MAX_IC_DEVICE_PINS,
+};
+pub use module::{
+    MAX_MODULE_CHANNELS, MAX_MODULE_INPUTS, MAX_MODULE_PINS, MODULE_MAX_RESISTANCE,
+    MODULE_MIN_RESISTANCE, ModuleBehavior, ModuleChannel, ModuleInput, ModulePinRole, ModuleSpec,
 };
 pub use other_device::{
     MAX_OTHER_DEVICE_PINS, OTHER_DEVICE_MAX_RESISTANCE, OTHER_DEVICE_MIN_RESISTANCE,
@@ -158,6 +163,10 @@ pub struct Component {
     /// the sole source of the model's electrical behavior.
     #[serde(default)]
     pub other_device: Option<OtherDeviceSpec>,
+    /// Required only for `ComponentKind::Module`. The named-pin contract is
+    /// the sole source of the module's calculated electrical behavior.
+    #[serde(default)]
+    pub module: Option<ModuleSpec>,
     /// Optional diode family and reverse-breakdown contract. Omitting it on a
     /// diode preserves the original standard forward-diode JSON contract.
     #[serde(default)]
@@ -254,6 +263,8 @@ pub enum ComponentKind {
     /// Configurable pin-level IC/module contract. Its electrical behavior is
     /// calculated from node voltages by the common solver.
     IcDevice,
+    /// Ready-made catalog module with a bounded, calculated pin-level contract.
+    Module,
     /// Explicit pin-level contract for a catalog part not yet promoted to a
     /// dedicated component kind.
     Other,
@@ -423,6 +434,21 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                     Vec::new()
                 }
             }
+        } else if c.kind == ComponentKind::Module {
+            match &c.module {
+                Some(spec) => {
+                    validate_module(c, spec, &mut errors);
+                    spec.pin_roles.keys().map(|pin| pin.0.clone()).collect()
+                }
+                None => {
+                    errors.push(Diagnostic::new(
+                        "missing_module_spec",
+                        format!("components.{}.module", c.id.0),
+                        "module components require a named-pin electrical contract",
+                    ));
+                    Vec::new()
+                }
+            }
         } else if c.kind == ComponentKind::Other {
             match &c.other_device {
                 Some(spec) => {
@@ -474,6 +500,21 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                 "unexpected_other_device_spec",
                 format!("components.{}.other_device", c.id.0),
                 "ic_device and other_device contracts cannot be combined",
+            ));
+        }
+        if c.kind == ComponentKind::Module {
+            if c.ic_device.is_some() || c.other_device.is_some() {
+                errors.push(Diagnostic::new(
+                    "unexpected_device_spec",
+                    format!("components.{}.module", c.id.0),
+                    "module components cannot combine module, ic_device, or other_device contracts",
+                ));
+            }
+        } else if c.module.is_some() {
+            errors.push(Diagnostic::new(
+                "unexpected_module_spec",
+                format!("components.{}.module", c.id.0),
+                "only module components may carry a module contract",
             ));
         }
         for (pin, hole) in &c.pins {
@@ -875,6 +916,224 @@ fn validate_ic_device_resistance(
     }
 }
 
+fn validate_module(c: &Component, spec: &ModuleSpec, errors: &mut Vec<Diagnostic>) {
+    use ModuleBehavior::{AnalogTransfer, OpenCollector, RegulatedSupply, ThresholdOutput};
+    use ModulePinRole::{Ground, Input, Output, PowerOutput, Reference, Supply};
+
+    if spec.pin_roles.len() < 2 || spec.pin_roles.len() > MAX_MODULE_PINS {
+        errors.push(Diagnostic::new(
+            "module_pin_limit",
+            format!("components.{}.module.pin_roles", c.id.0),
+            format!("a module must declare 2..={MAX_MODULE_PINS} named pins"),
+        ));
+    }
+    let supply_count = spec
+        .pin_roles
+        .values()
+        .filter(|role| matches!(role, Supply))
+        .count();
+    let ground_count = spec
+        .pin_roles
+        .values()
+        .filter(|role| matches!(role, Ground))
+        .count();
+    if supply_count != 1 || ground_count != 1 {
+        errors.push(Diagnostic::new(
+            "module_supply_contract",
+            format!("components.{}.module.pin_roles", c.id.0),
+            "a module must declare exactly one supply and one ground pin",
+        ));
+    }
+    for pin in spec.referenced_pins() {
+        if !spec.pin_roles.contains_key(pin) || !c.pins.contains_key(pin) {
+            errors.push(Diagnostic::new(
+                "module_unknown_pin",
+                format!("components.{}.module.behavior", c.id.0),
+                format!("behavior references undeclared pin {}", pin.0),
+            ));
+        }
+    }
+    let role_is = |pin: &PinId, expected: fn(&ModulePinRole) -> bool| {
+        spec.pin_roles.get(pin).is_some_and(expected)
+    };
+    match &spec.behavior {
+        AnalogTransfer {
+            output,
+            reference,
+            inputs,
+            offset,
+            min_output,
+            max_output,
+            input_resistance,
+            output_resistance,
+        } => {
+            if !role_is(output, |role| matches!(role, Output | PowerOutput))
+                || !role_is(reference, |role| matches!(role, Reference | Ground))
+            {
+                errors.push(Diagnostic::new(
+                    "module_transfer_roles",
+                    format!("components.{}.module.behavior", c.id.0),
+                    "analog transfer output/reference roles do not match the contract",
+                ));
+            }
+            if inputs.is_empty() || inputs.len() > MAX_MODULE_INPUTS {
+                errors.push(Diagnostic::new(
+                    "module_input_limit",
+                    format!("components.{}.module.behavior.inputs", c.id.0),
+                    format!("a module transfer must declare 1..={MAX_MODULE_INPUTS} inputs"),
+                ));
+            }
+            for (index, input) in inputs.iter().enumerate() {
+                if !role_is(&input.pin, |role| matches!(role, Input | Reference)) {
+                    errors.push(Diagnostic::new(
+                        "module_input_role",
+                        format!("components.{}.module.behavior.inputs[{index}]", c.id.0),
+                        "module inputs must have input or reference roles",
+                    ));
+                }
+                validate_module_finite(c, errors, &format!("inputs[{index}].gain"), input.gain);
+            }
+            validate_module_finite(c, errors, "offset", *offset);
+            validate_module_finite(c, errors, "min_output", *min_output);
+            validate_module_finite(c, errors, "max_output", *max_output);
+            if min_output > max_output {
+                errors.push(Diagnostic::new(
+                    "module_output_range",
+                    format!("components.{}.module.behavior", c.id.0),
+                    "min_output must not exceed max_output",
+                ));
+            }
+            validate_module_resistance(c, errors, "input_resistance", *input_resistance);
+            validate_module_resistance(c, errors, "output_resistance", *output_resistance);
+        }
+        ThresholdOutput {
+            input,
+            reference,
+            output,
+            threshold,
+            high_output,
+            low_output,
+            input_resistance,
+            output_resistance,
+        } => {
+            if !role_is(input, |role| matches!(role, Input))
+                || !role_is(reference, |role| matches!(role, Reference | Ground))
+                || !role_is(output, |role| matches!(role, Output))
+            {
+                errors.push(Diagnostic::new(
+                    "module_threshold_roles",
+                    format!("components.{}.module.behavior", c.id.0),
+                    "threshold input/reference/output roles do not match the contract",
+                ));
+            }
+            for (name, value) in [
+                ("threshold", *threshold),
+                ("high_output", *high_output),
+                ("low_output", *low_output),
+            ] {
+                validate_module_finite(c, errors, name, value);
+            }
+            validate_module_resistance(c, errors, "input_resistance", *input_resistance);
+            validate_module_resistance(c, errors, "output_resistance", *output_resistance);
+        }
+        OpenCollector {
+            supply,
+            ground,
+            channels,
+            input_resistance,
+            on_resistance,
+            off_resistance,
+        } => {
+            if !role_is(supply, |role| matches!(role, Supply))
+                || !role_is(ground, |role| matches!(role, Ground))
+            {
+                errors.push(Diagnostic::new(
+                    "module_driver_supply_roles",
+                    format!("components.{}.module.behavior", c.id.0),
+                    "open-collector supply/ground roles do not match the contract",
+                ));
+            }
+            if channels.is_empty() || channels.len() > MAX_MODULE_CHANNELS {
+                errors.push(Diagnostic::new(
+                    "module_channel_limit",
+                    format!("components.{}.module.behavior.channels", c.id.0),
+                    format!("a module driver must declare 1..={MAX_MODULE_CHANNELS} channels"),
+                ));
+            }
+            for (index, channel) in channels.iter().enumerate() {
+                if !role_is(&channel.input, |role| matches!(role, Input))
+                    || !role_is(&channel.output, |role| matches!(role, Output))
+                {
+                    errors.push(Diagnostic::new(
+                        "module_channel_role",
+                        format!("components.{}.module.behavior.channels[{index}]", c.id.0),
+                        "driver channel input/output roles do not match the contract",
+                    ));
+                }
+            }
+            validate_module_resistance(c, errors, "input_resistance", *input_resistance);
+            validate_module_resistance(c, errors, "on_resistance", *on_resistance);
+            validate_module_resistance(c, errors, "off_resistance", *off_resistance);
+        }
+        RegulatedSupply {
+            input_positive,
+            input_negative,
+            output_positive,
+            output_negative,
+            target_voltage,
+            dropout_voltage,
+            input_resistance,
+            output_resistance,
+        } => {
+            if !role_is(input_positive, |role| matches!(role, Supply))
+                || !role_is(input_negative, |role| matches!(role, Ground | Reference))
+                || !role_is(output_positive, |role| matches!(role, Output | PowerOutput))
+                || !role_is(output_negative, |role| matches!(role, Ground | Reference))
+            {
+                errors.push(Diagnostic::new(
+                    "module_regulator_roles",
+                    format!("components.{}.module.behavior", c.id.0),
+                    "regulated-supply pin roles do not match the contract",
+                ));
+            }
+            validate_module_finite(c, errors, "target_voltage", *target_voltage);
+            validate_module_finite(c, errors, "dropout_voltage", *dropout_voltage);
+            if *target_voltage < 0.0 || *dropout_voltage < 0.0 {
+                errors.push(Diagnostic::new(
+                    "module_regulator_range",
+                    format!("components.{}.module.behavior", c.id.0),
+                    "target_voltage and dropout_voltage must be non-negative",
+                ));
+            }
+            validate_module_resistance(c, errors, "input_resistance", *input_resistance);
+            validate_module_resistance(c, errors, "output_resistance", *output_resistance);
+        }
+    }
+}
+
+fn validate_module_finite(c: &Component, errors: &mut Vec<Diagnostic>, path: &str, value: f64) {
+    if !value.is_finite() {
+        errors.push(Diagnostic::new(
+            "module_non_finite_value",
+            format!("components.{}.module.behavior.{path}", c.id.0),
+            "module behavior values must be finite",
+        ));
+    }
+}
+
+fn validate_module_resistance(c: &Component, errors: &mut Vec<Diagnostic>, path: &str, value: f64) {
+    validate_module_finite(c, errors, path, value);
+    if !value.is_finite() || !(MODULE_MIN_RESISTANCE..=MODULE_MAX_RESISTANCE).contains(&value) {
+        errors.push(Diagnostic::new(
+            "module_resistance_range",
+            format!("components.{}.module.behavior.{path}", c.id.0),
+            format!(
+                "resistance must be finite and in {MODULE_MIN_RESISTANCE}..={MODULE_MAX_RESISTANCE} ohms"
+            ),
+        ));
+    }
+}
+
 fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec<Diagnostic>) {
     use OtherDeviceBehavior::{
         LinearTransfer, Resistive, VoltageControlledResistance, VoltageSource,
@@ -1154,6 +1413,7 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
         ],
         ComponentKind::AudioAmplifier => &["gnd", "input", "output", "vcc"],
         ComponentKind::IcDevice => &[],
+        ComponentKind::Module => &[],
         ComponentKind::Other => &[],
     }
 }
@@ -1198,6 +1458,7 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::BargraphDisplay => &["output_resistance"],
         ComponentKind::AudioAmplifier => &["gain", "output_resistance"],
         ComponentKind::IcDevice => &[],
+        ComponentKind::Module => &[],
         ComponentKind::Other => &[],
     }
 }
@@ -1310,6 +1571,7 @@ mod tests {
                 parameters: BTreeMap::from([("resistance".into(), 1000.0)]),
                 ic_device: None,
                 other_device: None,
+                module: None,
                 diode_model: None,
             }],
             initial_conditions: InitialConditions::default(),
@@ -1359,6 +1621,7 @@ mod tests {
             parameters: BTreeMap::from([("resistance".into(), 220.0)]),
             ic_device: None,
             other_device: None,
+            module: None,
             diode_model: None,
         });
         let before = compile_topology(&p).unwrap();
@@ -1529,6 +1792,7 @@ mod tests {
                 parameters: BTreeMap::from([("resistance".into(), 1000.0)]),
                 ic_device: None,
                 other_device: None,
+                module: None,
                 diode_model: None,
             })
             .collect();
@@ -1567,6 +1831,7 @@ mod tests {
             ]),
             ic_device: None,
             other_device: None,
+            module: None,
             diode_model: None,
         }
     }
@@ -1709,6 +1974,7 @@ mod tests {
             parameters: BTreeMap::from([("resistance".into(), 32.0)]),
             ic_device: None,
             other_device: None,
+            module: None,
             diode_model: None,
         }];
         p.wires.clear();
@@ -1748,6 +2014,7 @@ mod tests {
             parameters: BTreeMap::from([("resistance".into(), 8.0)]),
             ic_device: None,
             other_device: None,
+            module: None,
             diode_model: None,
         }];
         p.wires.clear();
@@ -1787,6 +2054,7 @@ mod tests {
             parameters: BTreeMap::from([("resistance".into(), 32.0)]),
             ic_device: None,
             other_device: None,
+            module: None,
             diode_model: None,
         }];
         p.wires.clear();
@@ -1827,6 +2095,7 @@ mod tests {
                 parameters: BTreeMap::from([("voltage".into(), 5.0)]),
                 ic_device: None,
                 other_device: None,
+                module: None,
                 diode_model: None,
             },
             Component {
@@ -1849,6 +2118,7 @@ mod tests {
                         resistance: 100.0,
                     },
                 }),
+                module: None,
                 diode_model: None,
             },
         ];

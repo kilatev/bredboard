@@ -1,7 +1,7 @@
 use crate::{
     Component, ComponentId, ComponentKind, Contact, ControlState, Diagnostic, DiodeModel,
-    DiodeSpec, IcDeviceBehavior, IcLogicOperation, Node, OtherDeviceBehavior, PinId, Project,
-    compile_topology, controlled_resistance,
+    DiodeSpec, IcDeviceBehavior, IcLogicOperation, ModuleBehavior, Node, OtherDeviceBehavior,
+    PinId, Project, compile_topology, controlled_resistance,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -67,6 +67,9 @@ pub struct SolveResult {
     /// Calculated output pin voltages for linear-transfer `Other` devices.
     #[serde(default)]
     pub other_output_voltages: BTreeMap<ComponentId, BTreeMap<PinId, f64>>,
+    /// Calculated output pin voltages for ready-made module contracts.
+    #[serde(default)]
+    pub module_output_voltages: BTreeMap<ComponentId, BTreeMap<PinId, f64>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -305,6 +308,11 @@ enum NonlinearElement {
         control_min: f64,
         control_max: f64,
     },
+    Module {
+        id: ComponentId,
+        pin_nodes: BTreeMap<PinId, usize>,
+        behavior: ModuleBehavior,
+    },
 }
 
 pub const FIXED_STEP_SECONDS: f64 = 100e-6;
@@ -429,6 +437,7 @@ fn solve_internal(
             ic_device_output_voltages: BTreeMap::new(),
             other_terminal_currents: BTreeMap::new(),
             other_output_voltages: BTreeMap::new(),
+            module_output_voltages: BTreeMap::new(),
         });
     }
 
@@ -697,6 +706,11 @@ fn solve_internal(
                 (*control_positive, *control_negative),
                 (*output_positive, *output_negative),
             ],
+            NonlinearElement::Module { pin_nodes, .. } => {
+                let mut nodes = pin_nodes.values().copied();
+                let Some(first) = nodes.next() else { continue };
+                nodes.map(|node| (first, node)).collect()
+            }
         };
         for (a, b) in pairs {
             adjacency[a].push(b);
@@ -873,6 +887,7 @@ fn solve_internal(
     let mut ic_device_output_voltages = BTreeMap::new();
     let mut other_terminal_currents = BTreeMap::new();
     let mut other_output_voltages = BTreeMap::new();
+    let mut module_output_voltages = BTreeMap::new();
     for branch in &branches {
         let current = match branch.kind {
             BranchKind::Resistor | BranchKind::Motor => {
@@ -1005,6 +1020,18 @@ fn solve_internal(
                         .map(|node| (pin.clone(), voltage(&solution, &voltage_vars, *node)))
                 });
                 ic_device_output_voltages.insert(id.clone(), outputs.collect());
+            }
+            NonlinearElement::Module {
+                id,
+                pin_nodes,
+                behavior,
+            } => {
+                let outputs = behavior.output_pins().into_iter().filter_map(|pin| {
+                    pin_nodes
+                        .get(pin)
+                        .map(|node| (pin.clone(), voltage(&solution, &voltage_vars, *node)))
+                });
+                module_output_voltages.insert(id.clone(), outputs.collect());
             }
             NonlinearElement::OtherSource { .. }
             | NonlinearElement::OtherLinearTransfer { .. }
@@ -1178,6 +1205,7 @@ fn solve_internal(
         ic_device_output_voltages,
         other_terminal_currents,
         other_output_voltages,
+        module_output_voltages,
     })
 }
 
@@ -1688,6 +1716,25 @@ fn make_branches(
                 }
                 active.extend(pin_nodes.values().copied());
                 nonlinear.push(NonlinearElement::IcDevice {
+                    id: component.id.clone(),
+                    pin_nodes,
+                    behavior: spec.behavior.clone(),
+                });
+                continue;
+            }
+            ComponentKind::Module => {
+                let spec = component.module.as_ref().ok_or_else(|| {
+                    calc(
+                        "missing_module_spec",
+                        format!("component {} has no module contract", component.id.0),
+                    )
+                })?;
+                let mut pin_nodes = BTreeMap::new();
+                for pin in spec.pin_roles.keys() {
+                    pin_nodes.insert(pin.clone(), node(&pin.0)?);
+                }
+                active.extend(pin_nodes.values().copied());
+                nonlinear.push(NonlinearElement::Module {
                     id: component.id.clone(),
                     pin_nodes,
                     behavior: spec.behavior.clone(),
@@ -2747,6 +2794,11 @@ fn stamp_element(
             behavior,
             ..
         } => stamp_ic_device(behavior, pin_nodes, guess, vars, matrix, rhs),
+        NonlinearElement::Module {
+            pin_nodes,
+            behavior,
+            ..
+        } => stamp_module(behavior, pin_nodes, guess, vars, matrix, rhs),
         NonlinearElement::OtherSource {
             positive,
             negative,
@@ -2899,6 +2951,181 @@ fn ic_node(pin_nodes: &BTreeMap<PinId, usize>, pin: &PinId) -> usize {
     *pin_nodes
         .get(pin)
         .expect("validated ic_device pin reference")
+}
+
+#[allow(clippy::too_many_arguments)]
+fn stamp_module(
+    behavior: &ModuleBehavior,
+    pin_nodes: &BTreeMap<PinId, usize>,
+    guess: &[f64],
+    vars: &BTreeMap<usize, usize>,
+    matrix: &mut [Vec<f64>],
+    rhs: &mut [f64],
+) {
+    let node = |pin: &PinId| *pin_nodes.get(pin).expect("validated module pin reference");
+    match behavior {
+        ModuleBehavior::AnalogTransfer {
+            output,
+            reference,
+            inputs,
+            offset,
+            min_output,
+            max_output,
+            input_resistance,
+            output_resistance,
+        } => {
+            let output = node(output);
+            let reference = node(reference);
+            let reference_voltage = voltage(guess, vars, reference);
+            let raw = offset
+                + inputs.iter().fold(0.0, |sum, input| {
+                    sum + input.gain * (voltage(guess, vars, node(&input.pin)) - reference_voltage)
+                });
+            let bounded = raw.clamp(*min_output, *max_output);
+            let target = reference_voltage + bounded;
+            let conductance = 1.0 / output_resistance;
+            let mut derivatives = vec![(output, conductance)];
+            let unclamped = (bounded - raw).abs() < f64::EPSILON;
+            derivatives.push((
+                reference,
+                -conductance
+                    * if unclamped {
+                        1.0 - inputs.iter().map(|input| input.gain).sum::<f64>()
+                    } else {
+                        1.0
+                    },
+            ));
+            if unclamped {
+                derivatives.extend(
+                    inputs
+                        .iter()
+                        .map(|input| (node(&input.pin), -conductance * input.gain)),
+                );
+            }
+            stamp_current(
+                (output, reference),
+                conductance * (voltage(guess, vars, output) - target),
+                &derivatives,
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+            for input in inputs {
+                stamp_conductance(
+                    matrix,
+                    vars,
+                    node(&input.pin),
+                    reference,
+                    1.0 / input_resistance,
+                );
+            }
+        }
+        ModuleBehavior::ThresholdOutput {
+            input,
+            reference,
+            output,
+            threshold,
+            high_output,
+            low_output,
+            input_resistance,
+            output_resistance,
+        } => {
+            let input = node(input);
+            let reference = node(reference);
+            let output = node(output);
+            let reference_voltage = voltage(guess, vars, reference);
+            let high = voltage(guess, vars, input) - reference_voltage >= *threshold;
+            let target = reference_voltage + if high { *high_output } else { *low_output };
+            let conductance = 1.0 / output_resistance;
+            stamp_current(
+                (output, reference),
+                conductance * (voltage(guess, vars, output) - target),
+                &[(output, conductance), (reference, -conductance)],
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+            stamp_conductance(matrix, vars, input, reference, 1.0 / input_resistance);
+        }
+        ModuleBehavior::OpenCollector {
+            supply,
+            ground,
+            channels,
+            input_resistance,
+            on_resistance,
+            off_resistance,
+        } => {
+            let supply = node(supply);
+            let ground = node(ground);
+            let supply_voltage = voltage(guess, vars, supply);
+            let ground_voltage = voltage(guess, vars, ground);
+            let threshold = ground_voltage + (supply_voltage - ground_voltage) * 0.5;
+            for channel in channels {
+                let input = node(&channel.input);
+                let output = node(&channel.output);
+                stamp_conductance(matrix, vars, input, ground, 1.0 / input_resistance);
+                let resistance = if voltage(guess, vars, input) >= threshold {
+                    *on_resistance
+                } else {
+                    *off_resistance
+                };
+                stamp_conductance(matrix, vars, output, ground, 1.0 / resistance);
+            }
+        }
+        ModuleBehavior::RegulatedSupply {
+            input_positive,
+            input_negative,
+            output_positive,
+            output_negative,
+            target_voltage,
+            dropout_voltage,
+            input_resistance,
+            output_resistance,
+        } => {
+            let input_positive = node(input_positive);
+            let input_negative = node(input_negative);
+            let output_positive = node(output_positive);
+            let output_negative = node(output_negative);
+            stamp_conductance(
+                matrix,
+                vars,
+                input_positive,
+                input_negative,
+                1.0 / input_resistance,
+            );
+            let input_voltage =
+                voltage(guess, vars, input_positive) - voltage(guess, vars, input_negative);
+            let available = (input_voltage - dropout_voltage).max(0.0);
+            let target = available.min(*target_voltage);
+            let target_is_input_limited = available < *target_voltage;
+            let conductance = 1.0 / output_resistance;
+            let current = conductance
+                * (voltage(guess, vars, output_positive)
+                    - voltage(guess, vars, output_negative)
+                    - target);
+            let mut derivatives = vec![
+                (output_positive, conductance),
+                (output_negative, -conductance),
+            ];
+            if target_is_input_limited {
+                derivatives.extend([
+                    (input_positive, -conductance),
+                    (input_negative, conductance),
+                ]);
+            }
+            stamp_current(
+                (output_positive, output_negative),
+                current,
+                &derivatives,
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -3121,7 +3348,7 @@ fn check_source_cycles(branches: &[Branch]) -> Result<(), ElectricalError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::HoleId;
+    use crate::{HoleId, ModuleBehavior, ModulePinRole, ModuleSpec};
     use proptest::prelude::*;
 
     fn divider() -> Project {
@@ -3155,6 +3382,7 @@ mod tests {
                     parameters: BTreeMap::from([(String::from("voltage"), 5.0)]),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
                 Component {
@@ -3167,6 +3395,7 @@ mod tests {
                     parameters: BTreeMap::from([(String::from("resistance"), 470.0)]),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
                 Component {
@@ -3179,6 +3408,7 @@ mod tests {
                     parameters: BTreeMap::from([(String::from("resistance"), 10_000.0)]),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
                 Component {
@@ -3198,6 +3428,7 @@ mod tests {
                     ]),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
             ],
@@ -3231,6 +3462,7 @@ mod tests {
                     parameters: BTreeMap::from([("voltage".into(), 5.0)]),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
                 Component {
@@ -3260,6 +3492,7 @@ mod tests {
                         },
                     }),
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
                 Component {
@@ -3272,6 +3505,7 @@ mod tests {
                     parameters: BTreeMap::from([("resistance".into(), 1_000.0)]),
                     ic_device: None,
                     other_device: None,
+                    module: None,
                     diode_model: None,
                 },
             ],
@@ -3453,6 +3687,7 @@ mod tests {
             parameters: BTreeMap::new(),
             ic_device: None,
             other_device: None,
+            module: None,
             diode_model: None,
         });
         let open = solve(&button).unwrap();
@@ -3488,6 +3723,7 @@ mod tests {
             parameters: BTreeMap::new(),
             ic_device: None,
             other_device: None,
+            module: None,
             diode_model: None,
         });
         assert!(
@@ -4746,6 +4982,130 @@ mod tests {
                 darkest < 0.0005,
                 "darkest setting must reach the LED's off threshold: {darkest}"
             );
+        }
+
+        fn module_project(input_voltage: f64) -> Project {
+            Project {
+                format_version: crate::PROJECT_FORMAT_VERSION,
+                title: "module contract test".into(),
+                board: crate::Board {
+                    model: crate::BoardModel::HalfSizeSolderless,
+                },
+                components: vec![
+                    Component {
+                        id: ComponentId("V1".into()),
+                        kind: ComponentKind::DcVoltageSource,
+                        pins: BTreeMap::from([
+                            (PinId("positive".into()), HoleId("TP+:1".into())),
+                            (PinId("negative".into()), HoleId("TP-:1".into())),
+                        ]),
+                        parameters: BTreeMap::from([(String::from("voltage"), input_voltage)]),
+                        ic_device: None,
+                        other_device: None,
+                        module: None,
+                        diode_model: None,
+                    },
+                    Component {
+                        id: ComponentId("M1".into()),
+                        kind: ComponentKind::Module,
+                        pins: BTreeMap::from([
+                            (PinId("vcc".into()), HoleId("A1".into())),
+                            (PinId("gnd".into()), HoleId("F1".into())),
+                            (PinId("out".into()), HoleId("F2".into())),
+                        ]),
+                        parameters: BTreeMap::new(),
+                        ic_device: None,
+                        other_device: None,
+                        module: Some(ModuleSpec {
+                            pin_roles: BTreeMap::from([
+                                (PinId("vcc".into()), ModulePinRole::Supply),
+                                (PinId("gnd".into()), ModulePinRole::Ground),
+                                (PinId("out".into()), ModulePinRole::Output),
+                            ]),
+                            behavior: ModuleBehavior::RegulatedSupply {
+                                input_positive: PinId("vcc".into()),
+                                input_negative: PinId("gnd".into()),
+                                output_positive: PinId("out".into()),
+                                output_negative: PinId("gnd".into()),
+                                target_voltage: 3.3,
+                                dropout_voltage: 0.5,
+                                input_resistance: 10_000.0,
+                                output_resistance: 1.0,
+                            },
+                        }),
+                        diode_model: None,
+                    },
+                    Component {
+                        id: ComponentId("R1".into()),
+                        kind: ComponentKind::Resistor,
+                        pins: BTreeMap::from([
+                            (PinId("a".into()), HoleId("A2".into())),
+                            (PinId("b".into()), HoleId("TP-:2".into())),
+                        ]),
+                        parameters: BTreeMap::from([(String::from("resistance"), 1_000.0)]),
+                        ic_device: None,
+                        other_device: None,
+                        module: None,
+                        diode_model: None,
+                    },
+                ],
+                wires: vec![
+                    crate::Wire {
+                        id: crate::WireId("VCC".into()),
+                        from: HoleId("TP+:1".into()),
+                        to: HoleId("A1".into()),
+                    },
+                    crate::Wire {
+                        id: crate::WireId("OUT".into()),
+                        from: HoleId("F2".into()),
+                        to: HoleId("A2".into()),
+                    },
+                    crate::Wire {
+                        id: crate::WireId("GND".into()),
+                        from: HoleId("TP-:1".into()),
+                        to: HoleId("F1".into()),
+                    },
+                ],
+                faults: Vec::new(),
+                initial_conditions: crate::InitialConditions::default(),
+            }
+        }
+
+        #[test]
+        fn regulated_module_uses_compiled_pins_and_calculated_output() {
+            let project = module_project(5.0);
+            let topology = compile_topology(&project).expect("module pin topology should compile");
+            assert!(topology.iter().any(|node| {
+                node.contacts.contains(&Contact::ComponentPin(
+                    ComponentId("M1".into()),
+                    PinId("out".into()),
+                ))
+            }));
+            let result = solve_dc(&project, &BTreeMap::new(), &BTreeMap::new()).unwrap();
+            let output =
+                result.module_output_voltages[&ComponentId("M1".into())][&PinId("out".into())];
+            assert!((output - 3.2967).abs() < 0.01, "output={output}");
+        }
+
+        proptest! {
+            #![proptest_config(ProptestConfig {
+                cases: 64,
+                rng_seed: proptest::test_runner::RngSeed::Fixed(0x4D4F_DA1E),
+                ..ProptestConfig::default()
+            })]
+
+            #[test]
+            fn regulated_module_output_is_bounded_and_monotone(input_voltage in 0.0f64..12.0) {
+                let result = solve_dc(
+                    &module_project(input_voltage),
+                    &BTreeMap::new(),
+                    &BTreeMap::new(),
+                ).unwrap();
+                let output = result.module_output_voltages[&ComponentId("M1".into())]
+                    [&PinId("out".into())];
+                prop_assert!(output.is_finite());
+                prop_assert!((-1e-9..=3.31).contains(&output));
+            }
         }
     }
 }
