@@ -23,7 +23,7 @@ pub use module::{
 pub use other_device::{
     MAX_OTHER_DEVICE_PINS, OTHER_DEVICE_MAX_RESISTANCE, OTHER_DEVICE_MIN_RESISTANCE,
     OtherDeviceBehavior, OtherDeviceLinearInput, OtherDevicePinRole, OtherDeviceSpec,
-    controlled_resistance,
+    controlled_resistance, ring_modulator_output,
 };
 pub use persistence::{
     ACTION_LOG_FORMAT_VERSION, ActionEvent, ActionLog, MODEL_VERSION, PersistenceError,
@@ -1334,7 +1334,8 @@ fn validate_module_resistance(c: &Component, errors: &mut Vec<Diagnostic>, path:
 
 fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec<Diagnostic>) {
     use OtherDeviceBehavior::{
-        LinearTransfer, Resistive, VoltageControlledResistance, VoltageSource,
+        LinearTransfer, Resistive, RingModulator, Transformer, VoltageControlledResistance,
+        VoltageSource,
     };
     use OtherDevicePinRole::{Control, Ground, Input, Output, Reference, Supply, Terminal};
 
@@ -1449,6 +1450,98 @@ fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec
             validate_other_finite(c, errors, "offset", *offset);
             validate_other_finite(c, errors, "min_output", *min_output);
             validate_other_finite(c, errors, "max_output", *max_output);
+            if min_output > max_output {
+                errors.push(Diagnostic::new(
+                    "other_device_output_range",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "min_output must not exceed max_output",
+                ));
+            }
+            validate_other_resistance(c, errors, "input_resistance", *input_resistance);
+            validate_other_resistance(c, errors, "output_resistance", *output_resistance);
+        }
+        Transformer {
+            primary_positive,
+            primary_negative,
+            secondary_positive,
+            secondary_negative,
+            turns_ratio,
+            primary_resistance,
+            secondary_resistance,
+        } => {
+            if !role_is(primary_positive, |role| matches!(role, Input | Terminal))
+                || !role_is(primary_negative, |role| {
+                    matches!(role, Terminal | Reference | Ground)
+                })
+                || !role_is(secondary_positive, |role| matches!(role, Output | Terminal))
+                || !role_is(secondary_negative, |role| {
+                    matches!(role, Terminal | Reference | Ground)
+                })
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_transformer_roles",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "transformer pins must declare primary input and secondary output roles",
+                ));
+            }
+            validate_other_finite(c, errors, "turns_ratio", *turns_ratio);
+            if !turns_ratio.is_finite() || !(0.1..=10.0).contains(turns_ratio) {
+                errors.push(Diagnostic::new(
+                    "other_device_transformer_ratio",
+                    format!("components.{}.other_device.behavior.turns_ratio", c.id.0),
+                    "transformer turns_ratio must be in 0.1..=10",
+                ));
+            }
+            validate_other_resistance(c, errors, "primary_resistance", *primary_resistance);
+            validate_other_resistance(c, errors, "secondary_resistance", *secondary_resistance);
+        }
+        RingModulator {
+            signal,
+            carrier,
+            output,
+            reference,
+            gain,
+            signal_scale,
+            carrier_scale,
+            min_output,
+            max_output,
+            input_resistance,
+            output_resistance,
+        } => {
+            if !role_is(signal, |role| matches!(role, Input))
+                || !role_is(carrier, |role| matches!(role, Input))
+                || !role_is(output, |role| matches!(role, Output))
+                || !role_is(reference, |role| matches!(role, Reference | Ground))
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_ring_modulator_roles",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "ring modulator requires signal/carrier inputs, an output, and a reference",
+                ));
+            }
+            for (path, value) in [
+                ("gain", *gain),
+                ("signal_scale", *signal_scale),
+                ("carrier_scale", *carrier_scale),
+                ("min_output", *min_output),
+                ("max_output", *max_output),
+            ] {
+                validate_other_finite(c, errors, path, value);
+            }
+            if !signal_scale.is_finite() || *signal_scale <= 0.0 {
+                errors.push(Diagnostic::new(
+                    "other_device_ring_modulator_scale",
+                    format!("components.{}.other_device.behavior.signal_scale", c.id.0),
+                    "signal_scale must be positive",
+                ));
+            }
+            if !carrier_scale.is_finite() || *carrier_scale <= 0.0 {
+                errors.push(Diagnostic::new(
+                    "other_device_ring_modulator_scale",
+                    format!("components.{}.other_device.behavior.carrier_scale", c.id.0),
+                    "carrier_scale must be positive",
+                ));
+            }
             if min_output > max_output {
                 errors.push(Diagnostic::new(
                     "other_device_output_range",

@@ -18,11 +18,21 @@ The supported calculated behaviors are:
 - `linear_transfer`: one finite-resistance output driven by named input
   voltages relative to a reference, with explicit gain, offset, and output
   bounds; and
+- `transformer`: a four-terminal finite-resistance primary/secondary transfer
+  with an explicit turns ratio; and
+- `ring_modulator`: a bounded multiplicative transfer from named signal and
+  carrier inputs to an output relative to a reference; and
 - `voltage_controlled_resistance`: an electrically isolated two-terminal
   output whose resistance is interpolated from a named control voltage and
   clamped to its declared range.
 
-These contracts cover the shared electrical boundary needed by the catalog's
+The transformer contract is intentionally a bounded voltage-transfer
+approximation: it includes finite primary and secondary loading but does not
+model magnetic flux, inductance, phase, or saturation. The ring-modulator
+contract calculates the product of normalized fixed-step electrical signal and
+carrier voltages; it does not record or synthesize a microphone waveform by
+wall-clock time. These contracts cover the shared electrical boundary needed
+by the catalog's
 remaining connector, source, sensor, optical, audio, actuator-load, and module
 records. They do not claim to model a physical prop, audio waveform, optical
 alignment, motor mechanics, charging protocol, thermal inertia, or firmware.
@@ -36,4 +46,3 @@ declared pin. Linear-transfer output voltages are reported separately in
 `SolveResult::other_output_voltages`. All values are derived from the solved
 node voltages on fixed solver steps and are deterministic for the same project
 and controls.
-

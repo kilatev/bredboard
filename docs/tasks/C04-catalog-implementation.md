@@ -46,9 +46,11 @@ cannot represent.
   scripting noise or guitar audio.
 - S06-09 uses LED/photoresistor optical coupling; the existing photoresistor
   control is not an optical component link, so the coupling must be defined
-  before admission. S06-10 through S06-13 require microphone, op-amp,
-  transformer, or multi-stage audio contracts and remain blocked until those
-  contracts exist.
+  before admission. S06-10, S06-12, and S06-13 require additional microphone,
+  op-amp, or multi-stage audio contracts and remain blocked until those
+  contracts exist. S06-11 is admitted with bounded microphone-proxy,
+  transformer, and ring-modulator contracts; its recorded-audio, magnetic,
+  and exact-timbre requirements remain explicit discrepancies.
 - All S11 entries require op-amp, signal-source, filter, or oscilloscope
   presentation contracts beyond the current DC/RC model. S16 additionally
   requires analog multipliers, integrator presentation, and multi-output
@@ -100,6 +102,14 @@ S06-03 adds eight button/potentiometer key branches around one calculated 555
 tone path and speaker load; exact one-key frequency selection remains a source
 discrepancy.
 
+S06-11 adds `fixtures/projects/c04-s06-11-robot-voice.json` and a reachable
+menu entry. It uses a calculated electret-input proxy, one LM358 channel, a
+fixed-step NE555 carrier, two bounded 1:1 transformer transfers, a four-diode
+ring path, and a bounded LM386-style speaker load. The fixture validates as 23
+components, 0 wires, and 12 derived nodes; the second LM358 channel,
+recorded microphone waveform, magnetic transient behavior, and exact robot
+timbre are not silently claimed.
+
 The S06-05 full gate passed on 2026-09-29 with: `cargo fmt --all --check`,
 `cargo clippy --workspace --all-targets --locked -- -D warnings`,
 `cargo test --workspace --locked` (49 app, 92 core, 3 tools, 0 doc-test
@@ -127,12 +137,24 @@ failures), native and WASM app builds, fixture validation and 4,000-step
 simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
 --check`.
 
+The S06-11 focused gate passed on 2026-09-30 with the robot-voice core
+regression, deterministic ring-modulator property tests, the app catalog
+reachability/count test, fixture validation (`23 components, 0 wires, 12
+derived nodes`), and a 4,000-step simulation. The S06-11 full gate passed on
+2026-09-30 with `cargo fmt --all --check`,
+`cargo clippy --workspace --all-targets --locked -- -D warnings`,
+`cargo test --workspace --locked` (52 app, 135 core, 3 tools, 0 doc-test
+failures), `cargo build -p bredboard-app --target x86_64-unknown-linux-gnu
+--locked`, `cargo build -p bredboard-app --target wasm32-unknown-unknown
+--locked`, fixture validation, 4,000-step simulation, catalog validation (20
+sections, 212 schematics), and `git diff --check`.
+
 ## Current blockers
 
 - Passive-piezo distinction, reverse-breakdown noise, external audio inputs,
-  microphones, op-amps, transformers, analog multipliers, optical coupling,
-  oscilloscope presentation, and the remaining multi-stage audio contracts
-  are not yet available.
+  recorded microphone waveforms, full op-amp and transformer fidelity, analog
+  multipliers, optical coupling, oscilloscope presentation, and the remaining
+  multi-stage audio contracts are not yet available.
 - Manual interaction and real-breadboard evidence are pending for all new
   fixtures.
 

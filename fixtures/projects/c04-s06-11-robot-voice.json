@@ -1,0 +1,129 @@
+{
+  "format_version": 1,
+  "title": "C04-S06-11: Calculated robot voice",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    {
+      "id": "MIC1",
+      "kind": "other",
+      "pins": { "negative": "TP-:6", "positive": "A2" },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": { "negative": "ground", "positive": "output" },
+        "behavior": {
+          "behavior": "voltage_source",
+          "positive": "positive",
+          "negative": "negative",
+          "voltage": 0.2,
+          "internal_resistance": 100000.0
+        }
+      }
+    },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "TP+:5", "b": "B2" }, "parameters": { "resistance": 2200.0 } },
+    {
+      "id": "U2",
+      "kind": "ic_device",
+      "pins": { "gnd": "TP-:2", "input": "B3", "output": "A4", "vcc": "TP+:2" },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": { "gnd": "ground", "input": "input", "output": "output", "vcc": "supply" },
+        "behavior": {
+          "behavior": "linear",
+          "output": "output",
+          "reference": "gnd",
+          "inputs": [{ "pin": "input", "gain": 4.0 }],
+          "offset": 0.0,
+          "min_output": 0.0,
+          "max_output": 5.0,
+          "input_resistance": 100000.0,
+          "output_resistance": 100.0
+        }
+      }
+    },
+    { "id": "C1", "kind": "capacitor", "pins": { "negative": "A3", "positive": "C2" }, "parameters": { "capacitance": 0.00022 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "C3", "b": "TP-:15" }, "parameters": { "resistance": 10000.0 } },
+    {
+      "id": "U1",
+      "kind": "timer_555",
+      "pins": { "control": "TP+:9", "discharge": "A5", "gnd": "TP-:3", "output": "A6", "reset": "TP+:7", "threshold": "B5", "trigger": "C5", "vcc": "TP+:3" },
+      "parameters": { "output_resistance": 50.0, "discharge_resistance": 100.0 }
+    },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "TP+:8", "b": "E5" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "C3", "kind": "capacitor", "pins": { "negative": "TP-:16", "positive": "D5" }, "parameters": { "capacitance": 0.00001 } },
+    {
+      "id": "T1",
+      "kind": "other",
+      "pins": { "primary_negative": "TP-:8", "primary_positive": "C4", "secondary_negative": "TP-:9", "secondary_positive": "A7" },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": { "primary_negative": "ground", "primary_positive": "input", "secondary_negative": "ground", "secondary_positive": "output" },
+        "behavior": {
+          "behavior": "transformer",
+          "primary_positive": "primary_positive",
+          "primary_negative": "primary_negative",
+          "secondary_positive": "secondary_positive",
+          "secondary_negative": "secondary_negative",
+          "turns_ratio": 1.0,
+          "primary_resistance": 600.0,
+          "secondary_resistance": 600.0
+        }
+      }
+    },
+    { "id": "C2", "kind": "capacitor", "pins": { "negative": "B7", "positive": "B4" }, "parameters": { "capacitance": 0.00001 } },
+    { "id": "R4", "kind": "resistor", "pins": { "a": "E8", "b": "TP-:18" }, "parameters": { "resistance": 10000.0 } },
+    {
+      "id": "T2",
+      "kind": "other",
+      "pins": { "primary_negative": "TP-:10", "primary_positive": "B6", "secondary_negative": "TP-:11", "secondary_positive": "A8" },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": { "primary_negative": "ground", "primary_positive": "input", "secondary_negative": "ground", "secondary_positive": "output" },
+        "behavior": {
+          "behavior": "transformer",
+          "primary_positive": "primary_positive",
+          "primary_negative": "primary_negative",
+          "secondary_positive": "secondary_positive",
+          "secondary_negative": "secondary_negative",
+          "turns_ratio": 1.0,
+          "primary_resistance": 600.0,
+          "secondary_resistance": 600.0
+        }
+      }
+    },
+    {
+      "id": "RM1",
+      "kind": "other",
+      "pins": { "carrier": "B8", "output": "A12", "reference": "TP-:12", "signal": "C7" },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": { "carrier": "input", "output": "output", "reference": "ground", "signal": "input" },
+        "behavior": {
+          "behavior": "ring_modulator",
+          "signal": "signal",
+          "carrier": "carrier",
+          "output": "output",
+          "reference": "reference",
+          "gain": 1.0,
+          "signal_scale": 1.0,
+          "carrier_scale": 5.0,
+          "min_output": 0.0,
+          "max_output": 5.0,
+          "input_resistance": 100000.0,
+          "output_resistance": 100.0
+        }
+      }
+    },
+    { "id": "D1", "kind": "diode", "pins": { "anode": "D7", "cathode": "C8" }, "parameters": { "forward_voltage": 0.7, "series_resistance": 1000.0 } },
+    { "id": "D2", "kind": "diode", "pins": { "anode": "D8", "cathode": "C12" }, "parameters": { "forward_voltage": 0.7, "series_resistance": 1000.0 } },
+    { "id": "D3", "kind": "diode", "pins": { "anode": "D12", "cathode": "TP-:13" }, "parameters": { "forward_voltage": 0.7, "series_resistance": 1000.0 } },
+    { "id": "D4", "kind": "diode", "pins": { "anode": "TP-:14", "cathode": "E7" }, "parameters": { "forward_voltage": 0.7, "series_resistance": 1000.0 } },
+    { "id": "C4", "kind": "capacitor", "pins": { "negative": "F12", "positive": "B12" }, "parameters": { "capacitance": 0.00001 } },
+    { "id": "R5", "kind": "resistor", "pins": { "a": "H12", "b": "TP-:17" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "AMP1", "kind": "audio_amplifier", "pins": { "gnd": "TP-:4", "input": "G12", "output": "A14", "vcc": "TP+:4" }, "parameters": { "gain": 1.5, "output_resistance": 20.0 } },
+    { "id": "C5", "kind": "capacitor", "pins": { "negative": "TP-:5", "positive": "TP+:6" }, "parameters": { "capacitance": 0.00000001 } },
+    { "id": "SP1", "kind": "speaker", "pins": { "negative": "TP-:19", "positive": "B14" }, "parameters": { "resistance": 8.0 } }
+  ],
+  "wires": [],
+  "initial_conditions": { "capacitor_voltages": { "C1": 0.0, "C2": 0.0, "C3": 0.0, "C4": 0.0, "C5": 0.0 } }
+}

@@ -1,12 +1,20 @@
-Implemented the shared multi-board core model.
+Implemented CAT-S06-11 end to end.
 
-- Added `BoardModel::MultiBoard` with 1–8 named solderless boards.
-- Added qualified hole IDs (`board_id/local_hole`).
-- Preserved legacy single-board JSON and format version 1.
-- Derived topology remains contact/pin/wire-based; cross-board connectivity requires explicit wires.
-- Added calculated cross-board solver coverage and fixed-seed property tests.
-- Updated format docs, C07/C08 task evidence, and both ledger rows.
+- Added validated robot-voice fixture with transformer and ring-modulator contracts.
+- Registered it in the app catalog/menu and added calculated readouts.
+- Added deterministic solver/property regressions.
+- Updated the Other-device model documentation.
+- Updated ledger disposition to `fixture_ready`, including explicit 5 V, microphone, transformer-fidelity, LM358-channel, and timbre discrepancies.
+- Recorded evidence in the C04 task card.
 
-Both entries remain `blocked_component` with fixture-specific gaps documented; `need:board` was removed.
+Verification passed:
 
-Verification passed: workspace Clippy, formatting, 52 app tests, 133 core tests, 3 tools tests, doc tests, and diff checks.
+- `cargo fmt --all --check`
+- Clippy with `-D warnings`
+- Full workspace tests: 52 app, 135 core, 3 tools
+- Linux and WASM builds
+- Fixture validation: 23 components, 0 wires, 12 derived nodes
+- 4,000-step simulation
+- Catalog validation and `git diff --check`
+
+Files: [fixture](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-11/fixtures/projects/c04-s06-11-robot-voice.json:1), [app registration](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-11/crates/app/src/main.rs:124>), [ledger row](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-11/docs/catalog/CATALOG-AUDIT-LEDGER.md:95).

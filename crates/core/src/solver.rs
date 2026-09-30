@@ -1,7 +1,7 @@
 use crate::{
     Component, ComponentId, ComponentKind, Contact, ControlState, Diagnostic, DiodeModel,
     DiodeSpec, IcDeviceBehavior, IcLogicOperation, ModuleBehavior, Node, OtherDeviceBehavior,
-    PinId, Project, compile_topology, controlled_resistance,
+    PinId, Project, compile_topology, controlled_resistance, ring_modulator_output,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -293,6 +293,28 @@ enum NonlinearElement {
         reference: PinId,
         inputs: Vec<(PinId, f64)>,
         offset: f64,
+        min_output: f64,
+        max_output: f64,
+        input_resistance: f64,
+        output_resistance: f64,
+    },
+    OtherTransformer {
+        primary_positive: usize,
+        primary_negative: usize,
+        secondary_positive: usize,
+        secondary_negative: usize,
+        turns_ratio: f64,
+        primary_resistance: f64,
+        secondary_resistance: f64,
+    },
+    OtherRingModulator {
+        signal: usize,
+        carrier: usize,
+        output: usize,
+        reference: usize,
+        gain: f64,
+        signal_scale: f64,
+        carrier_scale: f64,
         min_output: f64,
         max_output: f64,
         input_resistance: f64,
@@ -696,6 +718,27 @@ fn solve_internal(
                 let Some(first) = nodes.next() else { continue };
                 nodes.map(|node| (first, node)).collect()
             }
+            NonlinearElement::OtherTransformer {
+                primary_positive,
+                primary_negative,
+                secondary_positive,
+                secondary_negative,
+                ..
+            } => vec![
+                (*primary_positive, *primary_negative),
+                (*secondary_positive, *secondary_negative),
+            ],
+            NonlinearElement::OtherRingModulator {
+                signal,
+                carrier,
+                output,
+                reference,
+                ..
+            } => vec![
+                (*signal, *reference),
+                (*carrier, *reference),
+                (*output, *reference),
+            ],
             NonlinearElement::OtherControlledResistance {
                 control_positive,
                 control_negative,
@@ -1035,6 +1078,8 @@ fn solve_internal(
             }
             NonlinearElement::OtherSource { .. }
             | NonlinearElement::OtherLinearTransfer { .. }
+            | NonlinearElement::OtherTransformer { .. }
+            | NonlinearElement::OtherRingModulator { .. }
             | NonlinearElement::OtherControlledResistance { .. } => {}
             NonlinearElement::LogicGate { .. }
             | NonlinearElement::SchmittInverter { .. }
@@ -1155,6 +1200,71 @@ fn solve_internal(
                     currents.insert(input.pin.clone(), current);
                     *currents.entry(reference.clone()).or_default() -= current;
                 }
+                other_output_voltages.insert(
+                    component.id.clone(),
+                    BTreeMap::from([(output.clone(), voltage_at(output)?)]),
+                );
+            }
+            OtherDeviceBehavior::Transformer {
+                primary_positive,
+                primary_negative,
+                secondary_positive,
+                secondary_negative,
+                turns_ratio,
+                primary_resistance,
+                secondary_resistance,
+            } => {
+                let primary_voltage = voltage_at(primary_positive)? - voltage_at(primary_negative)?;
+                let secondary_target =
+                    voltage_at(secondary_negative)? + turns_ratio * primary_voltage;
+                let primary_current = primary_voltage / primary_resistance;
+                let secondary_current =
+                    (voltage_at(secondary_positive)? - secondary_target) / secondary_resistance;
+                currents.insert(primary_positive.clone(), primary_current);
+                currents.insert(primary_negative.clone(), -primary_current);
+                currents.insert(secondary_positive.clone(), secondary_current);
+                currents.insert(secondary_negative.clone(), -secondary_current);
+                other_output_voltages.insert(
+                    component.id.clone(),
+                    BTreeMap::from([(secondary_positive.clone(), voltage_at(secondary_positive)?)]),
+                );
+            }
+            OtherDeviceBehavior::RingModulator {
+                signal,
+                carrier,
+                output,
+                reference,
+                gain,
+                signal_scale,
+                carrier_scale,
+                min_output,
+                max_output,
+                input_resistance,
+                output_resistance,
+            } => {
+                let reference_voltage = voltage_at(reference)?;
+                let signal_delta = voltage_at(signal)? - reference_voltage;
+                let carrier_delta = voltage_at(carrier)? - reference_voltage;
+                let target = ring_modulator_output(
+                    reference_voltage,
+                    voltage_at(signal)?,
+                    voltage_at(carrier)?,
+                    *gain,
+                    *signal_scale,
+                    *carrier_scale,
+                    *min_output,
+                    *max_output,
+                );
+                let output_current = (voltage_at(output)? - target) / output_resistance;
+                let signal_current = signal_delta / input_resistance;
+                let carrier_current = carrier_delta / input_resistance;
+                currents.insert(output.clone(), output_current);
+                currents.insert(signal.clone(), signal_current);
+                currents.insert(carrier.clone(), carrier_current);
+                currents.insert(
+                    reference.clone(),
+                    -output_current - signal_current - carrier_current,
+                );
                 other_output_voltages.insert(
                     component.id.clone(),
                     BTreeMap::from([(output.clone(), voltage_at(output)?)]),
@@ -1807,6 +1917,70 @@ fn make_branches(
                                 .map(|input| (input.pin.clone(), input.gain))
                                 .collect(),
                             offset: *offset,
+                            min_output: *min_output,
+                            max_output: *max_output,
+                            input_resistance: *input_resistance,
+                            output_resistance: *output_resistance,
+                        });
+                    }
+                    OtherDeviceBehavior::Transformer {
+                        primary_positive,
+                        primary_negative,
+                        secondary_positive,
+                        secondary_negative,
+                        turns_ratio,
+                        primary_resistance,
+                        secondary_resistance,
+                    } => {
+                        let primary_positive = node(&primary_positive.0)?;
+                        let primary_negative = node(&primary_negative.0)?;
+                        let secondary_positive = node(&secondary_positive.0)?;
+                        let secondary_negative = node(&secondary_negative.0)?;
+                        active.extend([
+                            primary_positive,
+                            primary_negative,
+                            secondary_positive,
+                            secondary_negative,
+                        ]);
+                        nonlinear.push(NonlinearElement::OtherTransformer {
+                            primary_positive,
+                            primary_negative,
+                            secondary_positive,
+                            secondary_negative,
+                            turns_ratio: *turns_ratio,
+                            primary_resistance: *primary_resistance,
+                            secondary_resistance: *secondary_resistance,
+                        });
+                    }
+                    OtherDeviceBehavior::RingModulator {
+                        signal,
+                        carrier,
+                        output,
+                        reference,
+                        gain,
+                        signal_scale,
+                        carrier_scale,
+                        min_output,
+                        max_output,
+                        input_resistance,
+                        output_resistance,
+                    } => {
+                        let pin_nodes = spec
+                            .pin_roles
+                            .keys()
+                            .map(|pin| Ok((pin.clone(), node(&pin.0)?)))
+                            .collect::<Result<BTreeMap<_, _>, ElectricalError>>()?;
+                        active.extend(pin_nodes.values().copied());
+                        nonlinear.push(NonlinearElement::OtherRingModulator {
+                            signal: *pin_nodes.get(signal).expect("validated ring signal pin"),
+                            carrier: *pin_nodes.get(carrier).expect("validated ring carrier pin"),
+                            output: *pin_nodes.get(output).expect("validated ring output pin"),
+                            reference: *pin_nodes
+                                .get(reference)
+                                .expect("validated ring reference pin"),
+                            gain: *gain,
+                            signal_scale: *signal_scale,
+                            carrier_scale: *carrier_scale,
                             min_output: *min_output,
                             max_output: *max_output,
                             input_resistance: *input_resistance,
@@ -2847,6 +3021,75 @@ fn stamp_element(
             matrix,
             rhs,
         ),
+        NonlinearElement::OtherTransformer {
+            primary_positive,
+            primary_negative,
+            secondary_positive,
+            secondary_negative,
+            turns_ratio,
+            primary_resistance,
+            secondary_resistance,
+            ..
+        } => {
+            stamp_conductance(
+                matrix,
+                vars,
+                *primary_positive,
+                *primary_negative,
+                1.0 / *primary_resistance,
+            );
+            let conductance = 1.0 / *secondary_resistance;
+            let current = conductance
+                * (voltage(guess, vars, *secondary_positive)
+                    - voltage(guess, vars, *secondary_negative)
+                    - *turns_ratio
+                        * (voltage(guess, vars, *primary_positive)
+                            - voltage(guess, vars, *primary_negative)));
+            stamp_current(
+                (*secondary_positive, *secondary_negative),
+                current,
+                &[
+                    (*secondary_positive, conductance),
+                    (*secondary_negative, -conductance),
+                    (*primary_positive, -conductance * *turns_ratio),
+                    (*primary_negative, conductance * *turns_ratio),
+                ],
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
+        NonlinearElement::OtherRingModulator {
+            signal,
+            carrier,
+            output,
+            reference,
+            gain,
+            signal_scale,
+            carrier_scale,
+            min_output,
+            max_output,
+            input_resistance,
+            output_resistance,
+            ..
+        } => stamp_other_ring_modulator(
+            *signal,
+            *carrier,
+            *output,
+            *reference,
+            *gain,
+            *signal_scale,
+            *carrier_scale,
+            *min_output,
+            *max_output,
+            *input_resistance,
+            *output_resistance,
+            guess,
+            vars,
+            matrix,
+            rhs,
+        ),
         NonlinearElement::OtherControlledResistance {
             control_positive,
             control_negative,
@@ -2876,6 +3119,72 @@ fn stamp_element(
             );
         }
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn stamp_other_ring_modulator(
+    signal: usize,
+    carrier: usize,
+    output: usize,
+    reference: usize,
+    gain: f64,
+    signal_scale: f64,
+    carrier_scale: f64,
+    min_output: f64,
+    max_output: f64,
+    input_resistance: f64,
+    output_resistance: f64,
+    guess: &[f64],
+    vars: &BTreeMap<usize, usize>,
+    matrix: &mut [Vec<f64>],
+    rhs: &mut [f64],
+) {
+    let reference_voltage = voltage(guess, vars, reference);
+    let signal_delta = voltage(guess, vars, signal) - reference_voltage;
+    let carrier_delta = voltage(guess, vars, carrier) - reference_voltage;
+    let scale = signal_scale * carrier_scale;
+    let target = ring_modulator_output(
+        reference_voltage,
+        voltage(guess, vars, signal),
+        voltage(guess, vars, carrier),
+        gain,
+        signal_scale,
+        carrier_scale,
+        min_output,
+        max_output,
+    );
+    let raw = gain * signal_delta * carrier_delta / scale;
+    let bounded = raw.clamp(min_output, max_output);
+    let conductance = 1.0 / output_resistance;
+    let unclamped = (bounded - raw).abs() < f64::EPSILON;
+    let (signal_derivative, carrier_derivative, reference_derivative) = if unclamped {
+        let signal_derivative = gain * carrier_delta / scale;
+        let carrier_derivative = gain * signal_delta / scale;
+        (
+            signal_derivative,
+            carrier_derivative,
+            1.0 - signal_derivative - carrier_derivative,
+        )
+    } else {
+        (0.0, 0.0, 1.0)
+    };
+    let current = conductance * (voltage(guess, vars, output) - target);
+    stamp_current(
+        (output, reference),
+        current,
+        &[
+            (output, conductance),
+            (signal, -conductance * signal_derivative),
+            (carrier, -conductance * carrier_derivative),
+            (reference, -conductance * reference_derivative),
+        ],
+        guess,
+        vars,
+        matrix,
+        rhs,
+    );
+    stamp_conductance(matrix, vars, signal, reference, 1.0 / input_resistance);
+    stamp_conductance(matrix, vars, carrier, reference, 1.0 / input_resistance);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -4452,6 +4761,7 @@ mod tests {
         fixture_json!(C02_S03_05, "c02-s03-05-debounce.json");
         fixture_json!(C02_S03_02, "c02-s03-02-555-monostable.json");
         fixture_json!(C02_S03_07, "c02-s03-07-light-theremin.json");
+        fixture_json!(C04_S06_11, "c04-s06-11-robot-voice.json");
 
         #[test]
         fn all_embedded_exercise_fixtures_have_valid_solvable_topology() {
@@ -4823,6 +5133,58 @@ mod tests {
                 dark, bright,
                 "photoresistor must change calculated frequency"
             );
+        }
+
+        #[test]
+        fn c04_robot_voice_calculates_transformers_ring_modulator_and_speaker_path() {
+            let project = fixture(C04_S06_11);
+            compile_topology(&project).expect("robot voice topology should compile");
+            let mut capacitor_voltages = BTreeMap::new();
+            let mut previous_carrier = false;
+            let mut carrier_transitions = 0;
+            let mut saw_ring_output = false;
+            for _ in 0..4_000 {
+                let result = solve_transient(
+                    &project,
+                    &BTreeMap::new(),
+                    &capacitor_voltages,
+                    &BTreeMap::new(),
+                )
+                .unwrap_or_else(|error| panic!("robot voice solve failed: {error:?}"));
+                let carrier = result
+                    .node_voltages
+                    .iter()
+                    .find(|node| {
+                        node.contacts.contains(&Contact::ComponentPin(
+                            ComponentId("T2".into()),
+                            crate::PinId("secondary_positive".into()),
+                        ))
+                    })
+                    .map(|node| node.voltage > 2.5)
+                    .unwrap_or(false);
+                if carrier != previous_carrier {
+                    carrier_transitions += 1;
+                    previous_carrier = carrier;
+                }
+                let ring_output = result.other_output_voltages[&ComponentId("RM1".into())]
+                    [&crate::PinId("output".into())];
+                assert!((0.0..=5.0).contains(&ring_output));
+                assert!(
+                    result
+                        .other_output_voltages
+                        .contains_key(&ComponentId("T1".into()))
+                );
+                assert!(
+                    result
+                        .other_output_voltages
+                        .contains_key(&ComponentId("T2".into()))
+                );
+                assert!(result.resistor_currents[&ComponentId("SP1".into())].is_finite());
+                saw_ring_output |= ring_output > 1e-6;
+                capacitor_voltages = result.capacitor_voltages;
+            }
+            assert!(carrier_transitions >= 2, "carrier did not oscillate");
+            assert!(saw_ring_output, "ring modulator never produced output");
         }
 
         #[test]
