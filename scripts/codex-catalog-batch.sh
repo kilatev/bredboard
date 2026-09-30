@@ -25,7 +25,8 @@ LEDGER="docs/catalog/CATALOG-AUDIT-LEDGER.md"
 BASE_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 WORKTREE_ROOT="${WORKTREE_ROOT:-$REPO_ROOT/.codex-batch-worktrees}"
 LOG_DIR="${LOG_DIR:-$REPO_ROOT/.codex-batch-logs}"
-mkdir -p "$WORKTREE_ROOT" "$LOG_DIR"
+SHARED_TARGET_DIR="${SHARED_TARGET_DIR:-$REPO_ROOT/.cargo-target-shared}"
+mkdir -p "$WORKTREE_ROOT" "$LOG_DIR" "$SHARED_TARGET_DIR"
 
 MODE="${1:-}"
 shift || true
@@ -64,7 +65,7 @@ run_agent() {
     || { git branch -D "$branch" 2>/dev/null || true; git worktree add -q -b "$branch" "$wt_dir" "$BASE_BRANCH"; }
 
   echo "[$key] agent starting (log: $log_file)"
-  if codex exec \
+  if CARGO_TARGET_DIR="$SHARED_TARGET_DIR" codex exec \
       -C "$wt_dir" \
       --sandbox workspace-write \
       --skip-git-repo-check \
@@ -94,6 +95,12 @@ merge_branch() {
     echo "[$key] MERGE CONFLICT — left worktree at $WORKTREE_ROOT/$safe_key on branch $branch for manual resolution" >&2
     return 1
   fi
+
+  if ! CARGO_TARGET_DIR="$SHARED_TARGET_DIR" cargo check --workspace --locked >>"$LOG_DIR/${safe_key}.merge-check.log" 2>&1; then
+    echo "[$key] POST-MERGE cargo check FAILED after merging — see $LOG_DIR/${safe_key}.merge-check.log; leaving merge commit in place for manual fix (consider 'git revert')" >&2
+    return 1
+  fi
+
   git worktree remove -f "$WORKTREE_ROOT/$safe_key" 2>/dev/null || true
 }
 

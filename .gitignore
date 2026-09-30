@@ -1,3 +1,6 @@
 /target/
 /web/pkg/
 /.codex-last-message.txt
+/.cargo-target-shared/
+/.codex-batch-logs/
+/.codex-batch-worktrees/
