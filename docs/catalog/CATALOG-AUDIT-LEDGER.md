@@ -10,7 +10,7 @@ This ledger covers the reference corpus in [`breadboard-circuits/spec/catalog.js
 
 - 20 sections and 212 entries are present. Counts in order are `6, 7, 7, 9, 8, 13, 15, 19, 19, 9, 8, 7, 7, 8, 7, 6, 7, 16, 22, 12`; sum: 212.
 - All 212 catalog SVG paths exist. All 20 section Markdown files match `catalog.json` for circuit headings, image paths, and per-circuit BOM rows.
-- Current working dispositions: fixture_ready=66, blocked_component=80,
+- Current working dispositions: fixture_ready=72, blocked_component=74,
   blocked_design=1, out_of_scope=0, physical_scope=65. These are audit and
   implementation dispositions, not release counts; `fixture_ready` can become
   `ready` after its automated evidence and release decision are reconciled.
