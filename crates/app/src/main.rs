@@ -3847,7 +3847,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            99
+            106
         );
         assert!(matches!(
             items[0],
