@@ -84,9 +84,18 @@ cannot represent.
 
 ## Implementation evidence so far
 
-The first admitted C04 fixtures are `CAT-S06-02` (cricket), `CAT-S06-04`
+The first admitted C04 fixtures are `CAT-S06-01` (active and passive piezo),
+`CAT-S06-02` (cricket), `CAT-S06-04`
 (metronome), `CAT-S06-05` (doorbell), `CAT-S06-08` (police siren), and
-`CAT-S06-03` (electronic piano). S06-02 uses two calculated timer
+`CAT-S06-03` (electronic piano). CAT-S06-01 uses one 9 V source and two
+parallel 100 Ω fixed-resistance loads, preserving the source's direct-rail
+comparison: the active buzzer draws the same 90 mA calculated DC current as
+the passive piezo, while the passive-piezo history remains silent under
+steady DC. Its fixture validates as 3 components, 4 wires, and 2 derived
+nodes; the focused 64-step regression, 4,000-step simulation, full workspace
+suite, and native/WASM builds passed. Exact physical load impedance and
+audibility remain source/model discrepancies, and manual breadboard evidence
+is optional follow-up work. S06-02 uses two calculated timer
 stages and one adjustable burst control; it validates as 14 components, 9
 wires, and 10 derived nodes, with a 4,000-step speaker-load regression. S06-04
 uses one calculated 555 timing path, one adjustable control, one LED branch,
@@ -129,10 +138,11 @@ simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
 
 ## Current blockers
 
-- Passive-piezo distinction, reverse-breakdown noise, external audio inputs,
-  microphones, op-amps, transformers, analog multipliers, optical coupling,
-  oscilloscope presentation, and the remaining multi-stage audio contracts
-  are not yet available.
+- Reverse-breakdown noise, external audio inputs, microphones, op-amps,
+  transformers, analog multipliers, optical coupling, oscilloscope
+  presentation, and the remaining multi-stage audio contracts are not yet
+  available. T29's passive-piezo distinction is available and CAT-S06-01 now
+  has a bounded fixture and menu entry.
 - Manual interaction and real-breadboard evidence are pending for all new
   fixtures.
 

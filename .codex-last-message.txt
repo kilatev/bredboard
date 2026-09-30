@@ -1,8 +1,0 @@
-Implemented and audited S02-07.
-
-- Added structural candidate fixture: [c01-s02-07-simple-siren.json](</home/vetalik/prj/bredboard/.codex-batch-worktrees/C01-S02-07/fixtures/projects/c01-s02-07-simple-siren.json>)
-- Updated ledger, readiness audit, and C01 evidence.
-- Candidate settles without sustained oscillation across pot ratios 0.00–0.90; remains `blocked_component`.
-- Not registered in the menu because automated electrical acceptance failed.
-
-Verification passed: formatting, Clippy, workspace tests (52 app, 133 core, 3 tools), Linux/WASM builds, fixture validation, and catalog validation.
