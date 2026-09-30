@@ -1,0 +1,29 @@
+{
+  "format_version": 1,
+  "title": "C04-S06-09: Calculated tremolo",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "U1", "kind": "timer_555", "pins": { "control": "A20", "discharge": "A7", "gnd": "TP-:2", "output": "F5", "reset": "TP+:3", "threshold": "A10", "trigger": "B10", "vcc": "TP+:4" }, "parameters": { "output_resistance": 50.0, "discharge_resistance": 100.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "C5", "b": "C7" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "RV1", "kind": "potentiometer", "pins": { "a": "E7", "b": "E10" }, "parameters": { "min_resistance": 1000.0, "max_resistance": 100000.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "negative": "C12", "positive": "C10" }, "parameters": { "capacitance": 0.00001 } },
+    { "id": "C2", "kind": "capacitor", "pins": { "negative": "C22", "positive": "C20" }, "parameters": { "capacitance": 0.00000001 } },
+    { "id": "RLED", "kind": "resistor", "pins": { "a": "G5", "b": "G7" }, "parameters": { "resistance": 470.0 } },
+    { "id": "LED1", "kind": "led", "pins": { "anode": "H7", "cathode": "H8" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "CIN", "kind": "capacitor", "pins": { "negative": "A26", "positive": "A24" }, "parameters": { "capacitance": 0.00001 } },
+    { "id": "RIN", "kind": "resistor", "pins": { "a": "C26", "b": "C28" }, "parameters": { "resistance": 1000.0 } },
+    { "id": "RV2", "kind": "potentiometer", "pins": { "a": "C29", "b": "C30" }, "parameters": { "min_resistance": 100.0, "max_resistance": 10000.0 } },
+    { "id": "XIN", "kind": "other", "pins": { "negative": "TP-:25", "positive": "C24" }, "parameters": {}, "other_device": { "pin_roles": { "negative": "ground", "positive": "supply" }, "behavior": { "behavior": "voltage_source", "positive": "positive", "negative": "negative", "voltage": 0.35, "internal_resistance": 1000.0 } } },
+    { "id": "XVACTROL", "kind": "other", "pins": { "control_negative": "TP-:8", "control_positive": "I7", "output_negative": "A29", "output_positive": "A28" }, "parameters": {}, "other_device": { "pin_roles": { "control_negative": "ground", "control_positive": "control", "output_negative": "terminal", "output_positive": "output" }, "behavior": { "behavior": "voltage_controlled_resistance", "control_positive": "control_positive", "control_negative": "control_negative", "output_positive": "output_positive", "output_negative": "output_negative", "min_resistance": 500.0, "max_resistance": 10000.0, "control_min": 0.0, "control_max": 5.0 } } },
+    { "id": "XOUT", "kind": "other", "pins": { "negative": "TP-:29", "positive": "E28" }, "parameters": {}, "other_device": { "pin_roles": { "negative": "ground", "positive": "terminal" }, "behavior": { "behavior": "resistive", "positive": "positive", "negative": "negative", "resistance": 100000.0 } } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "E5", "to": "TP+:5" },
+    { "id": "W2", "from": "D12", "to": "TP-:12" },
+    { "id": "W3", "from": "D22", "to": "TP-:22" },
+    { "id": "W4", "from": "I8", "to": "TP-:9" },
+    { "id": "W5", "from": "B30", "to": "TP-:30" }
+  ],
+  "initial_conditions": { "control_ratios": { "RV1": 0.35, "RV2": 0.5 }, "capacitor_voltages": { "CIN": 0.0 } }
+}

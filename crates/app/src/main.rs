@@ -127,6 +127,7 @@ const C04_S06_06_JSON: &str =
     include_str!("../../../fixtures/projects/c04-s06-06-noise-generator.json");
 const C04_S06_07_JSON: &str =
     include_str!("../../../fixtures/projects/c04-s06-07-guitar-fuzz.json");
+const C04_S06_09_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-09-tremolo.json");
 const C05_S07_10_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-10-two-minute-timer.json");
 const C05_S07_09_JSON: &str =
@@ -253,6 +254,7 @@ enum Circuit {
     C04S06_03,
     C04S06_06,
     C04S06_07,
+    C04S06_09,
     C05S07_09,
     C05S07_10,
     C05S07_08,
@@ -340,6 +342,7 @@ impl Circuit {
             Self::C04S06_03,
             Self::C04S06_06,
             Self::C04S06_07,
+            Self::C04S06_09,
             Self::C05S07_09,
             Self::C05S07_10,
             Self::C05S07_08,
@@ -478,6 +481,7 @@ impl Circuit {
             Self::C04S06_03 => C04_S06_03_JSON,
             Self::C04S06_06 => C04_S06_06_JSON,
             Self::C04S06_07 => C04_S06_07_JSON,
+            Self::C04S06_09 => C04_S06_09_JSON,
             Self::C05S07_09 => C05_S07_09_JSON,
             Self::C05S07_10 => C05_S07_10_JSON,
             Self::C05S07_08 => C05_S07_08_JSON,
@@ -583,6 +587,7 @@ impl Circuit {
             Self::C04S06_03 => "C04-S06-03: ELECTRONIC PIANO",
             Self::C04S06_06 => "C04-S06-06: NOISE GENERATOR",
             Self::C04S06_07 => "C04-S06-07: GUITAR FUZZ",
+            Self::C04S06_09 => "C04-S06-09: TREMOLO",
             Self::C05S07_09 => "C05-S07-09: REFRIGERATOR-DOOR GUARD",
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
@@ -791,6 +796,10 @@ impl Circuit {
             Self::C04S06_07 => (
                 "A calculated two-transistor clipping path maps the explicit input-jack source through three coupling capacitors to an output-jack load. The current fixed-step contract uses a bounded DC input proxy; a time-varying guitar waveform and true audio playback remain source discrepancies.",
                 "Task: drag RV1 for emitter bypass and RV2 for output level, run the fixture, and compare the calculated transistor and output-node response.",
+            ),
+            Self::C04S06_09 => (
+                "A calculated 555 oscillator drives an LED whose voltage controls an isolated vactrol resistance in the calculated audio path. XIN and XOUT are bounded voltage-source and load contracts; thermoshrink remains a presentation discrepancy.",
+                "Task: drag RV1 for speed and RV2 for depth, run the fixture, and compare the calculated input, vactrol, and output currents.",
             ),
             Self::C05S07_09 => (
                 "A calculated 555 monostable uses a button as a bounded reed-contact substitute and drives a buzzer load through an RC delay. The physical magnet and refrigerator door remain presentation discrepancies.",
@@ -1414,6 +1423,7 @@ impl Circuit {
             ],
             Self::C04S06_06 => &[],
             Self::C04S06_07 => &[],
+            Self::C04S06_09 => &[],
             Self::C05S07_09 => &[ControlSpec {
                 label: "S1: DOOR CONTACT",
                 component: "S1",
@@ -1697,6 +1707,16 @@ impl Circuit {
                 },
                 DialSpec {
                     label: "RV2: OUTPUT LEVEL - drag left/right",
+                    component: "RV2",
+                },
+            ],
+            Self::C04S06_09 => &[
+                DialSpec {
+                    label: "RV1: TREMOLO SPEED - drag left/right",
+                    component: "RV1",
+                },
+                DialSpec {
+                    label: "RV2: TREMOLO DEPTH - drag left/right",
                     component: "RV2",
                 },
             ],
@@ -3196,6 +3216,30 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C04S06_09 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Tremolo input/vactrol/output: run to measure".into(),
+                        |result| {
+                            let current = |component: &str, pin: &str| {
+                                1000.0
+                                    * result
+                                        .other_terminal_currents
+                                        .get(&ComponentId(component.into()))
+                                        .and_then(|pins| {
+                                            pins.get(&bredboard_core::PinId(pin.into()))
+                                        })
+                                        .copied()
+                                        .unwrap_or(0.0)
+                                        .abs()
+                            };
+                            format!(
+                                "XIN {:.2} mA   VACTROL {:.2} mA   XOUT {:.2} mA",
+                                current("XIN", "positive"),
+                                current("XVACTROL", "output_positive"),
+                                current("XOUT", "positive")
+                            )
+                        },
+                    )
                 } else if bench.circuit == Circuit::C06S08_01 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "Motor current and speed: run to measure".into(),
@@ -3538,6 +3582,41 @@ mod tests {
             !bench
                 .simulation
                 .passive_piezo_sounding(&ComponentId("PZ1".into()))
+        );
+    }
+
+    #[test]
+    fn c04_s06_09_calculates_vactrol_and_audio_contracts() {
+        let measure = |depth: f64| {
+            let mut bench = Bench::new(Circuit::C04S06_09);
+            bench.act(Action::SetControlRatio {
+                component: ComponentId("RV2".into()),
+                ratio: depth,
+            });
+            bench.act(Action::Run);
+            advance_steps(&bench.project, &mut bench.simulation, 1);
+            let result = bench.simulation.last_valid.as_ref().unwrap();
+            let current = |component: &str, pin: &str| {
+                result.other_terminal_currents[&ComponentId(component.into())]
+                    [&bredboard_core::PinId(pin.into())]
+            };
+            (
+                current("XIN", "positive").abs(),
+                current("XVACTROL", "output_positive").abs(),
+                current("XOUT", "positive").abs(),
+            )
+        };
+        let (input, vactrol, output) = measure(0.5);
+        assert!(input.is_finite() && vactrol.is_finite() && output.is_finite());
+        assert!(
+            input > 0.0 && vactrol > 0.0 && output > 0.0,
+            "input={input}, vactrol={vactrol}, output={output}"
+        );
+
+        let (deeper_input, deeper_vactrol, deeper_output) = measure(1.0);
+        assert!(
+            deeper_input > 0.0 && deeper_vactrol < vactrol && deeper_output > output,
+            "depth={input}/{vactrol}/{output} -> {deeper_input}/{deeper_vactrol}/{deeper_output}"
         );
     }
 
