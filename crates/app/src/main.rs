@@ -132,6 +132,8 @@ const C04_S06_10_JSON: &str =
     include_str!("../../../fixtures/projects/c04-s06-10-light-music.json");
 const C04_S06_11_JSON: &str =
     include_str!("../../../fixtures/projects/c04-s06-11-robot-voice.json");
+const C04_S06_12_JSON: &str =
+    include_str!("../../../fixtures/projects/c04-s06-12-drum-machine.json");
 const C05_S07_10_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-10-two-minute-timer.json");
 const C05_S07_09_JSON: &str =
@@ -261,6 +263,7 @@ enum Circuit {
     C04S06_09,
     C04S06_10,
     C04S06_11,
+    C04S06_12,
     C05S07_09,
     C05S07_10,
     C05S07_08,
@@ -351,6 +354,7 @@ impl Circuit {
             Self::C04S06_09,
             Self::C04S06_10,
             Self::C04S06_11,
+            Self::C04S06_12,
             Self::C05S07_09,
             Self::C05S07_10,
             Self::C05S07_08,
@@ -492,6 +496,7 @@ impl Circuit {
             Self::C04S06_09 => C04_S06_09_JSON,
             Self::C04S06_10 => C04_S06_10_JSON,
             Self::C04S06_11 => C04_S06_11_JSON,
+            Self::C04S06_12 => C04_S06_12_JSON,
             Self::C05S07_09 => C05_S07_09_JSON,
             Self::C05S07_10 => C05_S07_10_JSON,
             Self::C05S07_08 => C05_S07_08_JSON,
@@ -600,6 +605,7 @@ impl Circuit {
             Self::C04S06_09 => "C04-S06-09: TREMOLO",
             Self::C04S06_10 => "C04-S06-10: LIGHT MUSIC",
             Self::C04S06_11 => "C04-S06-11: ROBOT VOICE",
+            Self::C04S06_12 => "C04-S06-12: DRUM MACHINE",
             Self::C05S07_09 => "C05-S07-09: REFRIGERATOR-DOOR GUARD",
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
@@ -820,6 +826,10 @@ impl Circuit {
             Self::C04S06_11 => (
                 "A calculated electret-input proxy is preamplified, transferred through two bounded 1:1 transformer contracts, multiplied by a fixed-step NE555 carrier through a four-diode ring path, and driven into a speaker by a bounded LM386-style amplifier. The source recording input, magnetic coupling, and exact robot-voice timbre remain explicit discrepancies.",
                 "Task: run the fixture and compare the calculated ring-modulator output with the carrier and speaker-load current.",
+            ),
+            Self::C04S06_12 => (
+                "An eight-step calculated counter selects two explicit diode/DIP rhythm masks. One 555 supplies the tempo and the second supplies a deterministic high-rate carrier for the kick, hat, and transistor envelope paths; the TL072-style mixer, LM386-style amplifier, and speaker remain voltage/current-derived.",
+                "Task: run the fixture and compare the calculated counter outputs, mask nodes, transistor currents, and speaker load over several fixed-step beats.",
             ),
             Self::C05S07_09 => (
                 "A calculated 555 monostable uses a button as a bounded reed-contact substitute and drives a buzzer load through an RC delay. The physical magnet and refrigerator door remain presentation discrepancies.",
@@ -1446,6 +1456,7 @@ impl Circuit {
             Self::C04S06_07 => &[],
             Self::C04S06_09 => &[],
             Self::C04S06_11 => &[],
+            Self::C04S06_12 => &[],
             Self::C05S07_09 => &[ControlSpec {
                 label: "S1: DOOR CONTACT",
                 component: "S1",

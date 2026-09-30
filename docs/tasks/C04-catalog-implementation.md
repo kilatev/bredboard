@@ -220,6 +220,17 @@ failures), `cargo build -p bredboard-app --target x86_64-unknown-linux-gnu
 --locked`, fixture validation, 4,000-step simulation, catalog validation (20
 sections, 212 schematics), and `git diff --check`.
 
+CAT-S06-12 is now admitted as `fixtures/projects/c04-s06-12-drum-machine.json`.
+The fixture contains 53 components, 17 wires, and 28 derived nodes. It uses
+the existing calculated timer/counter, diode, NPN, generic IC/device, and
+speaker contracts; the two eight-input `Other` devices are fixed DIP masks
+whose input nodes are mapped from the counter's one-hot outputs. A 555-driven
+carrier is used for the bounded noise path, so reverse-breakdown noise and
+interactive DIP positions remain explicit source discrepancies. The focused
+regression `cargo test -p bredboard-core
+c04_drum_machine_maps_counter_masks_and_calculates_speaker_path --locked`
+passes after 50 fixed steps and checks both mask outputs and speaker current.
+
 ## Current blockers
 
 - External audio inputs, recorded microphone waveforms, full op-amp and
@@ -227,11 +238,13 @@ sections, 212 schematics), and `git diff --check`.
   presentation, and the remaining multi-stage audio contracts are not yet
   available. T29's passive-piezo distinction and reverse-breakdown noise
   modeling are available; CAT-S06-01, CAT-S06-06, CAT-S06-07, CAT-S06-09,
-  and CAT-S06-11 now have bounded fixtures and menu entries, with S06-07
-  admitted only through its documented fixed-step DC input proxy (no true
-  guitar waveform or scripted audio) and S06-11 admitted only through its
-  bounded electret/transformer/ring-modulator proxies (no recorded
-  microphone waveform or magnetic transient model).
+  CAT-S06-11, and CAT-S06-12 now have bounded fixtures and menu entries, with
+  S06-07 admitted only through its documented fixed-step DC input proxy (no
+  true guitar waveform or scripted audio), S06-11 admitted only through its
+  bounded electret/transformer/ring-modulator proxies (no recorded microphone
+  waveform or magnetic transient model), and S06-12 admitted only through its
+  555-driven carrier proxy for noise and fixed DIP masks (no reverse-breakdown
+  noise or interactive DIP positions).
 - CAT-S06-10's candidate specifically remains blocked on a calculated
   microphone/audio-input contract and a TL074 four-channel filter contract;
   do not promote its fixed test-source candidate to `fixture_ready` without
