@@ -128,6 +128,8 @@ const C04_S06_06_JSON: &str =
 const C04_S06_07_JSON: &str =
     include_str!("../../../fixtures/projects/c04-s06-07-guitar-fuzz.json");
 const C04_S06_09_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-09-tremolo.json");
+const C04_S06_10_JSON: &str =
+    include_str!("../../../fixtures/projects/c04-s06-10-light-music.json");
 const C05_S07_10_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-10-two-minute-timer.json");
 const C05_S07_09_JSON: &str =
@@ -255,6 +257,7 @@ enum Circuit {
     C04S06_06,
     C04S06_07,
     C04S06_09,
+    C04S06_10,
     C05S07_09,
     C05S07_10,
     C05S07_08,
@@ -343,6 +346,7 @@ impl Circuit {
             Self::C04S06_06,
             Self::C04S06_07,
             Self::C04S06_09,
+            Self::C04S06_10,
             Self::C05S07_09,
             Self::C05S07_10,
             Self::C05S07_08,
@@ -482,6 +486,7 @@ impl Circuit {
             Self::C04S06_06 => C04_S06_06_JSON,
             Self::C04S06_07 => C04_S06_07_JSON,
             Self::C04S06_09 => C04_S06_09_JSON,
+            Self::C04S06_10 => C04_S06_10_JSON,
             Self::C05S07_09 => C05_S07_09_JSON,
             Self::C05S07_10 => C05_S07_10_JSON,
             Self::C05S07_08 => C05_S07_08_JSON,
@@ -588,6 +593,7 @@ impl Circuit {
             Self::C04S06_06 => "C04-S06-06: NOISE GENERATOR",
             Self::C04S06_07 => "C04-S06-07: GUITAR FUZZ",
             Self::C04S06_09 => "C04-S06-09: TREMOLO",
+            Self::C04S06_10 => "C04-S06-10: LIGHT MUSIC",
             Self::C05S07_09 => "C05-S07-09: REFRIGERATOR-DOOR GUARD",
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
@@ -800,6 +806,10 @@ impl Circuit {
             Self::C04S06_09 => (
                 "A calculated 555 oscillator drives an LED whose voltage controls an isolated vactrol resistance in the calculated audio path. XIN and XOUT are bounded voltage-source and load contracts; thermoshrink remains a presentation discrepancy.",
                 "Task: drag RV1 for speed and RV2 for depth, run the fixture, and compare the calculated input, vactrol, and output currents.",
+            ),
+            Self::C04S06_10 => (
+                "A fixed, voltage-derived microphone test source feeds four bounded analog stages and three current-limited transistor LED branches. The source's live audio input, TL074 package mapping, and frequency-selective light response remain explicit discrepancies.",
+                "Task: run the fixture and compare the calculated low, mid, and high branch LED currents; this fixture does not capture live microphone audio.",
             ),
             Self::C05S07_09 => (
                 "A calculated 555 monostable uses a button as a bounded reed-contact substitute and drives a buzzer load through an RC delay. The physical magnet and refrigerator door remain presentation discrepancies.",
@@ -1369,6 +1379,7 @@ impl Circuit {
             ],
             Self::C04S06_01 | Self::C04S06_04 => &[],
             Self::C04S06_02 => &[],
+            Self::C04S06_10 => &[],
             Self::C04S06_05 => &[ControlSpec {
                 label: "S1: PRESS / RELEASE",
                 component: "S1",
@@ -1658,6 +1669,7 @@ impl Circuit {
                 label: "RV1: BURST RATE - drag left/right",
                 component: "RV1",
             }],
+            Self::C04S06_10 => &[],
             Self::C04S06_08 => &[DialSpec {
                 label: "RV1: SLOW RATE - drag left/right",
                 component: "RV1",
