@@ -1939,6 +1939,73 @@ mod tests {
     }
 
     #[test]
+    fn c04_modular_synth_composes_virtual_ground_envelope_vca_and_speaker() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c04-s06-13-modular-synthesizer.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("B1".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::SetControlRatio {
+                    component: ComponentId("RV1".into()),
+                    ratio: 0.8,
+                },
+                Action::SetControlRatio {
+                    component: ComponentId("RV2".into()),
+                    ratio: 0.2,
+                },
+                Action::Run,
+            ],
+        );
+        let mut max_speaker = 0.0_f64;
+        let mut max_vca = 0.0_f64;
+        for _ in 0..100 {
+            advance_steps(&project, &mut state, 1);
+            let solved = state
+                .last_valid
+                .as_ref()
+                .unwrap_or_else(|| panic!("diagnostics={:?}", state.diagnostics));
+            max_speaker = max_speaker.max(
+                solved
+                    .resistor_currents
+                    .get(&ComponentId("SP1".into()))
+                    .copied()
+                    .unwrap_or(0.0)
+                    .abs(),
+            );
+            max_vca = max_vca.max(
+                solved
+                    .other_terminal_currents
+                    .get(&ComponentId("VCA1".into()))
+                    .and_then(|pins| pins.get(&crate::PinId("output_positive".into())))
+                    .copied()
+                    .unwrap_or(0.0)
+                    .abs(),
+            );
+        }
+        let solved = state.last_valid.as_ref().unwrap();
+        let virtual_ground =
+            solved.module_output_voltages[&ComponentId("M1".into())][&crate::PinId("mid".into())];
+        assert!(!state.stale, "diagnostics={:?}", state.diagnostics);
+        assert!(
+            (virtual_ground - 4.5).abs() < 0.1,
+            "virtual_ground={virtual_ground}"
+        );
+        assert!(state.capacitor_voltages[&ComponentId("C3".into())] > 0.1);
+        assert!(max_vca > 0.00001, "VCA current={max_vca}");
+        assert!(max_speaker > 0.00001, "speaker current={max_speaker}");
+    }
+
+    #[test]
     fn c05_two_minute_timer_calculates_button_led_buzzer_and_pnp_state() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c05-s07-10-two-minute-timer.json"

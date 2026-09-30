@@ -1,12 +1,9 @@
-Implemented the shared multi-board core model.
+Implemented CAT-S06-13 end to end.
 
-- Added `BoardModel::MultiBoard` with 1–8 named solderless boards.
-- Added qualified hole IDs (`board_id/local_hole`).
-- Preserved legacy single-board JSON and format version 1.
-- Derived topology remains contact/pin/wire-based; cross-board connectivity requires explicit wires.
-- Added calculated cross-board solver coverage and fixed-seed property tests.
-- Updated format docs, C07/C08 task evidence, and both ledger rows.
+- Added [modular synth fixture](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-13/fixtures/projects/c04-s06-13-modular-synthesizer.json>) with 30 components, 20 patch wires, virtual ground, envelope, VCA, amplifier, speaker, and diode modeling.
+- Registered it in [exercise_catalog.rs](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-13/crates/app/src/exercise_catalog.rs>) and [main.rs](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-13/crates/app/src/main.rs>).
+- Added timer virtual-ground/control behavior and a focused core regression.
+- Updated [catalog ledger](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-13/docs/catalog/CATALOG-AUDIT-LEDGER.md>) to `fixture_ready`, with explicit CD4046/TL074/LM386 fidelity discrepancies.
+- Recorded implementation evidence in the [C04 task card](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-13/docs/tasks/C04-catalog-implementation.md>).
 
-Both entries remain `blocked_component` with fixture-specific gaps documented; `need:board` was removed.
-
-Verification passed: workspace Clippy, formatting, 52 app tests, 133 core tests, 3 tools tests, doc tests, and diff checks.
+Verification passed: formatting, Clippy, full workspace tests (52 app, 134 core, 3 tools), native/WASM builds, fixture validation, 4,000-step simulation, catalog validation, and diff checks. Manual browser/breadboard evidence remains pending.

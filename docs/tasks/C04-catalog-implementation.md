@@ -127,12 +127,24 @@ failures), native and WASM app builds, fixture validation and 4,000-step
 simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
 --check`.
 
+S06-13 is admitted as a bounded modular-synth fixture. The fixture has 30
+calculated components and 20 explicit patch wires, including a regulated 4.5 V
+virtual-ground module, a 555 VCO proxy, two finite `ic_device` transfer stages,
+an RC Gate envelope, a voltage-controlled-resistance `other` device, an
+LM386-style amplifier, a speaker, and four calculated diode clamps. The focused
+app/core regressions, full workspace test (`52` app, `134` core, `3` tools,
+zero doc-test failures), fixture validation (`30 components, 20 wires, 15
+derived nodes`), 4,000-step simulation, catalog validation, Clippy, and
+native/WASM builds passed. Exact CD4046 waveform, TL074 filter dynamics,
+LM386 package behavior, and musical timbre remain explicit source
+discrepancies. Manual browser/breadboard evidence remains pending.
+
 ## Current blockers
 
 - Passive-piezo distinction, reverse-breakdown noise, external audio inputs,
   microphones, op-amps, transformers, analog multipliers, optical coupling,
-  oscilloscope presentation, and the remaining multi-stage audio contracts
-  are not yet available.
+  oscilloscope presentation, and source-specific multi-stage audio fidelity
+  beyond the bounded S06-13 fixture are not yet available.
 - Manual interaction and real-breadboard evidence are pending for all new
   fixtures.
 

@@ -2415,7 +2415,7 @@ fn stamp_element(
             );
         }
         NonlinearElement::Timer555 {
-            control: _,
+            control,
             discharge,
             output,
             output_resistance,
@@ -2427,10 +2427,18 @@ fn stamp_element(
             gnd,
             ..
         } => {
-            let supply = voltage(guess, vars, *vcc).max(1e-6);
-            let reset_high = voltage(guess, vars, *reset) > supply * 0.4;
-            let threshold_high = voltage(guess, vars, *threshold) > supply * (2.0 / 3.0);
-            let trigger_low = voltage(guess, vars, *trigger) < supply / 3.0;
+            let ground = voltage(guess, vars, *gnd);
+            let supply = (voltage(guess, vars, *vcc) - ground).max(1e-6);
+            let control_level = voltage(guess, vars, *control) - ground;
+            let upper_threshold = if control_level > supply * 0.05 {
+                control_level.clamp(supply * 0.4, supply * 0.9)
+            } else {
+                supply * (2.0 / 3.0)
+            };
+            let lower_threshold = upper_threshold * 0.5;
+            let reset_high = voltage(guess, vars, *reset) - ground > supply * 0.4;
+            let threshold_high = voltage(guess, vars, *threshold) - ground > upper_threshold;
+            let trigger_low = voltage(guess, vars, *trigger) - ground < lower_threshold;
             let output_high = if !reset_high {
                 false
             } else if trigger_low {
@@ -2438,7 +2446,7 @@ fn stamp_element(
             } else if threshold_high {
                 false
             } else {
-                voltage(guess, vars, *output) > supply * 0.5
+                voltage(guess, vars, *output) - ground > supply * 0.5
             };
             stamp_logic_output(
                 *output,

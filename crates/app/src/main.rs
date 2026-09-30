@@ -7,7 +7,7 @@ use bevy::camera::ScalingMode;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bredboard_core::{
-    Action, Component, ComponentId, ComponentKind, ControlState, Project, SimulationState,
+    Action, Component, ComponentId, ComponentKind, ControlState, PinId, Project, SimulationState,
     advance_steps, apply_actions, compile_topology,
 };
 
@@ -121,6 +121,8 @@ const C04_S06_02_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-0
 const C04_S06_05_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-05-doorbell.json");
 const C04_S06_08_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-08-siren.json");
 const C04_S06_03_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-03-piano.json");
+const C04_S06_13_JSON: &str =
+    include_str!("../../../fixtures/projects/c04-s06-13-modular-synthesizer.json");
 const C05_S07_10_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-10-two-minute-timer.json");
 const C05_S07_09_JSON: &str =
@@ -244,6 +246,7 @@ enum Circuit {
     C04S06_05,
     C04S06_08,
     C04S06_03,
+    C04S06_13,
     C05S07_09,
     C05S07_10,
     C05S07_08,
@@ -285,7 +288,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 98] {
+    fn all() -> [Self; 99] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -328,6 +331,7 @@ impl Circuit {
             Self::C04S06_05,
             Self::C04S06_08,
             Self::C04S06_03,
+            Self::C04S06_13,
             Self::C05S07_09,
             Self::C05S07_10,
             Self::C05S07_08,
@@ -463,6 +467,7 @@ impl Circuit {
             Self::C04S06_05 => C04_S06_05_JSON,
             Self::C04S06_08 => C04_S06_08_JSON,
             Self::C04S06_03 => C04_S06_03_JSON,
+            Self::C04S06_13 => C04_S06_13_JSON,
             Self::C05S07_09 => C05_S07_09_JSON,
             Self::C05S07_10 => C05_S07_10_JSON,
             Self::C05S07_08 => C05_S07_08_JSON,
@@ -565,6 +570,7 @@ impl Circuit {
             Self::C04S06_05 => "C04-S06-05: DOORBELL",
             Self::C04S06_08 => "C04-S06-08: POLICE SIREN",
             Self::C04S06_03 => "C04-S06-03: ELECTRONIC PIANO",
+            Self::C04S06_13 => "C04-S06-13: MODULAR SYNTHESIZER",
             Self::C05S07_09 => "C05-S07-09: REFRIGERATOR-DOOR GUARD",
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
@@ -761,6 +767,10 @@ impl Circuit {
             Self::C04S06_03 => (
                 "Eight calculated button-and-potentiometer key branches provide electrical note inputs to a bounded 555 tone path and speaker load. The source's exact musical tuning and one-at-a-time frequency selection remain explicit discrepancies.",
                 "Task: adjust RV1–RV8, press the eight keys, and compare their calculated branch currents with the speaker load.",
+            ),
+            Self::C04S06_13 => (
+                "A calculated 555 VCO proxy, two finite TL074 transfer stages, RC attack/release envelope, voltage-controlled resistance VCA, and bounded LM386-style amplifier compose a patchable single-supply synth. The CD4046 waveform, exact filter response, and musical timbre remain explicit source discrepancies.",
+                "Task: drag RV1/RV2, press GATE, run the fixture, and compare the calculated envelope, virtual-ground output, VCA current, and speaker load.",
             ),
             Self::C05S07_09 => (
                 "A calculated 555 monostable uses a button as a bounded reed-contact substitute and drives a buzzer load through an RC delay. The physical magnet and refrigerator door remain presentation discrepancies.",
@@ -1382,6 +1392,11 @@ impl Circuit {
                     is_switch: false,
                 },
             ],
+            Self::C04S06_13 => &[ControlSpec {
+                label: "GATE: PRESS / RELEASE",
+                component: "B1",
+                is_switch: false,
+            }],
             Self::C05S07_09 => &[ControlSpec {
                 label: "S1: DOOR CONTACT",
                 component: "S1",
@@ -1652,6 +1667,16 @@ impl Circuit {
                 DialSpec {
                     label: "RV8: KEY 8 TUNING - drag left/right",
                     component: "RV8",
+                },
+            ],
+            Self::C04S06_13 => &[
+                DialSpec {
+                    label: "RV1: VCO CV - drag left/right",
+                    component: "RV1",
+                },
+                DialSpec {
+                    label: "RV2: FILTER CUTOFF - drag left/right",
+                    component: "RV2",
                 },
             ],
             Self::C05S07_10 => &[DialSpec {
@@ -3175,6 +3200,37 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C04S06_13 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Synth envelope and speaker: run to measure".into(),
+                        |result| {
+                            format!(
+                                "VMID {:.2} V   ENV {:.2} V   VCA {:.2} mA   SP1 {:.2} mA",
+                                result
+                                    .module_output_voltages
+                                    .get(&ComponentId("M1".into()))
+                                    .and_then(|pins| pins.get(&PinId("mid".into())))
+                                    .copied()
+                                    .unwrap_or(0.0),
+                                bench.simulation.capacitor_voltages[&ComponentId("C3".into())],
+                                1000.0
+                                    * result
+                                        .other_terminal_currents
+                                        .get(&ComponentId("VCA1".into()))
+                                        .and_then(|pins| pins.get(&PinId("output_positive".into())))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                                        .abs(),
+                                1000.0
+                                    * result
+                                        .resistor_currents
+                                        .get(&ComponentId("SP1".into()))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                                        .abs()
+                            )
+                        },
+                    )
                 } else if bench.circuit == Circuit::C08S17_03 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "Optocoupler transfer: run to measure".into(),
@@ -3546,7 +3602,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            98
+            99
         );
         assert!(matches!(
             items[0],
