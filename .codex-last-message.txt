@@ -1,16 +1,24 @@
-Implemented the shared `ic/device` model in core.
+Implemented the shared `ComponentKind::Other` electrical model.
 
-- Added `ComponentKind::IcDevice` with validated pin roles and calculated linear, comparator, and logic behaviors.
-- Integrated topology-derived pin connectivity and fixed-step solver stamping.
-- Added calculated output voltages and backward-compatible serialization.
-- Added deterministic unit/property tests.
-- Added model documentation: [IC-DEVICE-MODEL.md](/home/vetalik/prj/bredboard/.codex-batch-worktrees/ic-device/docs/catalog/IC-DEVICE-MODEL.md).
-- Removed `need:ic/device` from exactly the requested 66 ledger rows; their `blocked_component` dispositions remain.
+Key changes:
+
+- Added named-pin contracts with calculated behaviors:
+  - resistive
+  - bounded voltage source
+  - linear transfer
+  - voltage-controlled resistance
+- Integrated topology validation and solver support without Bevy or a second netlist.
+- Added calculated terminal-current/output-voltage readings.
+- Added reproducible property and unit tests.
+- Added model documentation: [OTHER-DEVICE-MODEL.md](/home/vetalik/prj/bredboard/.codex-batch-worktrees/other/docs/catalog/OTHER-DEVICE-MODEL.md).
+- Updated all requested catalog rows with `ok:other_model`; fixture-specific gaps remain `blocked_component`.
+- Left unrelated `need:other` entries unchanged.
+- No individual catalog fixtures were added.
 
 Verification passed:
 
-- Workspace tests: 174 passed
+- Workspace tests: 52 app, 121 core, 3 tools
+- Final core tests: 121 passed
 - Clippy with `-D warnings`
-- Format and diff checks
-- Native and WASM builds
-- Catalog validation: 20 sections, 212 schematics
+- Formatting and diff checks
+- Workspace check with `--locked`

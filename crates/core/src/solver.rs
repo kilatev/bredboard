@@ -1,6 +1,7 @@
 use crate::{
     Component, ComponentId, ComponentKind, Contact, ControlState, Diagnostic, IcDeviceBehavior,
-    IcLogicOperation, Node, PinId, Project, compile_topology,
+    IcLogicOperation, Node, OtherDeviceBehavior, PinId, Project, compile_topology,
+    controlled_resistance,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -58,6 +59,14 @@ pub struct SolveResult {
     /// Calculated output pin voltages for generic IC/device contracts.
     #[serde(default)]
     pub ic_device_output_voltages: BTreeMap<ComponentId, BTreeMap<PinId, f64>>,
+    /// Calculated terminal currents for `ComponentKind::Other` contracts.
+    /// Each current is positive into the named pin; the solver derives these
+    /// values from the solved node voltages and the declared behavior.
+    #[serde(default)]
+    pub other_terminal_currents: BTreeMap<ComponentId, BTreeMap<PinId, f64>>,
+    /// Calculated output pin voltages for linear-transfer `Other` devices.
+    #[serde(default)]
+    pub other_output_voltages: BTreeMap<ComponentId, BTreeMap<PinId, f64>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -270,6 +279,33 @@ enum NonlinearElement {
         pin_nodes: BTreeMap<PinId, usize>,
         behavior: IcDeviceBehavior,
     },
+    OtherSource {
+        positive: usize,
+        negative: usize,
+        voltage: f64,
+        resistance: f64,
+    },
+    OtherLinearTransfer {
+        pin_nodes: BTreeMap<PinId, usize>,
+        output: PinId,
+        reference: PinId,
+        inputs: Vec<(PinId, f64)>,
+        offset: f64,
+        min_output: f64,
+        max_output: f64,
+        input_resistance: f64,
+        output_resistance: f64,
+    },
+    OtherControlledResistance {
+        control_positive: usize,
+        control_negative: usize,
+        output_positive: usize,
+        output_negative: usize,
+        min_resistance: f64,
+        max_resistance: f64,
+        control_min: f64,
+        control_max: f64,
+    },
 }
 
 pub const FIXED_STEP_SECONDS: f64 = 100e-6;
@@ -392,6 +428,8 @@ fn solve_internal(
             relay_coil_currents: BTreeMap::new(),
             relay_energized: BTreeMap::new(),
             ic_device_output_voltages: BTreeMap::new(),
+            other_terminal_currents: BTreeMap::new(),
+            other_output_voltages: BTreeMap::new(),
         });
     }
 
@@ -642,6 +680,24 @@ fn solve_internal(
                 let Some(first) = nodes.next() else { continue };
                 nodes.map(|node| (first, node)).collect()
             }
+            NonlinearElement::OtherSource {
+                positive, negative, ..
+            } => vec![(*positive, *negative)],
+            NonlinearElement::OtherLinearTransfer { pin_nodes, .. } => {
+                let mut nodes = pin_nodes.values().copied();
+                let Some(first) = nodes.next() else { continue };
+                nodes.map(|node| (first, node)).collect()
+            }
+            NonlinearElement::OtherControlledResistance {
+                control_positive,
+                control_negative,
+                output_positive,
+                output_negative,
+                ..
+            } => vec![
+                (*control_positive, *control_negative),
+                (*output_positive, *output_negative),
+            ],
         };
         for (a, b) in pairs {
             adjacency[a].push(b);
@@ -669,6 +725,15 @@ fn solve_internal(
             branches
                 .iter()
                 .any(|b| (b.a == *n || b.b == *n) && matches!(b.kind, BranchKind::VoltageSource))
+        }) && !island.iter().any(|n| {
+            nonlinear.iter().any(|element| {
+                matches!(
+                    element,
+                    NonlinearElement::OtherSource {
+                        positive, negative, ..
+                    } if positive == n || negative == n
+                )
+            })
         }) {
             return Err(calc(
                 "floating_network",
@@ -807,6 +872,8 @@ fn solve_internal(
     let mut relay_coil_currents = BTreeMap::new();
     let mut relay_energized = BTreeMap::new();
     let mut ic_device_output_voltages = BTreeMap::new();
+    let mut other_terminal_currents = BTreeMap::new();
+    let mut other_output_voltages = BTreeMap::new();
     for branch in &branches {
         let current = match branch.kind {
             BranchKind::Resistor | BranchKind::Motor => {
@@ -941,6 +1008,9 @@ fn solve_internal(
                 });
                 ic_device_output_voltages.insert(id.clone(), outputs.collect());
             }
+            NonlinearElement::OtherSource { .. }
+            | NonlinearElement::OtherLinearTransfer { .. }
+            | NonlinearElement::OtherControlledResistance { .. } => {}
             NonlinearElement::LogicGate { .. }
             | NonlinearElement::SchmittInverter { .. }
             | NonlinearElement::Comparator { .. }
@@ -989,6 +1059,108 @@ fn solve_internal(
                 * (terminal_voltage / component.parameters["rated_voltage"]).clamp(-1.0, 1.0),
         );
     }
+    for component in project
+        .components
+        .iter()
+        .filter(|component| component.kind == ComponentKind::Other)
+    {
+        let spec = component.other_device.as_ref().ok_or_else(|| {
+            calc(
+                "missing_other_device_spec",
+                format!("component {} has no other_device contract", component.id.0),
+            )
+        })?;
+        let voltage_at = |pin: &PinId| -> Result<f64, ElectricalError> {
+            let node = pin_node(&topology, &component.id, &pin.0).ok_or_else(|| {
+                calc(
+                    "missing_pin_node",
+                    format!(
+                        "component {} pin {} has no compiled node",
+                        component.id.0, pin.0
+                    ),
+                )
+            })?;
+            Ok(voltage(&solution, &voltage_vars, node))
+        };
+        let mut currents = BTreeMap::new();
+        match &spec.behavior {
+            OtherDeviceBehavior::Resistive {
+                positive,
+                negative,
+                resistance,
+            } => {
+                let current = (voltage_at(positive)? - voltage_at(negative)?) / resistance;
+                currents.insert(positive.clone(), current);
+                currents.insert(negative.clone(), -current);
+            }
+            OtherDeviceBehavior::VoltageSource {
+                positive,
+                negative,
+                voltage: target,
+                internal_resistance,
+            } => {
+                let current =
+                    (voltage_at(positive)? - voltage_at(negative)? - target) / internal_resistance;
+                currents.insert(positive.clone(), current);
+                currents.insert(negative.clone(), -current);
+            }
+            OtherDeviceBehavior::LinearTransfer {
+                output,
+                reference,
+                inputs,
+                offset,
+                min_output,
+                max_output,
+                input_resistance,
+                output_resistance,
+            } => {
+                let reference_voltage = voltage_at(reference)?;
+                let raw = *offset
+                    + inputs.iter().try_fold(0.0, |sum, input| {
+                        Ok::<_, ElectricalError>(
+                            sum + input.gain * (voltage_at(&input.pin)? - reference_voltage),
+                        )
+                    })?;
+                let target = reference_voltage + raw.clamp(*min_output, *max_output);
+                let output_current = (voltage_at(output)? - target) / output_resistance;
+                currents.insert(output.clone(), output_current);
+                currents.insert(reference.clone(), -output_current);
+                for input in inputs {
+                    let current = (voltage_at(&input.pin)? - reference_voltage) / input_resistance;
+                    currents.insert(input.pin.clone(), current);
+                    *currents.entry(reference.clone()).or_default() -= current;
+                }
+                other_output_voltages.insert(
+                    component.id.clone(),
+                    BTreeMap::from([(output.clone(), voltage_at(output)?)]),
+                );
+            }
+            OtherDeviceBehavior::VoltageControlledResistance {
+                control_positive,
+                control_negative,
+                output_positive,
+                output_negative,
+                min_resistance,
+                max_resistance,
+                control_min,
+                control_max,
+            } => {
+                let control_voltage = voltage_at(control_positive)? - voltage_at(control_negative)?;
+                let resistance = controlled_resistance(
+                    *min_resistance,
+                    *max_resistance,
+                    *control_min,
+                    *control_max,
+                    control_voltage,
+                );
+                let current =
+                    (voltage_at(output_positive)? - voltage_at(output_negative)?) / resistance;
+                currents.insert(output_positive.clone(), current);
+                currents.insert(output_negative.clone(), -current);
+            }
+        }
+        other_terminal_currents.insert(component.id.clone(), currents);
+    }
     Ok(SolveResult {
         node_voltages: voltages,
         resistor_currents,
@@ -1006,6 +1178,8 @@ fn solve_internal(
         relay_coil_currents,
         relay_energized,
         ic_device_output_voltages,
+        other_terminal_currents,
+        other_output_voltages,
     })
 }
 
@@ -1508,6 +1682,112 @@ fn make_branches(
                     pin_nodes,
                     behavior: spec.behavior.clone(),
                 });
+                continue;
+            }
+            ComponentKind::Other => {
+                let spec = component.other_device.as_ref().ok_or_else(|| {
+                    calc(
+                        "missing_other_device_spec",
+                        format!("component {} has no other_device contract", component.id.0),
+                    )
+                })?;
+                match &spec.behavior {
+                    OtherDeviceBehavior::Resistive {
+                        positive,
+                        negative,
+                        resistance,
+                    } => {
+                        let a = node(&positive.0)?;
+                        let b = node(&negative.0)?;
+                        active.extend([a, b]);
+                        branches.push(Branch {
+                            component: component.id.clone(),
+                            kind: BranchKind::Resistor,
+                            a,
+                            b,
+                            value: *resistance,
+                            previous_voltage: 0.0,
+                        });
+                    }
+                    OtherDeviceBehavior::VoltageSource {
+                        positive,
+                        negative,
+                        voltage,
+                        internal_resistance,
+                    } => {
+                        let positive = node(&positive.0)?;
+                        let negative = node(&negative.0)?;
+                        active.extend([positive, negative]);
+                        nonlinear.push(NonlinearElement::OtherSource {
+                            positive,
+                            negative,
+                            voltage: *voltage,
+                            resistance: *internal_resistance,
+                        });
+                    }
+                    OtherDeviceBehavior::LinearTransfer {
+                        output,
+                        reference,
+                        inputs,
+                        offset,
+                        min_output,
+                        max_output,
+                        input_resistance,
+                        output_resistance,
+                    } => {
+                        let pin_nodes = spec
+                            .pin_roles
+                            .keys()
+                            .map(|pin| Ok((pin.clone(), node(&pin.0)?)))
+                            .collect::<Result<BTreeMap<_, _>, ElectricalError>>()?;
+                        active.extend(pin_nodes.values().copied());
+                        nonlinear.push(NonlinearElement::OtherLinearTransfer {
+                            pin_nodes,
+                            output: output.clone(),
+                            reference: reference.clone(),
+                            inputs: inputs
+                                .iter()
+                                .map(|input| (input.pin.clone(), input.gain))
+                                .collect(),
+                            offset: *offset,
+                            min_output: *min_output,
+                            max_output: *max_output,
+                            input_resistance: *input_resistance,
+                            output_resistance: *output_resistance,
+                        });
+                    }
+                    OtherDeviceBehavior::VoltageControlledResistance {
+                        control_positive,
+                        control_negative,
+                        output_positive,
+                        output_negative,
+                        min_resistance,
+                        max_resistance,
+                        control_min,
+                        control_max,
+                    } => {
+                        let control_positive = node(&control_positive.0)?;
+                        let control_negative = node(&control_negative.0)?;
+                        let output_positive = node(&output_positive.0)?;
+                        let output_negative = node(&output_negative.0)?;
+                        active.extend([
+                            control_positive,
+                            control_negative,
+                            output_positive,
+                            output_negative,
+                        ]);
+                        nonlinear.push(NonlinearElement::OtherControlledResistance {
+                            control_positive,
+                            control_negative,
+                            output_positive,
+                            output_negative,
+                            min_resistance: *min_resistance,
+                            max_resistance: *max_resistance,
+                            control_min: *control_min,
+                            control_max: *control_max,
+                        });
+                    }
+                }
                 continue;
             }
             _ => {}
@@ -2461,6 +2741,151 @@ fn stamp_element(
             behavior,
             ..
         } => stamp_ic_device(behavior, pin_nodes, guess, vars, matrix, rhs),
+        NonlinearElement::OtherSource {
+            positive,
+            negative,
+            voltage: target_voltage,
+            resistance,
+            ..
+        } => {
+            let conductance = 1.0 / *resistance;
+            let current = conductance
+                * (voltage(guess, vars, *positive)
+                    - voltage(guess, vars, *negative)
+                    - *target_voltage);
+            stamp_current(
+                (*positive, *negative),
+                current,
+                &[(*positive, conductance), (*negative, -conductance)],
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
+        NonlinearElement::OtherLinearTransfer {
+            pin_nodes,
+            output,
+            reference,
+            inputs,
+            offset,
+            min_output,
+            max_output,
+            input_resistance,
+            output_resistance,
+            ..
+        } => stamp_other_linear_transfer(
+            pin_nodes,
+            output,
+            reference,
+            inputs,
+            *offset,
+            *min_output,
+            *max_output,
+            *input_resistance,
+            *output_resistance,
+            guess,
+            vars,
+            matrix,
+            rhs,
+        ),
+        NonlinearElement::OtherControlledResistance {
+            control_positive,
+            control_negative,
+            output_positive,
+            output_negative,
+            min_resistance,
+            max_resistance,
+            control_min,
+            control_max,
+            ..
+        } => {
+            let control_voltage =
+                voltage(guess, vars, *control_positive) - voltage(guess, vars, *control_negative);
+            let resistance = controlled_resistance(
+                *min_resistance,
+                *max_resistance,
+                *control_min,
+                *control_max,
+                control_voltage,
+            );
+            stamp_conductance(
+                matrix,
+                vars,
+                *output_positive,
+                *output_negative,
+                1.0 / resistance,
+            );
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn stamp_other_linear_transfer(
+    pin_nodes: &BTreeMap<PinId, usize>,
+    output: &PinId,
+    reference: &PinId,
+    inputs: &[(PinId, f64)],
+    offset: f64,
+    min_output: f64,
+    max_output: f64,
+    input_resistance: f64,
+    output_resistance: f64,
+    guess: &[f64],
+    vars: &BTreeMap<usize, usize>,
+    matrix: &mut [Vec<f64>],
+    rhs: &mut [f64],
+) {
+    let output = *pin_nodes.get(output).expect("validated other output pin");
+    let reference = *pin_nodes
+        .get(reference)
+        .expect("validated other reference pin");
+    let reference_voltage = voltage(guess, vars, reference);
+    let raw = offset
+        + inputs.iter().fold(0.0, |sum, (pin, gain)| {
+            sum + *gain
+                * (voltage(
+                    guess,
+                    vars,
+                    *pin_nodes.get(pin).expect("validated other input pin"),
+                ) - reference_voltage)
+        });
+    let bounded = raw.clamp(min_output, max_output);
+    let target = reference_voltage + bounded;
+    let conductance = 1.0 / output_resistance;
+    let mut derivatives = vec![(output, conductance)];
+    let target_reference_derivative = if (bounded - raw).abs() < f64::EPSILON {
+        1.0 - inputs.iter().map(|(_, gain)| *gain).sum::<f64>()
+    } else {
+        1.0
+    };
+    derivatives.push((reference, -conductance * target_reference_derivative));
+    if (bounded - raw).abs() < f64::EPSILON {
+        derivatives.extend(inputs.iter().map(|(pin, gain)| {
+            (
+                *pin_nodes.get(pin).expect("validated other input pin"),
+                -conductance * *gain,
+            )
+        }));
+    }
+    let current = conductance * (voltage(guess, vars, output) - target);
+    stamp_current(
+        (output, reference),
+        current,
+        &derivatives,
+        guess,
+        vars,
+        matrix,
+        rhs,
+    );
+    for (pin, _) in inputs {
+        stamp_conductance(
+            matrix,
+            vars,
+            *pin_nodes.get(pin).expect("validated other input pin"),
+            reference,
+            1.0 / input_resistance,
+        );
     }
 }
 
@@ -2723,6 +3148,7 @@ mod tests {
                     ]),
                     parameters: BTreeMap::from([(String::from("voltage"), 5.0)]),
                     ic_device: None,
+                    other_device: None,
                 },
                 Component {
                     id: ComponentId("R1".into()),
@@ -2733,6 +3159,7 @@ mod tests {
                     ]),
                     parameters: BTreeMap::from([(String::from("resistance"), 470.0)]),
                     ic_device: None,
+                    other_device: None,
                 },
                 Component {
                     id: ComponentId("R2".into()),
@@ -2743,6 +3170,7 @@ mod tests {
                     ]),
                     parameters: BTreeMap::from([(String::from("resistance"), 10_000.0)]),
                     ic_device: None,
+                    other_device: None,
                 },
                 Component {
                     id: ComponentId("Q1".into()),
@@ -2760,6 +3188,7 @@ mod tests {
                         (String::from("saturation_current"), 1e-15),
                     ]),
                     ic_device: None,
+                    other_device: None,
                 },
             ],
             wires: Vec::new(),
@@ -2791,6 +3220,7 @@ mod tests {
                     ]),
                     parameters: BTreeMap::from([("voltage".into(), 5.0)]),
                     ic_device: None,
+                    other_device: None,
                 },
                 Component {
                     id: ComponentId("U1".into()),
@@ -2818,6 +3248,7 @@ mod tests {
                             output_resistance: 10.0,
                         },
                     }),
+                    other_device: None,
                 },
                 Component {
                     id: ComponentId("R1".into()),
@@ -2828,6 +3259,7 @@ mod tests {
                     ]),
                     parameters: BTreeMap::from([("resistance".into(), 1_000.0)]),
                     ic_device: None,
+                    other_device: None,
                 },
             ],
             wires: Vec::new(),
@@ -3007,6 +3439,7 @@ mod tests {
             ]),
             parameters: BTreeMap::new(),
             ic_device: None,
+            other_device: None,
         });
         let open = solve(&button).unwrap();
         assert!(
@@ -3040,6 +3473,7 @@ mod tests {
             ]),
             parameters: BTreeMap::new(),
             ic_device: None,
+            other_device: None,
         });
         assert!(
             (solve(&changeover).unwrap().resistor_currents[&ComponentId("R1".into())] - 0.0025)
