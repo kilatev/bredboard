@@ -7,7 +7,7 @@ use bevy::camera::ScalingMode;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bredboard_core::{
-    Action, Component, ComponentId, ComponentKind, ControlState, Project, SimulationState,
+    Action, Component, ComponentId, ComponentKind, ControlState, PinId, Project, SimulationState,
     advance_steps, apply_actions, compile_topology,
 };
 
@@ -134,6 +134,8 @@ const C04_S06_11_JSON: &str =
     include_str!("../../../fixtures/projects/c04-s06-11-robot-voice.json");
 const C04_S06_12_JSON: &str =
     include_str!("../../../fixtures/projects/c04-s06-12-drum-machine.json");
+const C04_S06_13_JSON: &str =
+    include_str!("../../../fixtures/projects/c04-s06-13-modular-synthesizer.json");
 const C05_S07_10_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-10-two-minute-timer.json");
 const C05_S07_09_JSON: &str =
@@ -264,6 +266,7 @@ enum Circuit {
     C04S06_10,
     C04S06_11,
     C04S06_12,
+    C04S06_13,
     C05S07_09,
     C05S07_10,
     C05S07_08,
@@ -355,6 +358,7 @@ impl Circuit {
             Self::C04S06_10,
             Self::C04S06_11,
             Self::C04S06_12,
+            Self::C04S06_13,
             Self::C05S07_09,
             Self::C05S07_10,
             Self::C05S07_08,
@@ -497,6 +501,7 @@ impl Circuit {
             Self::C04S06_10 => C04_S06_10_JSON,
             Self::C04S06_11 => C04_S06_11_JSON,
             Self::C04S06_12 => C04_S06_12_JSON,
+            Self::C04S06_13 => C04_S06_13_JSON,
             Self::C05S07_09 => C05_S07_09_JSON,
             Self::C05S07_10 => C05_S07_10_JSON,
             Self::C05S07_08 => C05_S07_08_JSON,
@@ -606,6 +611,7 @@ impl Circuit {
             Self::C04S06_10 => "C04-S06-10: LIGHT MUSIC",
             Self::C04S06_11 => "C04-S06-11: ROBOT VOICE",
             Self::C04S06_12 => "C04-S06-12: DRUM MACHINE",
+            Self::C04S06_13 => "C04-S06-13: MODULAR SYNTHESIZER",
             Self::C05S07_09 => "C05-S07-09: REFRIGERATOR-DOOR GUARD",
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
@@ -830,6 +836,10 @@ impl Circuit {
             Self::C04S06_12 => (
                 "An eight-step calculated counter selects two explicit diode/DIP rhythm masks. One 555 supplies the tempo and the second supplies a deterministic high-rate carrier for the kick, hat, and transistor envelope paths; the TL072-style mixer, LM386-style amplifier, and speaker remain voltage/current-derived.",
                 "Task: run the fixture and compare the calculated counter outputs, mask nodes, transistor currents, and speaker load over several fixed-step beats.",
+            ),
+            Self::C04S06_13 => (
+                "A calculated 555 VCO proxy, two finite TL074 transfer stages, RC attack/release envelope, voltage-controlled resistance VCA, and bounded LM386-style amplifier compose a patchable single-supply synth. The CD4046 waveform, exact filter response, and musical timbre remain explicit source discrepancies.",
+                "Task: drag RV1/RV2, press GATE, run the fixture, and compare the calculated envelope, virtual-ground output, VCA current, and speaker load.",
             ),
             Self::C05S07_09 => (
                 "A calculated 555 monostable uses a button as a bounded reed-contact substitute and drives a buzzer load through an RC delay. The physical magnet and refrigerator door remain presentation discrepancies.",
@@ -1457,6 +1467,11 @@ impl Circuit {
             Self::C04S06_09 => &[],
             Self::C04S06_11 => &[],
             Self::C04S06_12 => &[],
+            Self::C04S06_13 => &[ControlSpec {
+                label: "GATE: PRESS / RELEASE",
+                component: "B1",
+                is_switch: false,
+            }],
             Self::C05S07_09 => &[ControlSpec {
                 label: "S1: DOOR CONTACT",
                 component: "S1",
@@ -1751,6 +1766,16 @@ impl Circuit {
                 },
                 DialSpec {
                     label: "RV2: TREMOLO DEPTH - drag left/right",
+                    component: "RV2",
+                },
+            ],
+            Self::C04S06_13 => &[
+                DialSpec {
+                    label: "RV1: VCO CV - drag left/right",
+                    component: "RV1",
+                },
+                DialSpec {
+                    label: "RV2: FILTER CUTOFF - drag left/right",
                     component: "RV2",
                 },
             ],
@@ -3324,6 +3349,37 @@ fn update_view(
                                     * result
                                         .resistor_currents
                                         .get(&ComponentId("BZ2".into()))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                                        .abs()
+                            )
+                        },
+                    )
+                } else if bench.circuit == Circuit::C04S06_13 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Synth envelope and speaker: run to measure".into(),
+                        |result| {
+                            format!(
+                                "VMID {:.2} V   ENV {:.2} V   VCA {:.2} mA   SP1 {:.2} mA",
+                                result
+                                    .module_output_voltages
+                                    .get(&ComponentId("M1".into()))
+                                    .and_then(|pins| pins.get(&PinId("mid".into())))
+                                    .copied()
+                                    .unwrap_or(0.0),
+                                bench.simulation.capacitor_voltages[&ComponentId("C3".into())],
+                                1000.0
+                                    * result
+                                        .other_terminal_currents
+                                        .get(&ComponentId("VCA1".into()))
+                                        .and_then(|pins| pins.get(&PinId("output_positive".into())))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                                        .abs(),
+                                1000.0
+                                    * result
+                                        .resistor_currents
+                                        .get(&ComponentId("SP1".into()))
                                         .copied()
                                         .unwrap_or(0.0)
                                         .abs()

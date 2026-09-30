@@ -231,20 +231,35 @@ regression `cargo test -p bredboard-core
 c04_drum_machine_maps_counter_masks_and_calculates_speaker_path --locked`
 passes after 50 fixed steps and checks both mask outputs and speaker current.
 
+S06-13 is admitted as a bounded modular-synth fixture. The fixture has 30
+calculated components and 20 explicit patch wires, including a regulated 4.5 V
+virtual-ground module, a 555 VCO proxy, two finite `ic_device` transfer stages,
+an RC Gate envelope, a voltage-controlled-resistance `other` device, an
+LM386-style amplifier, a speaker, and four calculated diode clamps. The focused
+app/core regressions, full workspace test (`52` app, `134` core, `3` tools,
+zero doc-test failures), fixture validation (`30 components, 20 wires, 15
+derived nodes`), 4,000-step simulation, catalog validation, Clippy, and
+native/WASM builds passed. Exact CD4046 waveform, TL074 filter dynamics,
+LM386 package behavior, and musical timbre remain explicit source
+discrepancies. Manual browser/breadboard evidence remains pending.
+
 ## Current blockers
 
 - External audio inputs, recorded microphone waveforms, full op-amp and
   transformer fidelity, analog multipliers, optical coupling, oscilloscope
-  presentation, and the remaining multi-stage audio contracts are not yet
-  available. T29's passive-piezo distinction and reverse-breakdown noise
-  modeling are available; CAT-S06-01, CAT-S06-06, CAT-S06-07, CAT-S06-09,
-  CAT-S06-11, and CAT-S06-12 now have bounded fixtures and menu entries, with
-  S06-07 admitted only through its documented fixed-step DC input proxy (no
-  true guitar waveform or scripted audio), S06-11 admitted only through its
+  presentation, and source-specific multi-stage audio fidelity beyond the
+  bounded fixtures below are not yet available. T29's passive-piezo
+  distinction and reverse-breakdown noise modeling are available;
+  CAT-S06-01, CAT-S06-06, CAT-S06-07, CAT-S06-09, CAT-S06-11, CAT-S06-12,
+  and CAT-S06-13 now have bounded fixtures and menu entries, with S06-07
+  admitted only through its documented fixed-step DC input proxy (no true
+  guitar waveform or scripted audio), S06-11 admitted only through its
   bounded electret/transformer/ring-modulator proxies (no recorded microphone
-  waveform or magnetic transient model), and S06-12 admitted only through its
+  waveform or magnetic transient model), S06-12 admitted only through its
   555-driven carrier proxy for noise and fixed DIP masks (no reverse-breakdown
-  noise or interactive DIP positions).
+  noise or interactive DIP positions), and S06-13 admitted only through its
+  bounded 555 VCO proxy and finite TL074 transfer stages (no CD4046 waveform,
+  exact filter dynamics, or musical timbre).
 - CAT-S06-10's candidate specifically remains blocked on a calculated
   microphone/audio-input contract and a TL074 four-channel filter contract;
   do not promote its fixed test-source candidate to `fixture_ready` without
