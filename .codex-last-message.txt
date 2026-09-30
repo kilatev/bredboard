@@ -1,10 +1,12 @@
-Implemented the shared Rust `module` model.
+Implemented the shared multi-board core model.
 
-- Added `ComponentKind::Module` with calculated analog, threshold, open-collector, and regulated-supply behaviors.
-- Integrated modules into topology validation and the existing MNA solver; no second netlist or scripted outcomes.
-- Added fixed-seed property/unit tests; core tests pass: 129/129.
-- Added [module contract documentation](</home/vetalik/prj/bredboard/.codex-batch-worktrees/module/docs/catalog/MODULE-MODEL.md>).
-- Updated all eight ledger rows to `module:modelled`; they remain `blocked_component` with fixture-specific gaps documented.
-- Formatting, workspace check, Clippy, and diff checks pass.
+- Added `BoardModel::MultiBoard` with 1–8 named solderless boards.
+- Added qualified hole IDs (`board_id/local_hole`).
+- Preserved legacy single-board JSON and format version 1.
+- Derived topology remains contact/pin/wire-based; cross-board connectivity requires explicit wires.
+- Added calculated cross-board solver coverage and fixed-seed property tests.
+- Updated format docs, C07/C08 task evidence, and both ledger rows.
 
-Key implementation: [module.rs](</home/vetalik/prj/bredboard/.codex-batch-worktrees/module/crates/core/src/module.rs).
+Both entries remain `blocked_component` with fixture-specific gaps documented; `need:board` was removed.
+
+Verification passed: workspace Clippy, formatting, 52 app tests, 133 core tests, 3 tools tests, doc tests, and diff checks.

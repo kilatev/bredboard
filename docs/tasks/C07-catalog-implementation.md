@@ -100,12 +100,20 @@ cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c07-s09-01-h
 cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
 ```
 
+The shared board-model slice now provides a validated multi_board contract
+for up to eight named half_size_solderless boards. Qualified
+board_id/local_hole references preserve per-board strips and rails, while
+explicit wire endpoints can connect boards; deterministic topology and a
+calculated cross-board resistor path are covered by fixed-seed core tests.
+S09-19 remains blocked because its logic packages, controller behavior, and
+three-board fixture/layout are not implemented.
+
 ## Current blockers
 
 - Logic packages, module I/O contracts, RF/audio/IR/gas/PIR/ultrasonic sensor
   contracts, relay behavior, crystal timebases, displays, motor drivers,
-  chassis/elevator mechanics, and multi-board scene semantics are not yet
-  available.
+  chassis/elevator mechanics, and S09-19's fixture-specific multi-board scene
+  semantics are not yet available.
 - Manual interaction and real-breadboard evidence are pending for any new
   fixture.
 
