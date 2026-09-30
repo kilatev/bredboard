@@ -1,12 +1,19 @@
-Implemented the shared multi-board core model.
+Implemented CAT-S06-10 as a bounded candidate fixture and registered it in the app.
 
-- Added `BoardModel::MultiBoard` with 1–8 named solderless boards.
-- Added qualified hole IDs (`board_id/local_hole`).
-- Preserved legacy single-board JSON and format version 1.
-- Derived topology remains contact/pin/wire-based; cross-board connectivity requires explicit wires.
-- Added calculated cross-board solver coverage and fixed-seed property tests.
-- Updated format docs, C07/C08 task evidence, and both ledger rows.
+Changes:
 
-Both entries remain `blocked_component` with fixture-specific gaps documented; `need:board` was removed.
+- Added [fixture](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-10/fixtures/projects/c04-s06-10-light-music.json>) with 34 components, 4 wires, and 16 derived nodes.
+- Registered menu/catalog entry in [main.rs](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-10/crates/app/src/main.rs:125>) and [exercise_catalog.rs](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-10/crates/app/src/exercise_catalog.rs:81>).
+- Added calculated three-LED regression coverage in [simulation.rs](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-10/crates/core/src/simulation.rs:1942>).
+- Updated the ledger and C04 task card.
 
-Verification passed: workspace Clippy, formatting, 52 app tests, 133 core tests, 3 tools tests, doc tests, and diff checks.
+The ledger remains `blocked_component`, correctly: the fixture uses a fixed Thevenin microphone test source and generic linear IC stages, not live microphone capture or TL074 frequency-selective behavior.
+
+Verification passed:
+
+- `cargo fmt --all --check`
+- `cargo clippy --workspace --all-targets --locked -- -D warnings`
+- `cargo test --workspace --locked` — 52 app, 134 core, 3 tools tests passed
+- Fixture and catalog validation
+- Native and WASM builds
+- `git diff --check`

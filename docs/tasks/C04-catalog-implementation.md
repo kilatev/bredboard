@@ -127,12 +127,24 @@ failures), native and WASM app builds, fixture validation and 4,000-step
 simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
 --check`.
 
+CAT-S06-10 now has a bounded candidate at
+`fixtures/projects/c04-s06-10-light-music.json` and a menu entry. The candidate
+validates as 34 components, 4 wires, and 16 derived nodes; its focused
+three-LED regression passed. It remains `blocked_component` in the ledger:
+`MIC1` is an explicit fixed Thevenin test source and `U1`–`U4` are generic
+linear transfers, so this evidence does not claim live microphone capture,
+TL074 package mapping, or frequency-selective light response.
+
 ## Current blockers
 
 - Passive-piezo distinction, reverse-breakdown noise, external audio inputs,
   microphones, op-amps, transformers, analog multipliers, optical coupling,
   oscilloscope presentation, and the remaining multi-stage audio contracts
   are not yet available.
+- CAT-S06-10's candidate specifically remains blocked on a calculated
+  microphone/audio-input contract and a TL074 four-channel filter contract;
+  do not promote its fixed test-source candidate to `fixture_ready` without
+  those findings being resolved.
 - Manual interaction and real-breadboard evidence are pending for all new
   fixtures.
 

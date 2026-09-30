@@ -1939,6 +1939,33 @@ mod tests {
     }
 
     #[test]
+    fn c04_light_music_calculates_three_led_band_branches() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c04-s06-10-light-music.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Run]);
+        for _ in 0..100 {
+            advance_steps(&project, &mut state, 1);
+        }
+        let solved = state
+            .last_valid
+            .as_ref()
+            .unwrap_or_else(|| panic!("diagnostics={:?}", state.diagnostics));
+        assert!(!state.stale, "diagnostics={:?}", state.diagnostics);
+        for id in ["D1", "D2", "D3"] {
+            assert!(
+                solved.led_currents[&ComponentId(id.into())] > 0.001,
+                "{id} current={}",
+                solved.led_currents[&ComponentId(id.into())]
+            );
+        }
+        assert_eq!(solved.ic_device_output_voltages.len(), 4);
+    }
+
+    #[test]
     fn c05_two_minute_timer_calculates_button_led_buzzer_and_pnp_state() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c05-s07-10-two-minute-timer.json"

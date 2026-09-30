@@ -1,0 +1,139 @@
+{
+  "format_version": 1,
+  "title": "C04-S06-10: Light music bounded level fixture",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    {
+      "id": "MIC1",
+      "kind": "other",
+      "pins": { "negative": "TP-:2", "positive": "A3" },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": { "negative": "ground", "positive": "output" },
+        "behavior": {
+          "behavior": "voltage_source",
+          "positive": "positive",
+          "negative": "negative",
+          "voltage": 0.3,
+          "internal_resistance": 1000.0
+        }
+      }
+    },
+    {
+      "id": "U1",
+      "kind": "ic_device",
+      "pins": { "gnd": "TP-:3", "vcc": "TP+:2", "input": "B3", "output": "A4", "reference": "TP-:4" },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": { "gnd": "ground", "vcc": "supply", "input": "input", "output": "output", "reference": "reference" },
+        "behavior": {
+          "behavior": "linear",
+          "output": "output",
+          "reference": "reference",
+          "inputs": [{ "pin": "input", "gain": 1.5 }],
+          "offset": 1.0,
+          "min_output": 0.0,
+          "max_output": 4.5,
+          "input_resistance": 1000000.0,
+          "output_resistance": 100.0
+        }
+      }
+    },
+    {
+      "id": "U2",
+      "kind": "ic_device",
+      "pins": { "gnd": "TP-:5", "vcc": "TP+:3", "input": "B4", "output": "A5", "reference": "TP-:6" },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": { "gnd": "ground", "vcc": "supply", "input": "input", "output": "output", "reference": "reference" },
+        "behavior": {
+          "behavior": "linear",
+          "output": "output",
+          "reference": "reference",
+          "inputs": [{ "pin": "input", "gain": 2.0 }],
+          "offset": 0.0,
+          "min_output": 0.0,
+          "max_output": 4.5,
+          "input_resistance": 1000000.0,
+          "output_resistance": 100.0
+        }
+      }
+    },
+    {
+      "id": "U3",
+      "kind": "ic_device",
+      "pins": { "gnd": "TP-:7", "vcc": "TP+:4", "input": "B5", "output": "A6", "reference": "TP-:8" },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": { "gnd": "ground", "vcc": "supply", "input": "input", "output": "output", "reference": "reference" },
+        "behavior": {
+          "behavior": "linear",
+          "output": "output",
+          "reference": "reference",
+          "inputs": [{ "pin": "input", "gain": 1.2 }],
+          "offset": 0.0,
+          "min_output": 0.0,
+          "max_output": 4.5,
+          "input_resistance": 1000000.0,
+          "output_resistance": 100.0
+        }
+      }
+    },
+    {
+      "id": "U4",
+      "kind": "ic_device",
+      "pins": { "gnd": "TP-:9", "vcc": "TP+:5", "input": "B6", "output": "A7", "reference": "TP-:10" },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": { "gnd": "ground", "vcc": "supply", "input": "input", "output": "output", "reference": "reference" },
+        "behavior": {
+          "behavior": "linear",
+          "output": "output",
+          "reference": "reference",
+          "inputs": [{ "pin": "input", "gain": 0.8 }],
+          "offset": 0.0,
+          "min_output": 0.0,
+          "max_output": 4.5,
+          "input_resistance": 1000000.0,
+          "output_resistance": 100.0
+        }
+      }
+    },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "collector": "C11", "base": "B12", "emitter": "TP-:11" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "Q2", "kind": "npn_transistor", "pins": { "collector": "C21", "base": "B22", "emitter": "TP-:12" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "Q3", "kind": "npn_transistor", "pins": { "collector": "C27", "base": "B29", "emitter": "TP-:13" }, "parameters": { "beta": 100.0, "saturation_current": 1e-15 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "B10", "cathode": "D11" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "D2", "kind": "led", "pins": { "anode": "B20", "cathode": "D21" }, "parameters": { "forward_voltage": 2.2, "series_resistance": 20.0 } },
+    { "id": "D3", "kind": "led", "pins": { "anode": "B26", "cathode": "D27" }, "parameters": { "forward_voltage": 2.8, "series_resistance": 20.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "TP+:6", "b": "A10" }, "parameters": { "resistance": 330.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "TP+:7", "b": "A20" }, "parameters": { "resistance": 330.0 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "TP+:8", "b": "A26" }, "parameters": { "resistance": 330.0 } },
+    { "id": "R4", "kind": "resistor", "pins": { "a": "A9", "b": "A12" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R5", "kind": "resistor", "pins": { "a": "D6", "b": "A22" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R6", "kind": "resistor", "pins": { "a": "B7", "b": "A29" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R7", "kind": "resistor", "pins": { "a": "A8", "b": "TP-:14" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R8", "kind": "resistor", "pins": { "a": "C9", "b": "TP-:15" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R9", "kind": "resistor", "pins": { "a": "A14", "b": "TP-:16" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R10", "kind": "resistor", "pins": { "a": "A13", "b": "TP-:17" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R11", "kind": "resistor", "pins": { "a": "D3", "b": "TP-:18" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R12", "kind": "resistor", "pins": { "a": "E3", "b": "TP-:19" }, "parameters": { "resistance": 100000.0 } },
+    { "id": "R13", "kind": "resistor", "pins": { "a": "C8", "b": "TP-:20" }, "parameters": { "resistance": 100000.0 } },
+    { "id": "R14", "kind": "resistor", "pins": { "a": "TP+:9", "b": "TP-:29" }, "parameters": { "resistance": 2200.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "negative": "TP-:21", "positive": "C4" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "C2", "kind": "capacitor", "pins": { "negative": "TP-:22", "positive": "D4" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "C3", "kind": "capacitor", "pins": { "negative": "TP-:23", "positive": "D8" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "C4", "kind": "capacitor", "pins": { "negative": "TP-:24", "positive": "C5" }, "parameters": { "capacitance": 0.00000001 } },
+    { "id": "C5", "kind": "capacitor", "pins": { "negative": "TP-:25", "positive": "D5" }, "parameters": { "capacitance": 0.00000001 } },
+    { "id": "C6", "kind": "capacitor", "pins": { "negative": "TP-:26", "positive": "D9" }, "parameters": { "capacitance": 0.00000001 } },
+    { "id": "C7", "kind": "capacitor", "pins": { "negative": "TP-:27", "positive": "C6" }, "parameters": { "capacitance": 0.00001 } },
+    { "id": "C8", "kind": "capacitor", "pins": { "negative": "TP-:28", "positive": "D7" }, "parameters": { "capacitance": 0.00001 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "B8", "to": "E4" },
+    { "id": "W2", "from": "B9", "to": "E5" },
+    { "id": "W3", "from": "B14", "to": "E6" },
+    { "id": "W4", "from": "B13", "to": "E7" }
+  ],
+  "initial_conditions": {}
+}
