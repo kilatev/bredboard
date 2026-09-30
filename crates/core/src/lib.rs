@@ -1,11 +1,17 @@
 //! Platform-independent project model and derived breadboard connectivity.
 mod ic_device;
+mod other_device;
 mod persistence;
 mod simulation;
 mod solver;
 pub use ic_device::{
     IC_DEVICE_MAX_RESISTANCE, IC_DEVICE_MIN_RESISTANCE, IcDeviceBehavior, IcDeviceLinearInput,
     IcDevicePinRole, IcDeviceSpec, IcLogicOperation, MAX_IC_DEVICE_INPUTS, MAX_IC_DEVICE_PINS,
+};
+pub use other_device::{
+    MAX_OTHER_DEVICE_PINS, OTHER_DEVICE_MAX_RESISTANCE, OTHER_DEVICE_MIN_RESISTANCE,
+    OtherDeviceBehavior, OtherDeviceLinearInput, OtherDevicePinRole, OtherDeviceSpec,
+    controlled_resistance,
 };
 pub use persistence::{
     ACTION_LOG_FORMAT_VERSION, ActionEvent, ActionLog, MODEL_VERSION, PersistenceError,
@@ -141,6 +147,10 @@ pub struct Component {
     /// remains the sole source of physical connectivity.
     #[serde(default)]
     pub ic_device: Option<IcDeviceSpec>,
+    /// Required only for `ComponentKind::Other`. The named-pin contract is
+    /// the sole source of the model's electrical behavior.
+    #[serde(default)]
+    pub other_device: Option<OtherDeviceSpec>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -233,6 +243,9 @@ pub enum ComponentKind {
     /// Configurable pin-level IC/module contract. Its electrical behavior is
     /// calculated from node voltages by the common solver.
     IcDevice,
+    /// Explicit pin-level contract for a catalog part not yet promoted to a
+    /// dedicated component kind.
+    Other,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Wire {
@@ -375,12 +388,34 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                     Vec::new()
                 }
             }
+        } else if c.kind == ComponentKind::Other {
+            match &c.other_device {
+                Some(spec) => {
+                    validate_other_device(c, spec, &mut errors);
+                    spec.pin_roles.keys().map(|pin| pin.0.clone()).collect()
+                }
+                None => {
+                    errors.push(Diagnostic::new(
+                        "missing_other_device_spec",
+                        format!("components.{}.other_device", c.id.0),
+                        "other components require a named-pin electrical contract",
+                    ));
+                    Vec::new()
+                }
+            }
         } else {
             if c.ic_device.is_some() {
                 errors.push(Diagnostic::new(
                     "unexpected_ic_device_spec",
                     format!("components.{}.ic_device", c.id.0),
                     "only ic_device components may carry an ic_device contract",
+                ));
+            }
+            if c.other_device.is_some() {
+                errors.push(Diagnostic::new(
+                    "unexpected_other_device_spec",
+                    format!("components.{}.other_device", c.id.0),
+                    "only other components may carry an other_device contract",
                 ));
             }
             pins_for(c.kind)
@@ -397,6 +432,13 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                 "invalid_pins",
                 format!("components.{}.pins", c.id.0),
                 format!("expected pins: {}", expected.join(", ")),
+            ));
+        }
+        if c.kind == ComponentKind::IcDevice && c.other_device.is_some() {
+            errors.push(Diagnostic::new(
+                "unexpected_other_device_spec",
+                format!("components.{}.other_device", c.id.0),
+                "ic_device and other_device contracts cannot be combined",
             ));
         }
         for (pin, hole) in &c.pins {
@@ -798,6 +840,196 @@ fn validate_ic_device_resistance(
     }
 }
 
+fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec<Diagnostic>) {
+    use OtherDeviceBehavior::{
+        LinearTransfer, Resistive, VoltageControlledResistance, VoltageSource,
+    };
+    use OtherDevicePinRole::{Control, Ground, Input, Output, Reference, Supply, Terminal};
+
+    if spec.pin_roles.len() < 2 || spec.pin_roles.len() > MAX_OTHER_DEVICE_PINS {
+        errors.push(Diagnostic::new(
+            "other_device_pin_limit",
+            format!("components.{}.other_device.pin_roles", c.id.0),
+            format!("an other device must declare 2..={MAX_OTHER_DEVICE_PINS} named pins"),
+        ));
+    }
+    for pin in spec.pin_roles.keys() {
+        if pin.0.trim().is_empty() || pin.0.len() > 32 {
+            errors.push(Diagnostic::new(
+                "other_device_pin_name",
+                format!("components.{}.other_device.pin_roles", c.id.0),
+                "other device pin names must contain 1–32 characters",
+            ));
+        }
+    }
+    for pin in spec.referenced_pins() {
+        if !spec.pin_roles.contains_key(pin) || !c.pins.contains_key(pin) {
+            errors.push(Diagnostic::new(
+                "other_device_unknown_pin",
+                format!("components.{}.other_device.behavior", c.id.0),
+                format!("behavior references undeclared pin {}", pin.0),
+            ));
+        }
+    }
+    let role_is = |pin: &PinId, expected: fn(&OtherDevicePinRole) -> bool| {
+        spec.pin_roles.get(pin).is_some_and(expected)
+    };
+    match &spec.behavior {
+        Resistive {
+            positive,
+            negative,
+            resistance: value,
+        } => {
+            if !role_is(positive, |role| matches!(role, Terminal | Output))
+                || !role_is(negative, |role| {
+                    matches!(role, Terminal | Reference | Ground)
+                })
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_terminal_roles",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "resistive terminals must have terminal/output and terminal/reference/ground roles",
+                ));
+            }
+            validate_other_resistance(c, errors, "resistance", *value);
+        }
+        VoltageSource {
+            positive,
+            negative,
+            voltage,
+            internal_resistance,
+        } => {
+            if !role_is(positive, |role| matches!(role, Terminal | Output | Supply))
+                || !role_is(negative, |role| {
+                    matches!(role, Terminal | Reference | Ground)
+                })
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_source_roles",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "source terminals must have positive/output/supply and negative/reference/ground roles",
+                ));
+            }
+            validate_other_finite(c, errors, "voltage", *voltage);
+            validate_other_resistance(c, errors, "internal_resistance", *internal_resistance);
+        }
+        LinearTransfer {
+            output,
+            reference,
+            inputs,
+            offset,
+            min_output,
+            max_output,
+            input_resistance,
+            output_resistance,
+        } => {
+            if !role_is(output, |role| matches!(role, Output))
+                || !role_is(reference, |role| matches!(role, Reference | Ground))
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_transfer_roles",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "linear transfer output/reference roles do not match the contract",
+                ));
+            }
+            if inputs.is_empty() || inputs.len() > MAX_OTHER_DEVICE_PINS {
+                errors.push(Diagnostic::new(
+                    "other_device_input_limit",
+                    format!("components.{}.other_device.behavior.inputs", c.id.0),
+                    format!("a linear transfer must declare 1..={MAX_OTHER_DEVICE_PINS} inputs"),
+                ));
+            }
+            for (index, input) in inputs.iter().enumerate() {
+                if !role_is(&input.pin, |role| {
+                    matches!(role, Input | Control | Reference)
+                }) {
+                    errors.push(Diagnostic::new(
+                        "other_device_input_role",
+                        format!(
+                            "components.{}.other_device.behavior.inputs[{index}]",
+                            c.id.0
+                        ),
+                        "linear transfer inputs must have input/control/reference roles",
+                    ));
+                }
+                validate_other_finite(c, errors, &format!("inputs[{index}].gain"), input.gain);
+            }
+            validate_other_finite(c, errors, "offset", *offset);
+            validate_other_finite(c, errors, "min_output", *min_output);
+            validate_other_finite(c, errors, "max_output", *max_output);
+            if min_output > max_output {
+                errors.push(Diagnostic::new(
+                    "other_device_output_range",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "min_output must not exceed max_output",
+                ));
+            }
+            validate_other_resistance(c, errors, "input_resistance", *input_resistance);
+            validate_other_resistance(c, errors, "output_resistance", *output_resistance);
+        }
+        VoltageControlledResistance {
+            control_positive,
+            control_negative,
+            output_positive,
+            output_negative,
+            min_resistance,
+            max_resistance,
+            control_min,
+            control_max,
+        } => {
+            if !role_is(control_positive, |role| matches!(role, Control | Input))
+                || !role_is(control_negative, |role| {
+                    matches!(role, Control | Reference | Ground)
+                })
+                || !role_is(output_positive, |role| matches!(role, Output | Terminal))
+                || !role_is(output_negative, |role| {
+                    matches!(role, Output | Terminal | Reference | Ground)
+                })
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_controlled_resistance_roles",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "controlled-resistance pin roles do not match the contract",
+                ));
+            }
+            validate_other_resistance(c, errors, "min_resistance", *min_resistance);
+            validate_other_resistance(c, errors, "max_resistance", *max_resistance);
+            validate_other_finite(c, errors, "control_min", *control_min);
+            validate_other_finite(c, errors, "control_max", *control_max);
+            if min_resistance > max_resistance || control_min >= control_max {
+                errors.push(Diagnostic::new(
+                    "other_device_control_range",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "min_resistance must not exceed max_resistance and control_min must be below control_max",
+                ));
+            }
+        }
+    }
+}
+
+fn validate_other_finite(c: &Component, errors: &mut Vec<Diagnostic>, path: &str, value: f64) {
+    if !value.is_finite() {
+        errors.push(Diagnostic::new(
+            "other_device_non_finite_value",
+            format!("components.{}.other_device.behavior.{path}", c.id.0),
+            "other device behavior values must be finite",
+        ));
+    }
+}
+
+fn validate_other_resistance(c: &Component, errors: &mut Vec<Diagnostic>, path: &str, value: f64) {
+    validate_other_finite(c, errors, path, value);
+    if !value.is_finite()
+        || !(OTHER_DEVICE_MIN_RESISTANCE..=OTHER_DEVICE_MAX_RESISTANCE).contains(&value)
+    {
+        errors.push(Diagnostic::new(
+            "other_device_resistance_range",
+            format!("components.{}.other_device.behavior.{path}", c.id.0),
+            format!("resistance must be in {OTHER_DEVICE_MIN_RESISTANCE}..={OTHER_DEVICE_MAX_RESISTANCE}"),
+        ));
+    }
+}
+
 fn pins_for(k: ComponentKind) -> &'static [&'static str] {
     match k {
         ComponentKind::DcVoltageSource => &["negative", "positive"],
@@ -887,6 +1119,7 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
         ],
         ComponentKind::AudioAmplifier => &["gnd", "input", "output", "vcc"],
         ComponentKind::IcDevice => &[],
+        ComponentKind::Other => &[],
     }
 }
 fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
@@ -930,6 +1163,7 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::BargraphDisplay => &["output_resistance"],
         ComponentKind::AudioAmplifier => &["gain", "output_resistance"],
         ComponentKind::IcDevice => &[],
+        ComponentKind::Other => &[],
     }
 }
 fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
@@ -1036,6 +1270,7 @@ mod tests {
                 ]),
                 parameters: BTreeMap::from([("resistance".into(), 1000.0)]),
                 ic_device: None,
+                other_device: None,
             }],
             initial_conditions: InitialConditions::default(),
             wires: vec![Wire {
@@ -1083,6 +1318,7 @@ mod tests {
             ]),
             parameters: BTreeMap::from([("resistance".into(), 220.0)]),
             ic_device: None,
+            other_device: None,
         });
         let before = compile_topology(&p).unwrap();
         p.components.reverse();
@@ -1251,6 +1487,7 @@ mod tests {
                 ]),
                 parameters: BTreeMap::from([("resistance".into(), 1000.0)]),
                 ic_device: None,
+                other_device: None,
             })
             .collect();
         assert!(
@@ -1287,6 +1524,7 @@ mod tests {
                 ("max_resistance".into(), 10_000.0),
             ]),
             ic_device: None,
+            other_device: None,
         }
     }
 
@@ -1427,6 +1665,7 @@ mod tests {
             ]),
             parameters: BTreeMap::from([("resistance".into(), 32.0)]),
             ic_device: None,
+            other_device: None,
         }];
         p.wires.clear();
         assert!(compile_topology(&p).is_ok());
@@ -1464,6 +1703,7 @@ mod tests {
             ]),
             parameters: BTreeMap::from([("resistance".into(), 8.0)]),
             ic_device: None,
+            other_device: None,
         }];
         p.wires.clear();
         assert!(compile_topology(&p).is_ok());
@@ -1501,6 +1741,7 @@ mod tests {
             ]),
             parameters: BTreeMap::from([("resistance".into(), 32.0)]),
             ic_device: None,
+            other_device: None,
         }];
         p.wires.clear();
         assert!(compile_topology(&p).is_ok());
@@ -1524,5 +1765,63 @@ mod tests {
         let json = serde_json::to_string(&p).unwrap();
         let decoded: Project = serde_json::from_str(&json).unwrap();
         assert_eq!(decoded, p);
+    }
+
+    #[test]
+    fn other_device_contract_derives_topology_and_current() {
+        let mut p = project();
+        p.components = vec![
+            Component {
+                id: ComponentId("V1".into()),
+                kind: ComponentKind::DcVoltageSource,
+                pins: BTreeMap::from([
+                    (PinId("positive".into()), HoleId("TP+:1".into())),
+                    (PinId("negative".into()), HoleId("TP-:1".into())),
+                ]),
+                parameters: BTreeMap::from([("voltage".into(), 5.0)]),
+                ic_device: None,
+                other_device: None,
+            },
+            Component {
+                id: ComponentId("X1".into()),
+                kind: ComponentKind::Other,
+                pins: BTreeMap::from([
+                    (PinId("positive".into()), HoleId("A1".into())),
+                    (PinId("negative".into()), HoleId("F1".into())),
+                ]),
+                parameters: BTreeMap::new(),
+                ic_device: None,
+                other_device: Some(OtherDeviceSpec {
+                    pin_roles: BTreeMap::from([
+                        (PinId("positive".into()), OtherDevicePinRole::Terminal),
+                        (PinId("negative".into()), OtherDevicePinRole::Reference),
+                    ]),
+                    behavior: OtherDeviceBehavior::Resistive {
+                        positive: PinId("positive".into()),
+                        negative: PinId("negative".into()),
+                        resistance: 100.0,
+                    },
+                }),
+            },
+        ];
+        p.wires = vec![
+            Wire {
+                id: WireId("V+".into()),
+                from: HoleId("TP+:1".into()),
+                to: HoleId("A1".into()),
+            },
+            Wire {
+                id: WireId("V-".into()),
+                from: HoleId("TP-:1".into()),
+                to: HoleId("F1".into()),
+            },
+        ];
+        assert!(compile_topology(&p).is_ok());
+        let result = solve_dc(&p, &BTreeMap::new(), &BTreeMap::new()).unwrap();
+        let current =
+            result.other_terminal_currents[&ComponentId("X1".into())][&PinId("positive".into())];
+        assert!((current - 0.05).abs() < 1e-10);
+        let json = serde_json::to_string(&p).unwrap();
+        assert_eq!(serde_json::from_str::<Project>(&json).unwrap(), p);
     }
 }

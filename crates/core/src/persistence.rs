@@ -474,6 +474,7 @@ mod tests {
                 ("max_resistance".into(), 20_000.0),
             ]),
             ic_device: None,
+            other_device: None,
         });
         p.wires.push(crate::Wire {
             id: crate::WireId("W2".into()),
