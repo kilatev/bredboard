@@ -110,6 +110,7 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
         | ComponentKind::Sram
         | ComponentKind::Optocoupler
         | ComponentKind::IcDevice
+        | ComponentKind::Module
         | ComponentKind::Other => Some(&ic::IntegratedCircuit),
     }
 }
@@ -224,6 +225,7 @@ mod tests {
                 .collect::<BTreeMap<_, _>>(),
             ic_device: None,
             other_device: None,
+            module: None,
             diode_model: None,
         }
     }

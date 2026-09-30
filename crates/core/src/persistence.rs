@@ -475,6 +475,7 @@ mod tests {
             ]),
             ic_device: None,
             other_device: None,
+            module: None,
             diode_model: None,
         });
         p.wires.push(crate::Wire {
