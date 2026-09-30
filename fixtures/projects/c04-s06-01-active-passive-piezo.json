@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "title": "C04-S06-01: Active and Passive Piezo",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 9.0 } },
+    { "id": "BZ1", "kind": "buzzer", "pins": { "positive": "B8", "negative": "A11" }, "parameters": { "resistance": 100.0 } },
+    { "id": "PZ1", "kind": "piezo_passive", "pins": { "positive": "G8", "negative": "G11" }, "parameters": { "resistance": 100.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "A8", "to": "TP+:5" },
+    { "id": "W2", "from": "B11", "to": "TP-:11" },
+    { "id": "W3", "from": "F8", "to": "TP+:6" },
+    { "id": "W4", "from": "F11", "to": "TP-:12" }
+  ]
+}

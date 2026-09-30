@@ -1,12 +1,16 @@
-Implemented the shared multi-board core model.
+Implemented CAT-S06-01 end to end.
 
-- Added `BoardModel::MultiBoard` with 1–8 named solderless boards.
-- Added qualified hole IDs (`board_id/local_hole`).
-- Preserved legacy single-board JSON and format version 1.
-- Derived topology remains contact/pin/wire-based; cross-board connectivity requires explicit wires.
-- Added calculated cross-board solver coverage and fixed-seed property tests.
-- Updated format docs, C07/C08 task evidence, and both ledger rows.
+- Added validated fixture: [c04-s06-01-active-passive-piezo.json](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-01/fixtures/projects/c04-s06-01-active-passive-piezo.json>)
+- Registered menu entry, readout, and regression test.
+- Updated [CATALOG-AUDIT-LEDGER.md](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-01/docs/catalog/CATALOG-AUDIT-LEDGER.md>) to `fixture_ready`.
+- Recorded implementation evidence in [C04 task card](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-01/docs/tasks/C04-catalog-implementation.md>).
 
-Both entries remain `blocked_component` with fixture-specific gaps documented; `need:board` was removed.
+Verification passed:
 
-Verification passed: workspace Clippy, formatting, 52 app tests, 133 core tests, 3 tools tests, doc tests, and diff checks.
+- Full workspace: 53 app, 133 core, 3 tools tests.
+- Clippy, formatting, native and WASM builds.
+- Fixture validation and 4,000-step simulation.
+- Catalog validation: 20 sections, 212 schematics.
+- `git diff --check`.
+
+Manual audibility and real-breadboard evidence remain pending and are explicitly not counted as automated acceptance.

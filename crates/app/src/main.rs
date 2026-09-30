@@ -116,6 +116,8 @@ const C03_S05_07_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s05-07-step-sequencer.json");
 const C03_S05_08_JSON: &str =
     include_str!("../../../fixtures/projects/c03-s05-08-bounded-sram.json");
+const C04_S06_01_JSON: &str =
+    include_str!("../../../fixtures/projects/c04-s06-01-active-passive-piezo.json");
 const C04_S06_04_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-04-metronome.json");
 const C04_S06_02_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-02-cricket.json");
 const C04_S06_05_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-05-doorbell.json");
@@ -239,6 +241,7 @@ enum Circuit {
     C03S05_06,
     C03S05_07,
     C03S05_08,
+    C04S06_01,
     C04S06_04,
     C04S06_02,
     C04S06_05,
@@ -285,7 +288,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 98] {
+    fn all() -> [Self; 99] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -323,6 +326,7 @@ impl Circuit {
             Self::C03S05_06,
             Self::C03S05_07,
             Self::C03S05_08,
+            Self::C04S06_01,
             Self::C04S06_04,
             Self::C04S06_02,
             Self::C04S06_05,
@@ -458,6 +462,7 @@ impl Circuit {
             Self::C03S05_06 => C03_S05_06_JSON,
             Self::C03S05_07 => C03_S05_07_JSON,
             Self::C03S05_08 => C03_S05_08_JSON,
+            Self::C04S06_01 => C04_S06_01_JSON,
             Self::C04S06_04 => C04_S06_04_JSON,
             Self::C04S06_02 => C04_S06_02_JSON,
             Self::C04S06_05 => C04_S06_05_JSON,
@@ -560,6 +565,7 @@ impl Circuit {
             Self::C03S05_06 => "C03-S05-06: DIGITAL CLOCK CORE",
             Self::C03S05_07 => "C03-S05-07: STEP SEQUENCER",
             Self::C03S05_08 => "C03-S05-08: BOUNDED SRAM COMPUTER",
+            Self::C04S06_01 => "C04-S06-01: ACTIVE AND PASSIVE PIEZO",
             Self::C04S06_04 => "C04-S06-04: METRONOME",
             Self::C04S06_02 => "C04-S06-02: CRICKET",
             Self::C04S06_05 => "C04-S06-05: DOORBELL",
@@ -741,6 +747,10 @@ impl Circuit {
             Self::C03S05_08 => (
                 "A bounded SRAM model stores two calculated eight-bit words on electrical WRITE edges and drives the selected word onto an eight-bit LED read bus. The source SAP-1 CPU, four-board layout, and 5 V / 2 A supply remain explicit discrepancies.",
                 "Task: select an address and data byte, press WRITE, then switch the address and verify the stored calculated byte on the output LEDs.",
+            ),
+            Self::C04S06_01 => (
+                "The active buzzer and passive piezo share the same calculated 9 V DC load current, but only the active buzzer has an internal oscillator; the passive piezo stays silent until an external oscillating drive is present.",
+                "Task: run the fixture and compare the equal calculated branch currents with the active buzzer's sound state and the passive piezo's silent state.",
             ),
             Self::C04S06_04 => (
                 "A calculated NE555 timer charges and discharges its timing capacitor through an adjustable control, driving a current-limited LED and speaker load. The beat rate is derived from fixed simulation steps and electrical state.",
@@ -1328,7 +1338,7 @@ impl Circuit {
                     is_switch: false,
                 },
             ],
-            Self::C04S06_04 => &[],
+            Self::C04S06_01 | Self::C04S06_04 => &[],
             Self::C04S06_02 => &[],
             Self::C04S06_05 => &[ControlSpec {
                 label: "S1: PRESS / RELEASE",
@@ -3119,6 +3129,37 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C04S06_01 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Active/passive piezo current: run to measure".into(),
+                        |result| {
+                            let active = 1000.0
+                                * result
+                                    .resistor_currents
+                                    .get(&ComponentId("BZ1".into()))
+                                    .copied()
+                                    .unwrap_or(0.0)
+                                    .abs();
+                            let passive = 1000.0
+                                * result
+                                    .resistor_currents
+                                    .get(&ComponentId("PZ1".into()))
+                                    .copied()
+                                    .unwrap_or(0.0)
+                                    .abs();
+                            let state = if bench
+                                .simulation
+                                .passive_piezo_sounding(&ComponentId("PZ1".into()))
+                            {
+                                "sounding"
+                            } else {
+                                "silent"
+                            };
+                            format!(
+                                "BZ1 active {active:.1} mA   PZ1 passive {passive:.1} mA ({state})"
+                            )
+                        },
+                    )
                 } else if bench.circuit == Circuit::C06S08_01 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "Motor current and speed: run to measure".into(),
@@ -3447,6 +3488,24 @@ mod tests {
     }
 
     #[test]
+    fn c04_s06_01_keeps_equal_dc_loads_and_passive_piezo_silent() {
+        let mut bench = Bench::new(Circuit::C04S06_01);
+        bench.act(Action::Run);
+        advance_steps(&bench.project, &mut bench.simulation, 64);
+        let result = bench.simulation.last_valid.as_ref().unwrap();
+        let active = result.resistor_currents[&ComponentId("BZ1".into())].abs();
+        let passive = result.resistor_currents[&ComponentId("PZ1".into())].abs();
+        assert!(!bench.simulation.stale);
+        assert!(active > bredboard_core::SOUNDING_CURRENT);
+        assert!((active - passive).abs() < 1e-12);
+        assert!(
+            !bench
+                .simulation
+                .passive_piezo_sounding(&ComponentId("PZ1".into()))
+        );
+    }
+
+    #[test]
     fn each_circuit_uses_core_controls_and_reset() {
         for circuit in Circuit::all() {
             let mut bench = Bench::new(circuit);
@@ -3546,7 +3605,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            98
+            99
         );
         assert!(matches!(
             items[0],
