@@ -308,7 +308,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 99] {
+    fn all() -> [Self; 106] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
