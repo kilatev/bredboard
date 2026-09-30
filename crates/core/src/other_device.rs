@@ -30,6 +30,25 @@ pub fn controlled_resistance(
     max_resistance - ratio * (max_resistance - min_resistance)
 }
 
+/// Calculate the bounded voltage produced by a ring-modulator contract.
+/// Inputs are normalized around the declared reference voltage; this helper
+/// keeps the solver and property tests on the same deterministic contract.
+#[allow(clippy::too_many_arguments)]
+pub fn ring_modulator_output(
+    reference_voltage: f64,
+    signal_voltage: f64,
+    carrier_voltage: f64,
+    gain: f64,
+    signal_scale: f64,
+    carrier_scale: f64,
+    min_output: f64,
+    max_output: f64,
+) -> f64 {
+    let raw = gain * (signal_voltage - reference_voltage) * (carrier_voltage - reference_voltage)
+        / (signal_scale * carrier_scale);
+    reference_voltage + raw.clamp(min_output, max_output)
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum OtherDevicePinRole {
@@ -83,6 +102,36 @@ pub enum OtherDeviceBehavior {
         input_resistance: f64,
         output_resistance: f64,
     },
+    /// A bounded four-terminal transformer approximation. The primary draws
+    /// a finite resistive input current and the secondary is driven by the
+    /// calculated primary voltage through the declared turns ratio. This is
+    /// an educational transfer contract, not a magnetic transient model.
+    Transformer {
+        primary_positive: PinId,
+        primary_negative: PinId,
+        secondary_positive: PinId,
+        secondary_negative: PinId,
+        turns_ratio: f64,
+        primary_resistance: f64,
+        secondary_resistance: f64,
+    },
+    /// A bounded multiplicative signal transfer used by the four-diode ring
+    /// modulator fixture. The carrier and signal are normalized around the
+    /// reference pin; finite input/output resistances keep the transfer part
+    /// of the common electrical solve.
+    RingModulator {
+        signal: PinId,
+        carrier: PinId,
+        output: PinId,
+        reference: PinId,
+        gain: f64,
+        signal_scale: f64,
+        carrier_scale: f64,
+        min_output: f64,
+        max_output: f64,
+        input_resistance: f64,
+        output_resistance: f64,
+    },
     /// A two-terminal output whose resistance is controlled by a sensed
     /// voltage. The control terminals are electrically isolated from the
     /// output terminals in this contract, as required for optical or sensor
@@ -110,6 +159,10 @@ impl OtherDeviceSpec {
     pub fn output_pins(&self) -> Vec<&PinId> {
         match &self.behavior {
             OtherDeviceBehavior::LinearTransfer { output, .. } => vec![output],
+            OtherDeviceBehavior::Transformer {
+                secondary_positive, ..
+            } => vec![secondary_positive],
+            OtherDeviceBehavior::RingModulator { output, .. } => vec![output],
             OtherDeviceBehavior::Resistive { .. }
             | OtherDeviceBehavior::VoltageSource { .. }
             | OtherDeviceBehavior::VoltageControlledResistance { .. } => Vec::new(),
@@ -134,6 +187,25 @@ impl OtherDeviceSpec {
                 pins.extend(inputs.iter().map(|input| &input.pin));
                 pins
             }
+            OtherDeviceBehavior::Transformer {
+                primary_positive,
+                primary_negative,
+                secondary_positive,
+                secondary_negative,
+                ..
+            } => vec![
+                primary_positive,
+                primary_negative,
+                secondary_positive,
+                secondary_negative,
+            ],
+            OtherDeviceBehavior::RingModulator {
+                signal,
+                carrier,
+                output,
+                reference,
+                ..
+            } => vec![signal, carrier, output, reference],
             OtherDeviceBehavior::VoltageControlledResistance {
                 control_positive,
                 control_negative,
@@ -152,7 +224,7 @@ impl OtherDeviceSpec {
 
 #[cfg(test)]
 mod tests {
-    use super::controlled_resistance;
+    use super::{controlled_resistance, ring_modulator_output};
     use proptest::prelude::*;
 
     proptest! {
@@ -181,6 +253,51 @@ mod tests {
             prop_assert!((min..=max).contains(&first_resistance));
             prop_assert!((min..=max).contains(&second_resistance));
             prop_assert!(first_resistance + f64::EPSILON >= second_resistance);
+        }
+
+        #[test]
+        fn ring_modulator_output_is_bounded_and_reference_centered(
+            reference in -10_000i32..10_000,
+            signal in -10_000i32..10_000,
+            carrier in -10_000i32..10_000,
+            gain in -10_000i32..10_000,
+            signal_scale in 1u32..10_000,
+            carrier_scale in 1u32..10_000,
+            minimum in -10_000i32..0,
+            span in 1u32..10_000,
+        ) {
+            let reference = f64::from(reference);
+            let signal = f64::from(signal);
+            let carrier = f64::from(carrier);
+            let gain = f64::from(gain) / 1_000.0;
+            let signal_scale = f64::from(signal_scale) / 100.0;
+            let carrier_scale = f64::from(carrier_scale) / 100.0;
+            let minimum = f64::from(minimum) / 100.0;
+            let maximum = minimum + f64::from(span) / 100.0;
+            let output = ring_modulator_output(
+                reference,
+                signal,
+                carrier,
+                gain,
+                signal_scale,
+                carrier_scale,
+                minimum,
+                maximum,
+            );
+            prop_assert!((reference + minimum..=reference + maximum).contains(&output));
+            let centered = ring_modulator_output(
+                reference,
+                reference,
+                carrier,
+                gain,
+                signal_scale,
+                carrier_scale,
+                minimum,
+                maximum,
+            );
+            if minimum <= 0.0 && maximum >= 0.0 {
+                prop_assert_eq!(centered, reference);
+            }
         }
     }
 }

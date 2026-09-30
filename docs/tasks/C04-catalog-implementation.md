@@ -49,9 +49,11 @@ cannot represent.
   represent that proxy as a true guitar waveform or scripted audio.
 - S06-09 uses LED/photoresistor optical coupling; the existing photoresistor
   control is not an optical component link, so the coupling must be defined
-  before admission. S06-10 through S06-13 require microphone, op-amp,
-  transformer, or multi-stage audio contracts and remain blocked until those
-  contracts exist.
+  before admission. S06-10, S06-12, and S06-13 require additional microphone,
+  op-amp, or multi-stage audio contracts and remain blocked until those
+  contracts exist. S06-11 is admitted with bounded microphone-proxy,
+  transformer, and ring-modulator contracts; its recorded-audio, magnetic,
+  and exact-timbre requirements remain explicit discrepancies.
 - All S11 entries require op-amp, signal-source, filter, or oscilloscope
   presentation contracts beyond the current DC/RC model. S16 additionally
   requires analog multipliers, integrator presentation, and multi-output
@@ -151,6 +153,14 @@ failures), native and WASM app builds, fixture validation and 4,000-step
 simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
 --check`.
 
+S06-11 adds `fixtures/projects/c04-s06-11-robot-voice.json` and a reachable
+menu entry. It uses a calculated electret-input proxy, one LM358 channel, a
+fixed-step NE555 carrier, two bounded 1:1 transformer transfers, a four-diode
+ring path, and a bounded LM386-style speaker load. The fixture validates as 23
+components, 0 wires, and 12 derived nodes; the second LM358 channel,
+recorded microphone waveform, magnetic transient behavior, and exact robot
+timbre are not silently claimed.
+
 The S06-05 full gate passed on 2026-09-29 with: `cargo fmt --all --check`,
 `cargo clippy --workspace --all-targets --locked -- -D warnings`,
 `cargo test --workspace --locked` (49 app, 92 core, 3 tools, 0 doc-test
@@ -198,16 +208,30 @@ three-LED regression passed. It remains `blocked_component` in the ledger:
 linear transfers, so this evidence does not claim live microphone capture,
 TL074 package mapping, or frequency-selective light response.
 
+The S06-11 focused gate passed on 2026-09-30 with the robot-voice core
+regression, deterministic ring-modulator property tests, the app catalog
+reachability/count test, fixture validation (`23 components, 0 wires, 12
+derived nodes`), and a 4,000-step simulation. The S06-11 full gate passed on
+2026-09-30 with `cargo fmt --all --check`,
+`cargo clippy --workspace --all-targets --locked -- -D warnings`,
+`cargo test --workspace --locked` (52 app, 135 core, 3 tools, 0 doc-test
+failures), `cargo build -p bredboard-app --target x86_64-unknown-linux-gnu
+--locked`, `cargo build -p bredboard-app --target wasm32-unknown-unknown
+--locked`, fixture validation, 4,000-step simulation, catalog validation (20
+sections, 212 schematics), and `git diff --check`.
+
 ## Current blockers
 
-- External audio inputs, microphones, op-amps, transformers, analog
-  multipliers, optical coupling, oscilloscope presentation, and the
-  remaining multi-stage audio contracts are not yet available. T29's
-  passive-piezo distinction and reverse-breakdown noise modeling are
-  available; CAT-S06-01, CAT-S06-06, CAT-S06-07, and CAT-S06-09 now have
-  bounded fixtures and menu entries, with S06-07 admitted only through its
-  documented fixed-step DC input proxy (no true guitar waveform or
-  scripted audio).
+- External audio inputs, recorded microphone waveforms, full op-amp and
+  transformer fidelity, analog multipliers, optical coupling, oscilloscope
+  presentation, and the remaining multi-stage audio contracts are not yet
+  available. T29's passive-piezo distinction and reverse-breakdown noise
+  modeling are available; CAT-S06-01, CAT-S06-06, CAT-S06-07, CAT-S06-09,
+  and CAT-S06-11 now have bounded fixtures and menu entries, with S06-07
+  admitted only through its documented fixed-step DC input proxy (no true
+  guitar waveform or scripted audio) and S06-11 admitted only through its
+  bounded electret/transformer/ring-modulator proxies (no recorded
+  microphone waveform or magnetic transient model).
 - CAT-S06-10's candidate specifically remains blocked on a calculated
   microphone/audio-input contract and a TL074 four-channel filter contract;
   do not promote its fixed test-source candidate to `fixture_ready` without

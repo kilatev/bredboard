@@ -130,6 +130,8 @@ const C04_S06_07_JSON: &str =
 const C04_S06_09_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-09-tremolo.json");
 const C04_S06_10_JSON: &str =
     include_str!("../../../fixtures/projects/c04-s06-10-light-music.json");
+const C04_S06_11_JSON: &str =
+    include_str!("../../../fixtures/projects/c04-s06-11-robot-voice.json");
 const C05_S07_10_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-10-two-minute-timer.json");
 const C05_S07_09_JSON: &str =
@@ -258,6 +260,7 @@ enum Circuit {
     C04S06_07,
     C04S06_09,
     C04S06_10,
+    C04S06_11,
     C05S07_09,
     C05S07_10,
     C05S07_08,
@@ -347,6 +350,7 @@ impl Circuit {
             Self::C04S06_07,
             Self::C04S06_09,
             Self::C04S06_10,
+            Self::C04S06_11,
             Self::C05S07_09,
             Self::C05S07_10,
             Self::C05S07_08,
@@ -487,6 +491,7 @@ impl Circuit {
             Self::C04S06_07 => C04_S06_07_JSON,
             Self::C04S06_09 => C04_S06_09_JSON,
             Self::C04S06_10 => C04_S06_10_JSON,
+            Self::C04S06_11 => C04_S06_11_JSON,
             Self::C05S07_09 => C05_S07_09_JSON,
             Self::C05S07_10 => C05_S07_10_JSON,
             Self::C05S07_08 => C05_S07_08_JSON,
@@ -594,6 +599,7 @@ impl Circuit {
             Self::C04S06_07 => "C04-S06-07: GUITAR FUZZ",
             Self::C04S06_09 => "C04-S06-09: TREMOLO",
             Self::C04S06_10 => "C04-S06-10: LIGHT MUSIC",
+            Self::C04S06_11 => "C04-S06-11: ROBOT VOICE",
             Self::C05S07_09 => "C05-S07-09: REFRIGERATOR-DOOR GUARD",
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
@@ -810,6 +816,10 @@ impl Circuit {
             Self::C04S06_10 => (
                 "A fixed, voltage-derived microphone test source feeds four bounded analog stages and three current-limited transistor LED branches. The source's live audio input, TL074 package mapping, and frequency-selective light response remain explicit discrepancies.",
                 "Task: run the fixture and compare the calculated low, mid, and high branch LED currents; this fixture does not capture live microphone audio.",
+            ),
+            Self::C04S06_11 => (
+                "A calculated electret-input proxy is preamplified, transferred through two bounded 1:1 transformer contracts, multiplied by a fixed-step NE555 carrier through a four-diode ring path, and driven into a speaker by a bounded LM386-style amplifier. The source recording input, magnetic coupling, and exact robot-voice timbre remain explicit discrepancies.",
+                "Task: run the fixture and compare the calculated ring-modulator output with the carrier and speaker-load current.",
             ),
             Self::C05S07_09 => (
                 "A calculated 555 monostable uses a button as a bounded reed-contact substitute and drives a buzzer load through an RC delay. The physical magnet and refrigerator door remain presentation discrepancies.",
@@ -1435,6 +1445,7 @@ impl Circuit {
             Self::C04S06_06 => &[],
             Self::C04S06_07 => &[],
             Self::C04S06_09 => &[],
+            Self::C04S06_11 => &[],
             Self::C05S07_09 => &[ControlSpec {
                 label: "S1: DOOR CONTACT",
                 component: "S1",
@@ -3400,6 +3411,43 @@ fn update_view(
                                         .get(&ComponentId("Q1".into()))
                                         .copied()
                                         .unwrap_or(0.0)
+                            )
+                        },
+                    )
+                } else if bench.circuit == Circuit::C04S06_11 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Ring-modulator output: run to measure".into(),
+                        |result| {
+                            format!(
+                                "RM1 {:.3} V   carrier {:.3} V   SP1 {:.2} mA",
+                                result
+                                    .other_output_voltages
+                                    .get(&ComponentId("RM1".into()))
+                                    .and_then(
+                                        |pins| pins.get(&bredboard_core::PinId("output".into()))
+                                    )
+                                    .copied()
+                                    .unwrap_or(0.0),
+                                result
+                                    .node_voltages
+                                    .iter()
+                                    .find(|node| {
+                                        node.contacts.contains(
+                                            &bredboard_core::Contact::ComponentPin(
+                                                ComponentId("T2".into()),
+                                                bredboard_core::PinId("secondary_positive".into()),
+                                            ),
+                                        )
+                                    })
+                                    .map(|node| node.voltage)
+                                    .unwrap_or(0.0),
+                                1000.0
+                                    * result
+                                        .resistor_currents
+                                        .get(&ComponentId("SP1".into()))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                                        .abs()
                             )
                         },
                     )
