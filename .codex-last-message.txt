@@ -1,12 +1,8 @@
-Implemented the shared multi-board core model.
+Implemented CAT-S06-12 end to end.
 
-- Added `BoardModel::MultiBoard` with 1–8 named solderless boards.
-- Added qualified hole IDs (`board_id/local_hole`).
-- Preserved legacy single-board JSON and format version 1.
-- Derived topology remains contact/pin/wire-based; cross-board connectivity requires explicit wires.
-- Added calculated cross-board solver coverage and fixed-seed property tests.
-- Updated format docs, C07/C08 task evidence, and both ledger rows.
+- Added [drum-machine fixture]( /home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-12/fixtures/projects/c04-s06-12-drum-machine.json) with 53 components, 17 wires, and 28 derived nodes.
+- Registered it in [exercise_catalog.rs](/home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-12/crates/app/src/exercise_catalog.rs) and [main.rs](/home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-12/crates/app/src/main.rs).
+- Added calculated counter/mask/speaker regression coverage.
+- Updated [CATALOG-AUDIT-LEDGER.md](/home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-12/docs/catalog/CATALOG-AUDIT-LEDGER.md) to `fixture_ready`, documenting source discrepancies.
 
-Both entries remain `blocked_component` with fixture-specific gaps documented; `need:board` was removed.
-
-Verification passed: workspace Clippy, formatting, 52 app tests, 133 core tests, 3 tools tests, doc tests, and diff checks.
+Verification passed: formatting, Clippy, full workspace tests (52 app, 134 core, 3 tools), fixture validation, 50-step simulation, catalog validation, Linux build, and WASM build.

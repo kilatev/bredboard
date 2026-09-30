@@ -127,6 +127,17 @@ failures), native and WASM app builds, fixture validation and 4,000-step
 simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
 --check`.
 
+CAT-S06-12 is now admitted as `fixtures/projects/c04-s06-12-drum-machine.json`.
+The fixture contains 53 components, 17 wires, and 28 derived nodes. It uses
+the existing calculated timer/counter, diode, NPN, generic IC/device, and
+speaker contracts; the two eight-input `Other` devices are fixed DIP masks
+whose input nodes are mapped from the counter's one-hot outputs. A 555-driven
+carrier is used for the bounded noise path, so reverse-breakdown noise and
+interactive DIP positions remain explicit source discrepancies. The focused
+regression `cargo test -p bredboard-core
+c04_drum_machine_maps_counter_masks_and_calculates_speaker_path --locked`
+passes after 50 fixed steps and checks both mask outputs and speaker current.
+
 ## Current blockers
 
 - Passive-piezo distinction, reverse-breakdown noise, external audio inputs,

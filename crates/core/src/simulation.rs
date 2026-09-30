@@ -1939,6 +1939,69 @@ mod tests {
     }
 
     #[test]
+    fn c04_drum_machine_maps_counter_masks_and_calculates_speaker_path() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c04-s06-12-drum-machine.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Run]);
+        let mut max_speaker = 0.0_f64;
+        let mut max_kick_mask = 0.0_f64;
+        let mut max_hat_mask = 0.0_f64;
+        for _ in 0..50 {
+            advance_steps(&project, &mut state, 1);
+            let solved = state
+                .last_valid
+                .as_ref()
+                .unwrap_or_else(|| panic!("diagnostics={:?}", state.diagnostics));
+            max_speaker = max_speaker.max(
+                solved
+                    .resistor_currents
+                    .get(&ComponentId("SP1".into()))
+                    .copied()
+                    .unwrap_or_default()
+                    .abs(),
+            );
+            max_kick_mask = max_kick_mask.max(
+                solved
+                    .other_output_voltages
+                    .get(&ComponentId("DIP_KICK".into()))
+                    .and_then(|pins| pins.get(&crate::PinId("out".into())))
+                    .copied()
+                    .unwrap_or_default(),
+            );
+            max_hat_mask = max_hat_mask.max(
+                solved
+                    .other_output_voltages
+                    .get(&ComponentId("DIP_HAT".into()))
+                    .and_then(|pins| pins.get(&crate::PinId("out".into())))
+                    .copied()
+                    .unwrap_or_default(),
+            );
+        }
+        assert!(!state.stale, "diagnostics={:?}", state.diagnostics);
+        assert!(max_speaker > 0.001, "speaker current={max_speaker}");
+        assert!(
+            max_kick_mask > 0.1,
+            "kick mask={max_kick_mask} states={:?} outputs={:?}",
+            state.digital_states,
+            state.last_valid.as_ref().and_then(|result| result
+                .other_output_voltages
+                .get(&ComponentId("DIP_KICK".into())))
+        );
+        assert!(
+            max_hat_mask > 0.1,
+            "hat mask={max_hat_mask} states={:?} outputs={:?}",
+            state.digital_states,
+            state.last_valid.as_ref().and_then(|result| result
+                .other_output_voltages
+                .get(&ComponentId("DIP_HAT".into())))
+        );
+    }
+
+    #[test]
     fn c05_two_minute_timer_calculates_button_led_buzzer_and_pnp_state() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c05-s07-10-two-minute-timer.json"
