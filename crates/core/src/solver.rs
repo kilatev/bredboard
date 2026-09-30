@@ -141,6 +141,9 @@ enum NonlinearElement {
         emitter: usize,
         beta: f64,
         saturation: f64,
+        reverse_breakdown_voltage: Option<f64>,
+        reverse_breakdown_resistance: Option<f64>,
+        noise_sample: f64,
     },
     Pnp {
         id: ComponentId,
@@ -321,6 +324,13 @@ pub const MAX_NONLINEAR_ITERATIONS: usize = 200;
 /// retaining the bounded iteration and explicit nonconvergence diagnostic.
 const NONLINEAR_RELAXATION: f64 = 0.25;
 
+#[derive(Clone, Copy)]
+struct SolveOptions {
+    dt: Option<f64>,
+    step: u64,
+    max_iterations: usize,
+}
+
 /// Solve a DC project using MNA, bounded nonlinear iteration, and deterministic partial pivoting.
 /// A floating connected network, ideal-source short, contradictory source loop,
 /// or singular ideal-source arrangement is reported as an electrical error.
@@ -335,8 +345,11 @@ pub fn solve_dc(
         &BTreeMap::new(),
         ratios,
         &BTreeMap::new(),
-        None,
-        MAX_NONLINEAR_ITERATIONS,
+        SolveOptions {
+            dt: None,
+            step: 0,
+            max_iterations: MAX_NONLINEAR_ITERATIONS,
+        },
     )
 }
 
@@ -353,6 +366,7 @@ pub fn solve_transient(
         capacitor_voltages,
         ratios,
         &BTreeMap::new(),
+        0,
         MAX_NONLINEAR_ITERATIONS,
     )
 }
@@ -363,6 +377,7 @@ pub(crate) fn solve_transient_with_digital_states(
     capacitor_voltages: &BTreeMap<ComponentId, f64>,
     ratios: &BTreeMap<ComponentId, f64>,
     digital_states: &BTreeMap<ComponentId, u32>,
+    step: u64,
     max_iterations: usize,
 ) -> Result<SolveResult, ElectricalError> {
     solve_internal(
@@ -371,8 +386,11 @@ pub(crate) fn solve_transient_with_digital_states(
         capacitor_voltages,
         ratios,
         digital_states,
-        Some(FIXED_STEP_SECONDS),
-        max_iterations,
+        SolveOptions {
+            dt: Some(FIXED_STEP_SECONDS),
+            step,
+            max_iterations,
+        },
     )
 }
 
@@ -382,8 +400,7 @@ fn solve_internal(
     capacitor_voltages: &BTreeMap<ComponentId, f64>,
     ratios: &BTreeMap<ComponentId, f64>,
     digital_states: &BTreeMap<ComponentId, u32>,
-    dt: Option<f64>,
-    max_iterations: usize,
+    options: SolveOptions,
 ) -> Result<SolveResult, ElectricalError> {
     let topology = compile_topology(project).map_err(ElectricalError::Structure)?;
     let mut control_state = project.initial_conditions.controls.clone();
@@ -399,16 +416,16 @@ fn solve_internal(
         &cap_state,
         &ratio_state,
         digital_states,
-        dt,
+        options,
     )?;
-    let coupled_transient = dt.is_some()
+    let coupled_transient = options.dt.is_some()
         && branches
             .iter()
             .filter(|branch| matches!(branch.kind, BranchKind::Capacitor))
             .count()
             >= 2
         && nonlinear.len() >= 2;
-    let use_collector_base_jacobian = dt.is_none()
+    let use_collector_base_jacobian = options.dt.is_none()
         || !branches
             .iter()
             .any(|branch| matches!(branch.kind, BranchKind::Capacitor));
@@ -797,7 +814,7 @@ fn solve_internal(
     let size = voltage_vars.len() + constraints.len();
     let mut guess = vec![0.0; size];
     let mut solved = None;
-    for _ in 0..max_iterations {
+    for _ in 0..options.max_iterations {
         let mut matrix = vec![vec![0.0; size]; size];
         let mut rhs = vec![0.0; size];
         for branch in &branches {
@@ -859,7 +876,10 @@ fn solve_internal(
     let solution = solved.ok_or_else(|| {
         calc(
             "nonconvergence",
-            format!("nonlinear circuit did not converge within {max_iterations} iterations"),
+            format!(
+                "nonlinear circuit did not converge within {} iterations",
+                options.max_iterations
+            ),
         )
     })?;
     let mut voltages = Vec::new();
@@ -960,6 +980,7 @@ fn solve_internal(
                 emitter,
                 beta,
                 saturation,
+                ..
             } => {
                 let vbe = voltage(&solution, &voltage_vars, *base)
                     - voltage(&solution, &voltage_vars, *emitter);
@@ -1237,7 +1258,7 @@ fn make_branches(
     capacitor_voltages: &BTreeMap<ComponentId, f64>,
     ratios: &BTreeMap<ComponentId, f64>,
     digital_states: &BTreeMap<ComponentId, u32>,
-    dt: Option<f64>,
+    options: SolveOptions,
 ) -> Result<CompiledBranches, ElectricalError> {
     let node_contacts: Vec<_> = topology.iter().map(|n| n.contacts.clone()).collect();
     let mut branches = Vec::new();
@@ -1306,6 +1327,18 @@ fn make_branches(
                     emitter,
                     beta: component.parameters["beta"],
                     saturation: component.parameters["saturation_current"],
+                    reverse_breakdown_voltage: component
+                        .parameters
+                        .get("reverse_breakdown_voltage")
+                        .copied(),
+                    reverse_breakdown_resistance: component
+                        .parameters
+                        .get("reverse_breakdown_resistance")
+                        .copied(),
+                    noise_sample: component
+                        .parameters
+                        .get("reverse_breakdown_voltage")
+                        .map_or(0.0, |_| fixed_noise_sample(options.step)),
                 });
                 continue;
             }
@@ -1850,7 +1883,7 @@ fn make_branches(
             _ => {}
         }
         let Some((a_pin, b_pin, kind, value, previous_voltage)) =
-            component_branch(component, states, capacitor_voltages, ratios, dt)?
+            component_branch(component, states, capacitor_voltages, ratios, options.dt)?
         else {
             continue;
         };
@@ -2087,6 +2120,18 @@ fn npn_currents(vbe: f64, vce: f64, beta: f64, saturation: f64) -> (f64, f64, f6
     )
 }
 
+/// Deterministic fixed-step sample for the bounded reverse-junction noise model.
+fn fixed_noise_sample(step: u64) -> f64 {
+    let mut value = step
+        .wrapping_add(0x9E37_79B9_7F4A_7C15)
+        .wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    value = (value ^ (value >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    value = (value ^ (value >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    value ^= value >> 31;
+    let unit = (value >> 11) as f64 / ((1_u64 << 53) as f64);
+    unit * 2.0 - 1.0
+}
+
 fn stamp_current(
     (from, to): (usize, usize),
     current: f64,
@@ -2280,6 +2325,9 @@ fn stamp_element(
             emitter,
             beta,
             saturation,
+            reverse_breakdown_voltage,
+            reverse_breakdown_resistance,
+            noise_sample,
             ..
         } => {
             let vbe = voltage(guess, vars, *base) - voltage(guess, vars, *emitter);
@@ -2305,6 +2353,24 @@ fn stamp_element(
                 matrix,
                 rhs,
             );
+            if let (Some(breakdown_voltage), Some(breakdown_resistance)) =
+                (reverse_breakdown_voltage, reverse_breakdown_resistance)
+            {
+                let reverse_voltage = -vbe;
+                if reverse_voltage > *breakdown_voltage {
+                    let conductance = (1.0 + 0.5 * *noise_sample) / *breakdown_resistance;
+                    let current = conductance * (reverse_voltage - *breakdown_voltage);
+                    stamp_current(
+                        (*emitter, *base),
+                        current,
+                        &[(*emitter, conductance), (*base, -conductance)],
+                        guess,
+                        vars,
+                        matrix,
+                        rhs,
+                    );
+                }
+            }
         }
         NonlinearElement::Pnp {
             base,
@@ -4136,8 +4202,11 @@ mod tests {
             &BTreeMap::new(),
             &BTreeMap::new(),
             &BTreeMap::new(),
-            None,
-            MAX_NONLINEAR_ITERATIONS,
+            SolveOptions {
+                dt: None,
+                step: 0,
+                max_iterations: MAX_NONLINEAR_ITERATIONS,
+            },
         )
         .unwrap();
         assert!((on.switch_currents[&ComponentId("S1".into())].abs() - 0.375).abs() < 1e-12);
@@ -4260,8 +4329,11 @@ mod tests {
             &BTreeMap::new(),
             &BTreeMap::new(),
             &BTreeMap::new(),
-            None,
-            MAX_NONLINEAR_ITERATIONS,
+            SolveOptions {
+                dt: None,
+                step: 0,
+                max_iterations: MAX_NONLINEAR_ITERATIONS,
+            },
         )
         .unwrap();
         assert!(first.led_currents[&ComponentId("D1".into())] > 0.001);
@@ -4285,8 +4357,11 @@ mod tests {
             &BTreeMap::new(),
             &BTreeMap::new(),
             &BTreeMap::new(),
-            None,
-            MAX_NONLINEAR_ITERATIONS,
+            SolveOptions {
+                dt: None,
+                step: 0,
+                max_iterations: MAX_NONLINEAR_ITERATIONS,
+            },
         )
         .unwrap();
         assert!(blocked.optocoupler_input_currents[&ComponentId("U1".into())] < 1e-9);
@@ -5105,6 +5180,21 @@ mod tests {
                     [&PinId("out".into())];
                 prop_assert!(output.is_finite());
                 prop_assert!((-1e-9..=3.31).contains(&output));
+            }
+        }
+
+        proptest! {
+            #![proptest_config(ProptestConfig {
+                cases: 96,
+                rng_seed: proptest::test_runner::RngSeed::Fixed(0xBADC_0FFE),
+                ..ProptestConfig::default()
+            })]
+
+            #[test]
+            fn reverse_breakdown_noise_samples_stay_bounded(step in any::<u64>()) {
+                let sample = fixed_noise_sample(step);
+                prop_assert!((-1.0..=1.0).contains(&sample));
+                prop_assert_eq!(sample, fixed_noise_sample(step));
             }
         }
     }

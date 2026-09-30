@@ -1,0 +1,25 @@
+{
+  "format_version": 1,
+  "title": "C04-S06-06: Calculated reverse-breakdown noise generator",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 9.0 } },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "base": "F1", "collector": "A1", "emitter": "A2" }, "parameters": { "beta": 100.0, "saturation_current": 1e-12, "reverse_breakdown_voltage": 8.0, "reverse_breakdown_resistance": 10000.0 } },
+    { "id": "Q2", "kind": "npn_transistor", "pins": { "base": "F4", "collector": "A6", "emitter": "A5" }, "parameters": { "beta": 100.0, "saturation_current": 1e-12 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "TP+:2", "b": "C2" }, "parameters": { "resistance": 100000.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "TP+:3", "b": "E6" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "C6", "b": "C4" }, "parameters": { "resistance": 1000000.0 } },
+    { "id": "C1", "kind": "capacitor", "pins": { "positive": "E2", "negative": "E4" }, "parameters": { "capacitance": 0.000001 } },
+    { "id": "C2", "kind": "capacitor", "pins": { "positive": "B6", "negative": "E10" }, "parameters": { "capacitance": 0.000001 } },
+    { "id": "C3", "kind": "capacitor", "pins": { "positive": "E12", "negative": "E14" }, "parameters": { "capacitance": 0.00022 } },
+    { "id": "AMP1", "kind": "audio_amplifier", "pins": { "gnd": "TP-:6", "input": "C10", "output": "C12", "vcc": "TP+:4" }, "parameters": { "gain": 20.0, "output_resistance": 10.0 } },
+    { "id": "POT1", "kind": "potentiometer", "pins": { "a": "A10", "b": "B11" }, "parameters": { "min_resistance": 100.0, "max_resistance": 10000.0 } },
+    { "id": "SPK1", "kind": "speaker", "pins": { "positive": "A14", "negative": "TP-:7" }, "parameters": { "resistance": 8.0 } }
+  ],
+  "wires": [
+    { "id": "W_Q1_BASE", "from": "G1", "to": "TP-:2" },
+    { "id": "W_Q2_EMITTER", "from": "D5", "to": "TP-:3" },
+    { "id": "W_POT_GROUND", "from": "D11", "to": "TP-:5" }
+  ],
+  "initial_conditions": { "control_ratios": { "POT1": 0.5 } }
+}

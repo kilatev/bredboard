@@ -41,9 +41,11 @@ cannot represent.
 - S06-03 needs eight electrical key inputs and a bounded frequency/readout
   contract; the source's exact musical tuning remains a documented
   approximation.
-- S06-06 and S06-07 require reverse-breakdown noise, external audio input, or
-  input-jack contracts not present in the core. Keep them blocked rather than
-  scripting noise or guitar audio.
+- S06-06 is admitted with the bounded reverse-breakdown NPN contract added for
+  its first transistor, the existing audio-amplifier contract for the LM386
+  stage, and a two-terminal rheostat approximation for the source pot wiper.
+  S06-07 still requires external audio input and input-jack contracts; keep it
+  blocked rather than scripting guitar audio.
 - S06-09 uses LED/photoresistor optical coupling; the existing photoresistor
   control is not an optical component link, so the coupling must be defined
   before admission. S06-10 through S06-13 require microphone, op-amp,
@@ -109,6 +111,29 @@ S06-03 adds eight button/potentiometer key branches around one calculated 555
 tone path and speaker load; exact one-key frequency selection remains a source
 discrepancy.
 
+S06-06 adds a deterministic fixed-step reverse-breakdown noise branch on Q1,
+a common-emitter Q2 stage, and the existing bounded audio-amplifier contract.
+Its fixture validates as 12 components, 3 wires, and 10 derived nodes; the
+focused regression covers 2,000 steps of Q1 emitter variation and speaker
+current. The 9 V source satisfies the source's reverse-breakdown threshold;
+the LM386 package and three-terminal pot wiper remain explicit source
+discrepancies represented by the existing bounded contracts.
+
+The S06-06 focused gate passed with `cargo test -p bredboard-core --locked`
+(135 tests), `cargo test -p bredboard-app --locked` (52 tests), the focused
+reverse-breakdown property and fixture regressions, project validation (12
+components, 3 wires, 10 derived nodes), 4,000-step simulation, and
+`validate-catalog` (20 sections, 212 schematics). The app suite also passed
+the unique lead/wire-hole invariant after the coupling capacitor was moved to
+an unused hole on the same Q2 collector contact row.
+
+The S06-06 full gate passed on 2026-09-30 with `cargo fmt --all --check`,
+`cargo clippy --workspace --all-targets --locked -- -D warnings`,
+`cargo test --workspace --locked` (52 app, 135 core, 3 tools, 0 doc-test
+failures), native and WASM app builds, fixture validation and 4,000-step
+simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
+--check`.
+
 The S06-05 full gate passed on 2026-09-29 with: `cargo fmt --all --check`,
 `cargo clippy --workspace --all-targets --locked -- -D warnings`,
 `cargo test --workspace --locked` (49 app, 92 core, 3 tools, 0 doc-test
@@ -138,11 +163,12 @@ simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
 
 ## Current blockers
 
-- Reverse-breakdown noise, external audio inputs, microphones, op-amps,
-  transformers, analog multipliers, optical coupling, oscilloscope
-  presentation, and the remaining multi-stage audio contracts are not yet
-  available. T29's passive-piezo distinction is available and CAT-S06-01 now
-  has a bounded fixture and menu entry.
+- External audio inputs, microphones, op-amps, transformers, analog
+  multipliers, optical coupling, oscilloscope presentation, and the
+  remaining multi-stage audio contracts are not yet available. T29's
+  passive-piezo distinction and reverse-breakdown noise modeling are
+  available; CAT-S06-01 and CAT-S06-06 now have bounded fixtures and menu
+  entries.
 - Manual interaction and real-breadboard evidence are pending for all new
   fixtures.
 
