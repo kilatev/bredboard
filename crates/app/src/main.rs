@@ -125,6 +125,8 @@ const C04_S06_08_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-0
 const C04_S06_03_JSON: &str = include_str!("../../../fixtures/projects/c04-s06-03-piano.json");
 const C04_S06_06_JSON: &str =
     include_str!("../../../fixtures/projects/c04-s06-06-noise-generator.json");
+const C04_S06_07_JSON: &str =
+    include_str!("../../../fixtures/projects/c04-s06-07-guitar-fuzz.json");
 const C05_S07_10_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-10-two-minute-timer.json");
 const C05_S07_09_JSON: &str =
@@ -250,6 +252,7 @@ enum Circuit {
     C04S06_08,
     C04S06_03,
     C04S06_06,
+    C04S06_07,
     C05S07_09,
     C05S07_10,
     C05S07_08,
@@ -336,6 +339,7 @@ impl Circuit {
             Self::C04S06_08,
             Self::C04S06_03,
             Self::C04S06_06,
+            Self::C04S06_07,
             Self::C05S07_09,
             Self::C05S07_10,
             Self::C05S07_08,
@@ -473,6 +477,7 @@ impl Circuit {
             Self::C04S06_08 => C04_S06_08_JSON,
             Self::C04S06_03 => C04_S06_03_JSON,
             Self::C04S06_06 => C04_S06_06_JSON,
+            Self::C04S06_07 => C04_S06_07_JSON,
             Self::C05S07_09 => C05_S07_09_JSON,
             Self::C05S07_10 => C05_S07_10_JSON,
             Self::C05S07_08 => C05_S07_08_JSON,
@@ -577,6 +582,7 @@ impl Circuit {
             Self::C04S06_08 => "C04-S06-08: POLICE SIREN",
             Self::C04S06_03 => "C04-S06-03: ELECTRONIC PIANO",
             Self::C04S06_06 => "C04-S06-06: NOISE GENERATOR",
+            Self::C04S06_07 => "C04-S06-07: GUITAR FUZZ",
             Self::C05S07_09 => "C05-S07-09: REFRIGERATOR-DOOR GUARD",
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
@@ -781,6 +787,10 @@ impl Circuit {
             Self::C04S06_06 => (
                 "A calculated reverse-breakdown NPN junction produces a deterministic fixed-step noise current, which passes through a common-emitter stage and bounded amplifier into the speaker load. The source LM386 package and three-terminal potentiometer are represented by the existing amplifier and rheostat contracts.",
                 "Task: run the fixture, drag POT1, and compare the calculated Q1 breakdown node variation with the speaker-load current.",
+            ),
+            Self::C04S06_07 => (
+                "A calculated two-transistor clipping path maps the explicit input-jack source through three coupling capacitors to an output-jack load. The current fixed-step contract uses a bounded DC input proxy; a time-varying guitar waveform and true audio playback remain source discrepancies.",
+                "Task: drag RV1 for emitter bypass and RV2 for output level, run the fixture, and compare the calculated transistor and output-node response.",
             ),
             Self::C05S07_09 => (
                 "A calculated 555 monostable uses a button as a bounded reed-contact substitute and drives a buzzer load through an RC delay. The physical magnet and refrigerator door remain presentation discrepancies.",
@@ -1403,6 +1413,7 @@ impl Circuit {
                 },
             ],
             Self::C04S06_06 => &[],
+            Self::C04S06_07 => &[],
             Self::C05S07_09 => &[ControlSpec {
                 label: "S1: DOOR CONTACT",
                 component: "S1",
@@ -1679,6 +1690,16 @@ impl Circuit {
                 label: "POT1: NOISE LEVEL - drag left/right",
                 component: "POT1",
             }],
+            Self::C04S06_07 => &[
+                DialSpec {
+                    label: "RV1: EMITTER BYPASS - drag left/right",
+                    component: "RV1",
+                },
+                DialSpec {
+                    label: "RV2: OUTPUT LEVEL - drag left/right",
+                    component: "RV2",
+                },
+            ],
             Self::C05S07_10 => &[DialSpec {
                 label: "RV1: TIMER LENGTH - drag left/right",
                 component: "RV1",
