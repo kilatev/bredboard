@@ -475,6 +475,7 @@ mod tests {
             ]),
             ic_device: None,
             other_device: None,
+            diode_model: None,
         });
         p.wires.push(crate::Wire {
             id: crate::WireId("W2".into()),

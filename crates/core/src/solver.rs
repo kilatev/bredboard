@@ -1,7 +1,7 @@
 use crate::{
-    Component, ComponentId, ComponentKind, Contact, ControlState, Diagnostic, IcDeviceBehavior,
-    IcLogicOperation, Node, OtherDeviceBehavior, PinId, Project, compile_topology,
-    controlled_resistance,
+    Component, ComponentId, ComponentKind, Contact, ControlState, Diagnostic, DiodeModel,
+    DiodeSpec, IcDeviceBehavior, IcLogicOperation, Node, OtherDeviceBehavior, PinId, Project,
+    compile_topology, controlled_resistance,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -106,8 +106,7 @@ enum NonlinearElement {
         id: ComponentId,
         anode: usize,
         cathode: usize,
-        forward: f64,
-        resistance: f64,
+        model: DiodeModel,
     },
     Optocoupler {
         id: ComponentId,
@@ -933,12 +932,11 @@ fn solve_internal(
                 id,
                 anode,
                 cathode,
-                forward,
-                resistance,
+                model,
             } => {
                 let v = voltage(&solution, &voltage_vars, *anode)
                     - voltage(&solution, &voltage_vars, *cathode);
-                diode_currents.insert(id.clone(), led_current(v, *forward, *resistance).0);
+                diode_currents.insert(id.clone(), model.current(v));
             }
             NonlinearElement::Npn {
                 id,
@@ -1251,8 +1249,20 @@ fn make_branches(
                     id: component.id.clone(),
                     anode,
                     cathode,
-                    forward: component.parameters["forward_voltage"],
-                    resistance: component.parameters["series_resistance"],
+                    model: DiodeModel::new(
+                        component.parameters["forward_voltage"],
+                        component.parameters["series_resistance"],
+                        component.diode_model.unwrap_or_default(),
+                    )
+                    .map_err(|error| {
+                        calc(
+                            "invalid_diode_model",
+                            format!(
+                                "component {} has an invalid diode model: {error:?}",
+                                component.id.0
+                            ),
+                        )
+                    })?,
                 });
                 continue;
             }
@@ -2000,20 +2010,14 @@ fn stamp_history(rhs: &mut [f64], vars: &BTreeMap<usize, usize>, a: usize, b: us
     }
 }
 
-// A smooth forward diode with a finite series slope. The current is zero to
-// numerical precision in reverse bias and approaches (V - Vf) / Rs forward.
+// LED, transistor-junction, and optocoupler forward branches use the same
+// smooth junction law as the shared diode model. They do not opt into the
+// optional zener reverse-breakdown branch.
 fn led_current(v: f64, forward: f64, resistance: f64) -> (f64, f64) {
-    let x = ((v - forward) / 0.05).clamp(-80.0, 80.0);
-    let softplus = if x > 30.0 { x } else { (1.0 + x.exp()).ln() };
-    let sigmoid = if x >= 0.0 {
-        1.0 / (1.0 + (-x).exp())
-    } else {
-        x.exp() / (1.0 + x.exp())
-    };
-    (
-        0.05 * softplus / resistance + v * 1e-9,
-        sigmoid / resistance + 1e-9,
-    )
+    let model = DiodeModel::new(forward, resistance, DiodeSpec::default())
+        .expect("validated forward diode parameters");
+    let linearization = model.linearize(v);
+    (linearization.current, linearization.conductance)
 }
 
 // The base-emitter junction controls collector-emitter conductance. The
@@ -2128,16 +2132,18 @@ fn stamp_element(
         NonlinearElement::Diode {
             anode,
             cathode,
-            forward,
-            resistance,
+            model,
             ..
         } => {
             let v = voltage(guess, vars, *anode) - voltage(guess, vars, *cathode);
-            let (current, conductance) = led_current(v, *forward, *resistance);
+            let linearization = model.linearize(v);
             stamp_current(
                 (*anode, *cathode),
-                current,
-                &[(*anode, conductance), (*cathode, -conductance)],
+                linearization.current,
+                &[
+                    (*anode, linearization.conductance),
+                    (*cathode, -linearization.conductance),
+                ],
                 guess,
                 vars,
                 matrix,
@@ -3149,6 +3155,7 @@ mod tests {
                     parameters: BTreeMap::from([(String::from("voltage"), 5.0)]),
                     ic_device: None,
                     other_device: None,
+                    diode_model: None,
                 },
                 Component {
                     id: ComponentId("R1".into()),
@@ -3160,6 +3167,7 @@ mod tests {
                     parameters: BTreeMap::from([(String::from("resistance"), 470.0)]),
                     ic_device: None,
                     other_device: None,
+                    diode_model: None,
                 },
                 Component {
                     id: ComponentId("R2".into()),
@@ -3171,6 +3179,7 @@ mod tests {
                     parameters: BTreeMap::from([(String::from("resistance"), 10_000.0)]),
                     ic_device: None,
                     other_device: None,
+                    diode_model: None,
                 },
                 Component {
                     id: ComponentId("Q1".into()),
@@ -3189,6 +3198,7 @@ mod tests {
                     ]),
                     ic_device: None,
                     other_device: None,
+                    diode_model: None,
                 },
             ],
             wires: Vec::new(),
@@ -3221,6 +3231,7 @@ mod tests {
                     parameters: BTreeMap::from([("voltage".into(), 5.0)]),
                     ic_device: None,
                     other_device: None,
+                    diode_model: None,
                 },
                 Component {
                     id: ComponentId("U1".into()),
@@ -3249,6 +3260,7 @@ mod tests {
                         },
                     }),
                     other_device: None,
+                    diode_model: None,
                 },
                 Component {
                     id: ComponentId("R1".into()),
@@ -3260,6 +3272,7 @@ mod tests {
                     parameters: BTreeMap::from([("resistance".into(), 1_000.0)]),
                     ic_device: None,
                     other_device: None,
+                    diode_model: None,
                 },
             ],
             wires: Vec::new(),
@@ -3440,6 +3453,7 @@ mod tests {
             parameters: BTreeMap::new(),
             ic_device: None,
             other_device: None,
+            diode_model: None,
         });
         let open = solve(&button).unwrap();
         assert!(
@@ -3474,6 +3488,7 @@ mod tests {
             parameters: BTreeMap::new(),
             ic_device: None,
             other_device: None,
+            diode_model: None,
         });
         assert!(
             (solve(&changeover).unwrap().resistor_currents[&ComponentId("R1".into())] - 0.0025)

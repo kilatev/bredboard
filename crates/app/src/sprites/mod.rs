@@ -224,6 +224,7 @@ mod tests {
                 .collect::<BTreeMap<_, _>>(),
             ic_device: None,
             other_device: None,
+            diode_model: None,
         }
     }
 

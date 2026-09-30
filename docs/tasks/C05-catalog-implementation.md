@@ -29,9 +29,10 @@ and [`10-power-energy.md`](../../breadboard-circuits/spec/10-power-energy.md).
   discrepancy.
 - S10-01, S10-02, and S10-04 require physical electrochemical cells, batteries,
   or inductors. S10-03 requires an AC source and bridge rectifier. S10-05
-  requires a supercapacitor and Schottky diode. S10-06 requires a Li-ion
-  charger module. S10-07 requires a low-voltage CMOS timer, MOSFET, inductor,
-  Schottky diode, and zener. S10-08 requires a shunt amplifier and bargraph;
+  requires a supercapacitor; the shared diode model now covers its Schottky
+  junction. S10-06 requires a Li-ion charger module. S10-07 requires a
+  low-voltage CMOS timer, MOSFET, inductor, and boost/clamp contract; the
+  shared model covers its Schottky and zener junctions. S10-08 requires a shunt amplifier and bargraph;
   S10-09 requires a solar-panel source and charge/power contracts. Keep these
   entries blocked or physical-scope until those contracts exist.
 
@@ -89,8 +90,9 @@ cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes 
 
 - Physical probes, unknown-device sockets, AC sources, battery and lemon-cell
   models, regulators, comparators, counters, measurement modules, inductors,
-  MOSFETs, zeners, Schottky diodes, supercapacitors, charger modules, solar
-  sources, and bargraph instrumentation are not yet available.
+  MOSFETs, supercapacitors, charger modules, solar sources, and bargraph
+  instrumentation are not yet available. The shared diode model is available;
+  row-specific diode wiring and power-stage behavior remain fixture work.
 - Manual interaction and real-breadboard evidence are pending for all new
   fixtures.
 

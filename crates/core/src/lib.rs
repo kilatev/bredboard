@@ -1,9 +1,16 @@
 //! Platform-independent project model and derived breadboard connectivity.
+mod diode;
 mod ic_device;
 mod other_device;
 mod persistence;
 mod simulation;
 mod solver;
+pub use diode::{
+    DIODE_MAX_BREAKDOWN_RESISTANCE, DIODE_MAX_BREAKDOWN_VOLTAGE, DIODE_MAX_FORWARD_VOLTAGE,
+    DIODE_MAX_SERIES_RESISTANCE, DIODE_MIN_BREAKDOWN_RESISTANCE, DIODE_MIN_BREAKDOWN_VOLTAGE,
+    DIODE_MIN_FORWARD_VOLTAGE, DIODE_MIN_SERIES_RESISTANCE, DiodeKind, DiodeLinearization,
+    DiodeModel, DiodeModelError, DiodeSpec,
+};
 pub use ic_device::{
     IC_DEVICE_MAX_RESISTANCE, IC_DEVICE_MIN_RESISTANCE, IcDeviceBehavior, IcDeviceLinearInput,
     IcDevicePinRole, IcDeviceSpec, IcLogicOperation, MAX_IC_DEVICE_INPUTS, MAX_IC_DEVICE_PINS,
@@ -151,6 +158,10 @@ pub struct Component {
     /// the sole source of the model's electrical behavior.
     #[serde(default)]
     pub other_device: Option<OtherDeviceSpec>,
+    /// Optional diode family and reverse-breakdown contract. Omitting it on a
+    /// diode preserves the original standard forward-diode JSON contract.
+    #[serde(default)]
+    pub diode_model: Option<DiodeSpec>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -371,6 +382,30 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                 "invalid_component_id",
                 format!("components.{}.id", c.id.0),
                 "id must contain 1–64 characters",
+            ));
+        }
+        if c.kind != ComponentKind::Diode && c.diode_model.is_some() {
+            errors.push(Diagnostic::new(
+                "unexpected_diode_model",
+                format!("components.{}.diode_model", c.id.0),
+                "only diode components may carry a diode model contract",
+            ));
+        }
+        if c.kind == ComponentKind::Diode
+            && let (Some(forward_voltage), Some(series_resistance)) = (
+                c.parameters.get("forward_voltage"),
+                c.parameters.get("series_resistance"),
+            )
+            && let Err(error) = DiodeModel::new(
+                *forward_voltage,
+                *series_resistance,
+                c.diode_model.unwrap_or_default(),
+            )
+        {
+            errors.push(Diagnostic::new(
+                "invalid_diode_model",
+                format!("components.{}.diode_model", c.id.0),
+                format!("diode model contract is invalid: {error:?}"),
             ));
         }
         let expected: Vec<String> = if c.kind == ComponentKind::IcDevice {
@@ -1170,8 +1205,12 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
     match (k, p) {
         (ComponentKind::DcVoltageSource, "voltage") => Some((0.0, 12.0)),
         (ComponentKind::Resistor, "resistance") => Some((1.0, 1e7)),
-        (ComponentKind::Led | ComponentKind::Diode, "forward_voltage") => Some((0.0, 10.0)),
-        (ComponentKind::Led | ComponentKind::Diode, "series_resistance") => Some((1.0, 1e7)),
+        (ComponentKind::Led | ComponentKind::Diode, "forward_voltage") => {
+            Some((DIODE_MIN_FORWARD_VOLTAGE, DIODE_MAX_FORWARD_VOLTAGE))
+        }
+        (ComponentKind::Led | ComponentKind::Diode, "series_resistance") => {
+            Some((DIODE_MIN_SERIES_RESISTANCE, DIODE_MAX_SERIES_RESISTANCE))
+        }
         (ComponentKind::Capacitor, "capacitance") => Some((1e-10, 1e-2)),
         (ComponentKind::NpnTransistor | ComponentKind::PnpTransistor, "beta") => {
             Some((10.0, 1000.0))
@@ -1271,6 +1310,7 @@ mod tests {
                 parameters: BTreeMap::from([("resistance".into(), 1000.0)]),
                 ic_device: None,
                 other_device: None,
+                diode_model: None,
             }],
             initial_conditions: InitialConditions::default(),
             wires: vec![Wire {
@@ -1319,6 +1359,7 @@ mod tests {
             parameters: BTreeMap::from([("resistance".into(), 220.0)]),
             ic_device: None,
             other_device: None,
+            diode_model: None,
         });
         let before = compile_topology(&p).unwrap();
         p.components.reverse();
@@ -1488,6 +1529,7 @@ mod tests {
                 parameters: BTreeMap::from([("resistance".into(), 1000.0)]),
                 ic_device: None,
                 other_device: None,
+                diode_model: None,
             })
             .collect();
         assert!(
@@ -1525,6 +1567,7 @@ mod tests {
             ]),
             ic_device: None,
             other_device: None,
+            diode_model: None,
         }
     }
 
@@ -1666,6 +1709,7 @@ mod tests {
             parameters: BTreeMap::from([("resistance".into(), 32.0)]),
             ic_device: None,
             other_device: None,
+            diode_model: None,
         }];
         p.wires.clear();
         assert!(compile_topology(&p).is_ok());
@@ -1704,6 +1748,7 @@ mod tests {
             parameters: BTreeMap::from([("resistance".into(), 8.0)]),
             ic_device: None,
             other_device: None,
+            diode_model: None,
         }];
         p.wires.clear();
         assert!(compile_topology(&p).is_ok());
@@ -1742,6 +1787,7 @@ mod tests {
             parameters: BTreeMap::from([("resistance".into(), 32.0)]),
             ic_device: None,
             other_device: None,
+            diode_model: None,
         }];
         p.wires.clear();
         assert!(compile_topology(&p).is_ok());
@@ -1781,6 +1827,7 @@ mod tests {
                 parameters: BTreeMap::from([("voltage".into(), 5.0)]),
                 ic_device: None,
                 other_device: None,
+                diode_model: None,
             },
             Component {
                 id: ComponentId("X1".into()),
@@ -1802,6 +1849,7 @@ mod tests {
                         resistance: 100.0,
                     },
                 }),
+                diode_model: None,
             },
         ];
         p.wires = vec![
