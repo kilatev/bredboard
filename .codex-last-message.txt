@@ -1,12 +1,10 @@
-Implemented the shared multi-board core model.
+Implemented CAT-S06-09 end to end.
 
-- Added `BoardModel::MultiBoard` with 1–8 named solderless boards.
-- Added qualified hole IDs (`board_id/local_hole`).
-- Preserved legacy single-board JSON and format version 1.
-- Derived topology remains contact/pin/wire-based; cross-board connectivity requires explicit wires.
-- Added calculated cross-board solver coverage and fixed-seed property tests.
-- Updated format docs, C07/C08 task evidence, and both ledger rows.
+- Added tremolo fixture using calculated 555, LED-driven vactrol, bounded audio input/output contracts, and speed/depth controls: [fixture](</home/vetalik/prj/bredboard/.codex-batch-worktrees/CAT-S06-09/fixtures/projects/c04-s06-09-tremolo.json>)
+- Registered it in the app catalog/menu with calculated readouts and regression coverage.
+- Updated the ledger to `fixture_ready` with explicit thermoshrink/audio-fidelity discrepancies.
+- Updated C04 task evidence.
 
-Both entries remain `blocked_component` with fixture-specific gaps documented; `need:board` was removed.
+Verification passed: formatting, Clippy, focused app tests, fixture validation, 4,000-step simulation, catalog validation, native/WASM builds, and diff checks.
 
-Verification passed: workspace Clippy, formatting, 52 app tests, 133 core tests, 3 tools tests, doc tests, and diff checks.
+The full workspace test command was started but did not terminate during two existing long-running cycle-stability tests, so it is recorded as incomplete rather than passed.

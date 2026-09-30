@@ -99,6 +99,21 @@ SPDT mode branch; its exact control-voltage sweep remains a source discrepancy.
 S06-03 adds eight button/potentiometer key branches around one calculated 555
 tone path and speaker load; exact one-key frequency selection remains a source
 discrepancy.
+S06-09 adds a calculated 555 tremolo with speed/depth controls, an LED-driven
+voltage-controlled-resistance vactrol contract, and bounded calculated input
+and output jack contracts. It validates as 14 components, 5 wires, and 11
+derived nodes; thermoshrink remains a presentation discrepancy rather than an
+electrical result.
+
+The S06-09 focused gate passed with `cargo fmt --all --check`,
+`cargo clippy --workspace --all-targets --locked -- -D warnings`, the focused
+app regression `cargo test -p bredboard-app --locked
+c04_s06_09_calculates_vactrol_and_audio_contracts`, unique-hole and menu
+reachability tests, native and WASM app builds, fixture validation and
+4,000-step simulation, `validate-catalog` (20 sections, 212 schematics), and
+`git diff --check`. The full `cargo test --workspace --locked` invocation was
+started but did not terminate in this run while two existing cycle-stability
+tests remained active; it is not recorded as passed here.
 
 The S06-05 full gate passed on 2026-09-29 with: `cargo fmt --all --check`,
 `cargo clippy --workspace --all-targets --locked -- -D warnings`,
