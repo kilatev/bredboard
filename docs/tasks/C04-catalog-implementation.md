@@ -41,9 +41,10 @@ cannot represent.
 - S06-03 needs eight electrical key inputs and a bounded frequency/readout
   contract; the source's exact musical tuning remains a documented
   approximation.
-- S06-06 and S06-07 require reverse-breakdown noise, external audio input, or
-  input-jack contracts not present in the core. Keep them blocked rather than
-  scripting noise or guitar audio.
+- S06-06 still requires reverse-breakdown noise. S06-07 is admitted through
+  the shared `OtherDeviceSpec` with explicit input/output jack pins and a
+  calculated fixed-step DC input proxy; do not represent that proxy as a true
+  guitar waveform or scripted audio.
 - S06-09 uses LED/photoresistor optical coupling; the existing photoresistor
   control is not an optical component link, so the coupling must be defined
   before admission. S06-10 through S06-13 require microphone, op-amp,
@@ -85,8 +86,8 @@ cannot represent.
 ## Implementation evidence so far
 
 The first admitted C04 fixtures are `CAT-S06-02` (cricket), `CAT-S06-04`
-(metronome), `CAT-S06-05` (doorbell), `CAT-S06-08` (police siren), and
-`CAT-S06-03` (electronic piano). S06-02 uses two calculated timer
+(metronome), `CAT-S06-05` (doorbell), `CAT-S06-08` (police siren),
+`CAT-S06-03` (electronic piano), and `CAT-S06-07` (guitar fuzz). S06-02 uses two calculated timer
 stages and one adjustable burst control; it validates as 14 components, 9
 wires, and 10 derived nodes, with a 4,000-step speaker-load regression. S06-04
 uses one calculated 555 timing path, one adjustable control, one LED branch,
@@ -127,12 +128,25 @@ failures), native and WASM app builds, fixture validation and 4,000-step
 simulation, `validate-catalog` (20 sections, 212 schematics), and `git diff
 --check`.
 
+`CAT-S06-07` is now admitted with `fixtures/projects/c04-s06-07-guitar-fuzz.json`.
+The fixture uses the shared `OtherDeviceSpec` for explicit two-pin input and
+output jack contracts, preserves the source's two NPN stages and passive
+values, and uses a bounded fixed-step DC input proxy because the current core
+does not generate time-varying guitar audio. Its focused gate passed with
+`cargo test -p bredboard-core
+c04_guitar_fuzz_maps_jacks_and_calculates_clipped_signal_path --locked`,
+fixture validation (`14 components, 12 wires, 7 derived nodes`), the app
+catalog/embedded-fixture checks, and a 4,000-step transient regression.
+True guitar waveform and audio playback remain explicit source discrepancies;
+manual evidence is pending.
+
 ## Current blockers
 
-- Passive-piezo distinction, reverse-breakdown noise, external audio inputs,
-  microphones, op-amps, transformers, analog multipliers, optical coupling,
-  oscilloscope presentation, and the remaining multi-stage audio contracts
-  are not yet available.
+- Passive-piezo distinction, reverse-breakdown noise, time-varying external
+  audio inputs, microphones, op-amps, transformers, analog multipliers,
+  optical coupling, oscilloscope presentation, and the remaining multi-stage
+  audio contracts are not yet available. S06-07 is admitted only with its
+  documented fixed-step DC input proxy.
 - Manual interaction and real-breadboard evidence are pending for all new
   fixtures.
 

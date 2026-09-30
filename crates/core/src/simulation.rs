@@ -1939,6 +1939,59 @@ mod tests {
     }
 
     #[test]
+    fn c04_guitar_fuzz_maps_jacks_and_calculates_clipped_signal_path() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c04-s06-07-guitar-fuzz.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(&mut project, &baseline, &mut state, &[Action::Run]);
+        let mut max_output = 0.0_f64;
+        let mut max_q1 = 0.0_f64;
+        let mut max_q2 = 0.0_f64;
+        for _ in 0..4_000 {
+            advance_steps(&project, &mut state, 1);
+            let solved = state
+                .last_valid
+                .as_ref()
+                .unwrap_or_else(|| panic!("diagnostics={:?}", state.diagnostics));
+            max_output = max_output.max(
+                solved
+                    .other_terminal_currents
+                    .get(&ComponentId("JOUT".into()))
+                    .and_then(|currents| currents.get(&crate::PinId("input_a".into())))
+                    .copied()
+                    .unwrap_or_default()
+                    .abs(),
+            );
+            max_q1 = max_q1.max(
+                solved
+                    .transistor_collector_currents
+                    .get(&ComponentId("Q1".into()))
+                    .copied()
+                    .unwrap_or_default()
+                    .abs(),
+            );
+            max_q2 = max_q2.max(
+                solved
+                    .transistor_collector_currents
+                    .get(&ComponentId("Q2".into()))
+                    .copied()
+                    .unwrap_or_default()
+                    .abs(),
+            );
+        }
+        assert!(!state.stale, "diagnostics={:?}", state.diagnostics);
+        assert!(
+            max_output > 1e-8,
+            "output={max_output} q1={max_q1} q2={max_q2}"
+        );
+        assert!(max_q1 > 1e-8, "output={max_output} q1={max_q1} q2={max_q2}");
+        assert!(max_q2 > 1e-8, "output={max_output} q1={max_q1} q2={max_q2}");
+    }
+
+    #[test]
     fn c05_two_minute_timer_calculates_button_led_buzzer_and_pnp_state() {
         let baseline: Project = serde_json::from_str(include_str!(
             "../../../fixtures/projects/c05-s07-10-two-minute-timer.json"
