@@ -1,0 +1,62 @@
+{
+  "format_version": 1,
+  "title": "C06-S08-08: Thermostatic fan",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    {
+      "id": "U1",
+      "kind": "comparator",
+      "pins": { "gnd": "TP-:2", "inverting": "H20", "non_inverting": "H10", "output": "F25", "vcc": "TP+:2" },
+      "parameters": { "output_resistance": 100.0 }
+    },
+    { "id": "TH1", "kind": "thermistor", "pins": { "a": "C10", "b": "C12" }, "parameters": { "min_resistance": 1000.0, "max_resistance": 100000.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "B5", "b": "B10" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "B15", "b": "B20" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "H25", "b": "TP+:5" }, "parameters": { "resistance": 1000000.0 } },
+    { "id": "RV1", "kind": "potentiometer", "pins": { "a": "C20", "b": "C18" }, "parameters": { "min_resistance": 1.0, "max_resistance": 10000.0 } },
+    {
+      "id": "Q1",
+      "kind": "other",
+      "pins": { "control_positive": "B25", "control_negative": "TP-:3", "output_positive": "B27", "output_negative": "TP-:4" },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": { "control_positive": "control", "control_negative": "ground", "output_positive": "output", "output_negative": "ground" },
+        "behavior": {
+          "behavior": "voltage_controlled_resistance",
+          "control_positive": "control_positive",
+          "control_negative": "control_negative",
+          "output_positive": "output_positive",
+          "output_negative": "output_negative",
+          "min_resistance": 0.5,
+          "max_resistance": 1000000000.0,
+          "control_min": 0.0,
+          "control_max": 5.0
+        }
+      }
+    },
+    { "id": "D1", "kind": "diode", "pins": { "anode": "C27", "cathode": "TP+:4" }, "parameters": { "forward_voltage": 0.7, "series_resistance": 10.0 } },
+    {
+      "id": "FAN1",
+      "kind": "other",
+      "pins": { "positive": "TP+:3", "negative": "D27" },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": { "positive": "terminal", "negative": "terminal" },
+        "behavior": { "behavior": "resistive", "positive": "positive", "negative": "negative", "resistance": 35.0 }
+      }
+    }
+  ],
+  "wires": [
+    { "id": "W1", "from": "D5", "to": "TP+:6" },
+    { "id": "W2", "from": "D12", "to": "TP-:7" },
+    { "id": "W3", "from": "D10", "to": "G10" },
+    { "id": "W4", "from": "D15", "to": "TP+:8" },
+    { "id": "W5", "from": "D20", "to": "G20" },
+    { "id": "W6", "from": "D18", "to": "TP-:9" },
+    { "id": "W7", "from": "E25", "to": "G25" }
+  ],
+  "initial_conditions": {
+    "control_ratios": { "TH1": 0.0, "RV1": 0.5 }
+  }
+}

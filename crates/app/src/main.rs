@@ -156,6 +156,8 @@ const C06_S08_01_JSON: &str =
     include_str!("../../../fixtures/projects/c06-s08-01-motor-with-switch.json");
 const C06_S08_05_JSON: &str =
     include_str!("../../../fixtures/projects/c06-s08-05-vibration-bot.json");
+const C06_S08_08_JSON: &str =
+    include_str!("../../../fixtures/projects/c06-s08-08-thermostatic-fan.json");
 const C07_S09_03_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-03-two-station-telegraph.json");
 const C07_S09_01_JSON: &str =
@@ -287,6 +289,7 @@ enum Circuit {
     C05S07_14,
     C06S08_01,
     C06S08_05,
+    C06S08_08,
     C07S09_01,
     C07S09_03,
     C08S17_03,
@@ -384,6 +387,7 @@ impl Circuit {
             Self::C05S07_06,
             Self::C06S08_01,
             Self::C06S08_05,
+            Self::C06S08_08,
             Self::C07S09_01,
             Self::C07S09_03,
             Self::C08S17_03,
@@ -532,6 +536,7 @@ impl Circuit {
             Self::C05S07_14 => C05_S07_14_JSON,
             Self::C06S08_01 => C06_S08_01_JSON,
             Self::C06S08_05 => C06_S08_05_JSON,
+            Self::C06S08_08 => C06_S08_08_JSON,
             Self::C07S09_01 => C07_S09_01_JSON,
             Self::C07S09_03 => C07_S09_03_JSON,
             Self::C08S17_03 => C08_S17_03_JSON,
@@ -647,6 +652,7 @@ impl Circuit {
             Self::C05S07_14 => "C05-S07-14: CAPACITANCE METER",
             Self::C06S08_01 => "C06-S08-01: MOTOR WITH SWITCH",
             Self::C06S08_05 => "C06-S08-05: VIBRATION BOT",
+            Self::C06S08_08 => "C06-S08-08: THERMOSTATIC FAN",
             Self::C07S09_01 => "C07-S09-01: HOT-WIRE COUNTER",
             Self::C07S09_03 => "C07-S09-03: TWO-STATION TELEGRAPH",
             Self::C08S17_03 => "C08-S17-03: OPTOCOUPLER",
@@ -910,6 +916,10 @@ impl Circuit {
             Self::C06S08_05 => (
                 "A calculated 3 V motor load is switched through an SPDT branch. The electrical current and no-load speed are derived from the motor model; the toothbrush body and vibration are presentation discrepancies.",
                 "Task: toggle S1, run the fixture, and compare the calculated motor current and signed speed.",
+            ),
+            Self::C06S08_08 => (
+                "A calculated LM393-style comparator compares an NTC divider with an adjustable threshold. Its output drives a bounded MOSFET resistance contract and a 35 ohm fan load; the fan's airflow and the source's physical thermal feedback remain presentation discrepancies.",
+                "Task: drag TH1 from cold to hot, adjust RV1, and compare the calculated fan current at the switching threshold.",
             ),
             Self::C07S09_01 => (
                 "A calculated button contact feeds a Schmitt inverter and bounded decimal counter. The counter drives a seven-segment display through current-limited resistors; the source wire-ring prop is represented by the explicit button control.",
@@ -1568,6 +1578,7 @@ impl Circuit {
                 component: "S1",
                 is_switch: true,
             }],
+            Self::C06S08_08 => &[],
             Self::C07S09_01 => &[ControlSpec {
                 label: "S1: CONTACT",
                 component: "S1",
@@ -1866,6 +1877,16 @@ impl Circuit {
                 label: "RV1: OUTPUT VOLTAGE - drag left/right",
                 component: "RV1",
             }],
+            Self::C06S08_08 => &[
+                DialSpec {
+                    label: "TH1: TEMPERATURE - drag left/right",
+                    component: "TH1",
+                },
+                DialSpec {
+                    label: "RV1: FAN THRESHOLD - drag left/right",
+                    component: "RV1",
+                },
+            ],
             Self::E27 => &[DialSpec {
                 label: "RV1: SHARED BRIGHTNESS - drag left/right",
                 component: "RV1",
@@ -3444,6 +3465,33 @@ fn update_view(
                                     .get(&ComponentId("M1".into()))
                                     .copied()
                                     .unwrap_or(0.0)
+                            )
+                        },
+                    )
+                } else if bench.circuit == Circuit::C06S08_08 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Fan current and flyback diode: run to measure".into(),
+                        |result| {
+                            let fan_current = 1000.0
+                                * result
+                                    .other_terminal_currents
+                                    .get(&ComponentId("FAN1".into()))
+                                    .and_then(|pins| {
+                                        pins.get(&bredboard_core::PinId("positive".into()))
+                                    })
+                                    .copied()
+                                    .unwrap_or(0.0)
+                                    .abs();
+                            let diode_current = 1000.0
+                                * result
+                                    .diode_currents
+                                    .get(&ComponentId("D1".into()))
+                                    .copied()
+                                    .unwrap_or(0.0)
+                                    .abs();
+                            format!(
+                                "FAN1 {:.1} mA   D1 flyback {:.2} mA",
+                                fan_current, diode_current
                             )
                         },
                     )

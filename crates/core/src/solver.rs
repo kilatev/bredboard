@@ -5247,6 +5247,7 @@ mod tests {
         fixture_json!(C04_S06_11, "c04-s06-11-robot-voice.json");
         fixture_json!(C05_S07_05, "c05-s07-05-usb-5v-supply.json");
         fixture_json!(C05_S07_06, "c05-s07-06-adjustable-power-supply.json");
+        fixture_json!(C06_S08_08, "c06-s08-08-thermostatic-fan.json");
 
         #[test]
         fn all_embedded_exercise_fixtures_have_valid_solvable_topology() {
@@ -5535,6 +5536,78 @@ mod tests {
             .unwrap();
             assert!(cold.led_currents[&ComponentId("D1".into())] > 0.001);
             assert!(hot.led_currents[&ComponentId("D1".into())] < 1e-4);
+        }
+
+        #[test]
+        fn c06_thermostatic_fan_switches_calculated_load_at_heat_threshold() {
+            let project = fixture(C06_S08_08);
+            let solve_at = |temperature: f64, threshold: f64| {
+                solve_dc(
+                    &project,
+                    &BTreeMap::new(),
+                    &BTreeMap::from([
+                        (ComponentId("TH1".into()), temperature),
+                        (ComponentId("RV1".into()), threshold),
+                    ]),
+                )
+                .unwrap()
+            };
+            let cold = solve_at(0.0, 0.5);
+            let hot = solve_at(1.0, 0.5);
+            let fan_current = |result: &SolveResult| {
+                result.other_terminal_currents[&ComponentId("FAN1".into())]
+                    [&PinId("positive".into())]
+                    .abs()
+            };
+            assert!(
+                fan_current(&cold) < 1e-5,
+                "cold fan current: {}",
+                fan_current(&cold)
+            );
+            assert!(
+                fan_current(&hot) > 0.1,
+                "hot fan current: {}",
+                fan_current(&hot)
+            );
+            assert!(hot.diode_currents[&ComponentId("D1".into())].abs() < 1e-6);
+        }
+
+        proptest! {
+            #![proptest_config(ProptestConfig {
+                cases: 64,
+                rng_seed: proptest::test_runner::RngSeed::Fixed(0xC608_2026),
+                ..ProptestConfig::default()
+            })]
+
+            #[test]
+            fn c06_fan_switch_remains_bounded_across_supported_thresholds(
+                threshold_bucket in 200u32..=900,
+            ) {
+                let project = fixture(C06_S08_08);
+                let threshold = f64::from(threshold_bucket) / 1000.0;
+                let solve_at = |temperature| {
+                    solve_dc(
+                        &project,
+                        &BTreeMap::new(),
+                        &BTreeMap::from([
+                            (ComponentId("TH1".into()), temperature),
+                            (ComponentId("RV1".into()), threshold),
+                        ]),
+                    )
+                    .unwrap()
+                };
+                let cold = solve_at(0.0);
+                let hot = solve_at(1.0);
+                let cold_current = cold.other_terminal_currents[&ComponentId("FAN1".into())]
+                    [&PinId("positive".into())]
+                    .abs();
+                let hot_current = hot.other_terminal_currents[&ComponentId("FAN1".into())]
+                    [&PinId("positive".into())]
+                    .abs();
+                prop_assert!(cold_current.is_finite() && hot_current.is_finite());
+                prop_assert!(cold_current < 1e-5, "cold current: {cold_current}");
+                prop_assert!(hot_current > 0.1 && hot_current < 0.2, "hot current: {hot_current}");
+            }
         }
 
         #[test]
