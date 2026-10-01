@@ -1,0 +1,86 @@
+{
+  "format_version": 1,
+  "title": "C05-S07-04: Transistor tester",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 9.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A1", "b": "A3" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D1", "kind": "led", "pins": { "anode": "C5", "cathode": "C7" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "C17", "b": "C19" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "B1", "kind": "momentary_button", "pins": { "a": "A13", "b": "A15" }, "parameters": {} },
+    {
+      "id": "XNPN",
+      "kind": "other",
+      "pins": { "base": "E21", "collector": "E9", "emitter": "E11" },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": { "base": "input", "collector": "output", "emitter": "ground" },
+        "behavior": {
+          "behavior": "bjt_test_socket",
+          "socket": {
+            "base": "base",
+            "collector": "collector",
+            "emitter": "emitter",
+            "socket_polarity": "npn",
+            "subject_polarity": "npn",
+            "subject_state": "working",
+            "beta": 100.0,
+            "saturation_current": 1e-15,
+            "open_resistance": 1000000000.0,
+            "short_resistance": 1.0
+          }
+        }
+      }
+    },
+    { "id": "R3", "kind": "resistor", "pins": { "a": "A10", "b": "A12" }, "parameters": { "resistance": 470.0 } },
+    { "id": "D2", "kind": "led", "pins": { "anode": "C6", "cathode": "C8" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 20.0 } },
+    { "id": "R4", "kind": "resistor", "pins": { "a": "C24", "b": "C26" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "B2", "kind": "momentary_button", "pins": { "a": "A28", "b": "A30" }, "parameters": {} },
+    {
+      "id": "XPNP",
+      "kind": "other",
+      "pins": { "base": "E22", "collector": "E4", "emitter": "E2" },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": { "base": "input", "collector": "output", "emitter": "supply" },
+        "behavior": {
+          "behavior": "bjt_test_socket",
+          "socket": {
+            "base": "base",
+            "collector": "collector",
+            "emitter": "emitter",
+            "socket_polarity": "pnp",
+            "subject_polarity": "pnp",
+            "subject_state": "working",
+            "beta": 100.0,
+            "saturation_current": 1e-15,
+            "open_resistance": 1000000000.0,
+            "short_resistance": 1.0
+          }
+        }
+      }
+    }
+  ],
+  "wires": [
+    { "id": "W1", "from": "TP+:4", "to": "B1" },
+    { "id": "W2", "from": "B3", "to": "D5" },
+    { "id": "W3", "from": "D7", "to": "D9" },
+    { "id": "W4", "from": "D11", "to": "TP-:4" },
+    { "id": "W5", "from": "TP+:5", "to": "B13" },
+    { "id": "W6", "from": "B15", "to": "D17" },
+    { "id": "W7", "from": "D19", "to": "D21" },
+    { "id": "W8", "from": "TP+:6", "to": "D2" },
+    { "id": "W9", "from": "D4", "to": "D6" },
+    { "id": "W10", "from": "D8", "to": "D10" },
+    { "id": "W11", "from": "D12", "to": "TP-:5" },
+    { "id": "W12", "from": "D22", "to": "D24" },
+    { "id": "W13", "from": "D26", "to": "D28" },
+    { "id": "W14", "from": "D30", "to": "TP-:6" }
+  ],
+  "initial_conditions": {
+    "controls": {
+      "B1": "button_pressed",
+      "B2": "button_pressed"
+    }
+  }
+}

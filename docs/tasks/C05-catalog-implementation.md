@@ -104,9 +104,31 @@ cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c05-s07-09-r
 cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
 ```
 
+The CAT-S07-04 slice admits `fixtures/projects/c05-s07-04-transistor-tester.json`
+through a calculated `bjt_test_socket` behavior. Its two `Other` instances
+declare explicit NPN and PNP socket polarity, matching working subject state,
+and bounded open/short failure states; the solver reuses the existing NPN/PNP
+equations and reports terminal currents. The source's physical swappable-part
+operation remains a presentation discrepancy because the fixture exposes two
+fixture-selected test channels.
+
+Focused CAT-S07-04 evidence on 2026-10-01:
+
+```text
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c05-s07-04-transistor-tester.json — passed; 11 components, 14 wires, 10 derived nodes
+cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c05-s07-04-transistor-tester.json 4000 — passed; transient state advanced without diagnostics
+cargo test -p bredboard-app c05_s07_04 --locked — passed; calculated green/red LED and socket currents
+cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
+cargo test -p bredboard-app exercise_catalog_keeps_search_groups_and_circuits_separate --locked — passed; 107 circuits
+```
+
+The full workspace gate was not rerun after this slice because concurrent
+catalog work exhausted the shared temporary build quota; the fixture-specific
+automated evidence above passed, and the baseline gate remains pending.
+
 ## Current blockers
 
-- Physical probes, unknown-device sockets, AC sources, battery and lemon-cell
+- Physical probes, remaining unknown-device sockets (S07-02/S07-12), AC sources, battery and lemon-cell
   models, regulators, comparators, counters, measurement modules, inductors,
   MOSFETs, supercapacitors, charger modules, solar sources, and bargraph
   instrumentation are not yet available. The shared diode model is available;
@@ -114,27 +136,24 @@ cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes 
 - Manual interaction and real-breadboard evidence are pending for all new
   fixtures.
 
-## Planned: device-under-test socket model (S07-02, S07-04, S07-12)
+## Planned: remaining device-under-test socket models (S07-02, S07-12)
 
 Re-reviewed 2026-09-30 after two independent blocked_component passes on
-S07-02 confirmed the same gap. `crates/core/src/other_device.rs`
-(`OtherDeviceSpec`/`OtherDeviceBehavior`) models one static, continuously
-computed electrical behavior per instance (resistive, voltage source,
-linear transfer, transformer, ring modulator, voltage-controlled
-resistance). It has no notion of a discrete, selectable state — the only
-runtime-variable input in core is the continuous `control_ratios: BTreeMap<
-ComponentId, f64>` used for potentiometer/photoresistor-style interpolation.
-There is no "socket" concept: no pin group that accepts a swappable part
-whose identity/condition (working vs. faulty, correct vs. reversed
-polarity, NPN vs. PNP) is chosen per fixture instance or at runtime.
+S07-02 confirmed the same gap. Before this slice,
+`crates/core/src/other_device.rs` (`OtherDeviceSpec`/`OtherDeviceBehavior`)
+modeled one static, continuously computed electrical behavior per instance
+(resistive, voltage source, linear transfer, transformer, ring modulator,
+voltage-controlled resistance). The new `bjt_test_socket` behavior adds an
+explicit fixture-selected BJT polarity/state mapping for S07-04; it does not
+provide a runtime swappable-part editor. The remaining runtime-variable input
+in core is the continuous `control_ratios: BTreeMap<ComponentId, f64>` used for
+potentiometer/photoresistor-style interpolation.
 
-Three ledger rows share this exact shape — "insert an unknown/swappable
+Two remaining ledger rows share this exact shape — "insert an unknown/swappable
 part of a known family into a fixed test harness, read out pass/fail or a
 bounded measurement":
 
 - `CAT-S07-02` — LED/diode tester: needs polarity and working/fault state.
-- `CAT-S07-04` — transistor tester: needs NPN/PNP socket and test-state
-  mapping.
 - `CAT-S07-12` — network-cable tester: needs RJ45 terminal/pair mapping and
   calculated continuity faults.
 
@@ -147,11 +166,13 @@ PSU) is unrelated — it needs a three-terminal regulator transfer model with
 safety limits, not a swappable test subject, and must stay out of this
 slice.
 
-Proposed shape (not yet implemented — record here so a future models-wave
-pass has a concrete starting point, per AGENTS.md's "no scripted electrical
-outcomes" and "derive connectivity from contacts/pins/wires" rules):
+The shared contract is now implemented for CAT-S07-04. Proposed shape for the
+remaining rows (record here so a future models-wave pass has a concrete
+starting point, per AGENTS.md's "no scripted electrical outcomes" and "derive
+connectivity from contacts/pins/wires" rules):
 
-1. Add a `TestSubjectSpec` (or similarly named) type in
+1. Extend the existing `bjt_test_socket` pattern or add a related
+   `TestSubjectSpec` type in
    `crates/core/src/other_device.rs`, parallel to `OtherDeviceBehavior`,
    describing a socket with: the pin roles a plugged part exposes, a closed
    set of named discrete variants (e.g. `Diode { reversed: bool }`, `Bjt {
@@ -162,11 +183,11 @@ outcomes" and "derive connectivity from contacts/pins/wires" rules):
 2. Selecting a variant is a fixture-authoring-time or `InitialConditions`
    choice (mirroring how `control_ratios` is already threaded through),
    never a per-frame or animation-driven change.
-3. Property tests: for each variant, assert the solver produces the
+3. Property tests: for each remaining variant, assert the solver produces the
    electrically-correct pass/fail readout (e.g. LED lights only on correct
    polarity with a working diode); use reproducible seeds where randomness
    picks the presented variant.
-4. Once the type lands, revisit `CAT-S07-02`, `CAT-S07-04`, and `CAT-S07-12`
+4. Once the remaining type lands, revisit `CAT-S07-02` and `CAT-S07-12`
    fixtures using it; each remains its own scheme-implementation slice with
    its own ledger/evidence update, not bundled into the model-landing
    commit.

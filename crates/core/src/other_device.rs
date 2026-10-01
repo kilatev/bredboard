@@ -61,6 +61,49 @@ pub enum OtherDevicePinRole {
     Ground,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum BjtPolarity {
+    Npn,
+    Pnp,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum BjtTestState {
+    Working,
+    Open,
+    Shorted,
+}
+
+/// The calculated electrical contract for a three-pin transistor test socket.
+/// The fixture selects the subject polarity and test state explicitly; the
+/// solver still derives LED results from the BJT equations and board topology.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct BjtTestSocket {
+    pub base: PinId,
+    pub collector: PinId,
+    pub emitter: PinId,
+    pub socket_polarity: BjtPolarity,
+    pub subject_polarity: BjtPolarity,
+    pub subject_state: BjtTestState,
+    pub beta: f64,
+    pub saturation_current: f64,
+    pub open_resistance: f64,
+    pub short_resistance: f64,
+}
+
+impl BjtTestSocket {
+    /// A subject with the wrong polarity does not conduct in this socket.
+    pub fn effective_state(&self) -> BjtTestState {
+        if self.socket_polarity != self.subject_polarity {
+            BjtTestState::Open
+        } else {
+            self.subject_state
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct OtherDeviceSpec {
@@ -89,6 +132,9 @@ pub enum OtherDeviceBehavior {
         voltage: f64,
         internal_resistance: f64,
     },
+    /// A three-pin BJT test socket. It reuses the educational NPN/PNP model
+    /// with an explicit fixture-selected subject polarity and failure state.
+    BjtTestSocket { socket: BjtTestSocket },
     /// A finite-resistance transfer from one or more sensed pins to an output
     /// relative to a reference pin. It is suitable for an explicitly
     /// parameterized sensor, regulator, amplifier, or module interface.
@@ -165,6 +211,7 @@ impl OtherDeviceSpec {
             OtherDeviceBehavior::RingModulator { output, .. } => vec![output],
             OtherDeviceBehavior::Resistive { .. }
             | OtherDeviceBehavior::VoltageSource { .. }
+            | OtherDeviceBehavior::BjtTestSocket { .. }
             | OtherDeviceBehavior::VoltageControlledResistance { .. } => Vec::new(),
         }
     }
@@ -177,6 +224,9 @@ impl OtherDeviceSpec {
             | OtherDeviceBehavior::VoltageSource {
                 positive, negative, ..
             } => vec![positive, negative],
+            OtherDeviceBehavior::BjtTestSocket { socket } => {
+                vec![&socket.base, &socket.collector, &socket.emitter]
+            }
             OtherDeviceBehavior::LinearTransfer {
                 output,
                 reference,
@@ -224,7 +274,10 @@ impl OtherDeviceSpec {
 
 #[cfg(test)]
 mod tests {
-    use super::{controlled_resistance, ring_modulator_output};
+    use super::{
+        BjtPolarity, BjtTestSocket, BjtTestState, controlled_resistance, ring_modulator_output,
+    };
+    use crate::PinId;
     use proptest::prelude::*;
 
     proptest! {
@@ -298,6 +351,39 @@ mod tests {
             if minimum <= 0.0 && maximum >= 0.0 {
                 prop_assert_eq!(centered, reference);
             }
+        }
+
+        #[test]
+        fn bjt_socket_mapping_rejects_mismatched_subjects(
+            socket_is_npn in any::<bool>(),
+            subject_is_npn in any::<bool>(),
+            subject_is_shorted in any::<bool>(),
+        ) {
+            let socket_polarity = if socket_is_npn { BjtPolarity::Npn } else { BjtPolarity::Pnp };
+            let subject_polarity = if subject_is_npn { BjtPolarity::Npn } else { BjtPolarity::Pnp };
+            let subject_state = if subject_is_shorted {
+                BjtTestState::Shorted
+            } else {
+                BjtTestState::Working
+            };
+            let socket = BjtTestSocket {
+                base: PinId("base".into()),
+                collector: PinId("collector".into()),
+                emitter: PinId("emitter".into()),
+                socket_polarity,
+                subject_polarity,
+                subject_state,
+                beta: 100.0,
+                saturation_current: 1e-15,
+                open_resistance: 1e9,
+                short_resistance: 1.0,
+            };
+            let expected = if socket_is_npn == subject_is_npn {
+                subject_state
+            } else {
+                BjtTestState::Open
+            };
+            prop_assert_eq!(socket.effective_state(), expected);
         }
     }
 }
