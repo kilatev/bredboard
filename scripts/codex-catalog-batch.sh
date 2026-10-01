@@ -113,6 +113,17 @@ run_batch() {
   # agents running at the same time ever share a target dir (no cargo lock
   # contention) while deps still compile once per slot and get reused across
   # sequential sub-batches.
+  #
+  # Merges happen per-group (right after each PARALLEL-sized group finishes),
+  # not once at the very end. All agents in one group branch from the same
+  # starting `main` and can't see each other's ledger/shared-file edits, so
+  # within-group conflicts are still possible — but merging group-by-group
+  # means every later group's worktrees branch from an already-updated main
+  # that includes every earlier group's merged entries, so conflicts don't
+  # compound across the whole run the way they did when every key in a
+  # 10-key run started from the same stale main and merges were batched at
+  # the end (6/10 conflicted that way; see bug.md / NEXT-SESSION-PLAN.md
+  # history for this incident).
   local pids=() keys=() slot=0
   while [[ $# -gt 0 ]]; do
     local key="$1" prompt="$2"; shift 2
@@ -122,14 +133,19 @@ run_batch() {
     slot=$(( (slot + 1) % PARALLEL ))
     if [[ "${#pids[@]}" -ge "$PARALLEL" ]]; then
       wait "${pids[@]}"
+      for key in "${keys[@]}"; do
+        merge_branch "$key" || true
+      done
       pids=()
+      keys=()
     fi
   done
-  [[ "${#pids[@]}" -gt 0 ]] && wait "${pids[@]}"
-
-  for key in "${keys[@]}"; do
-    merge_branch "$key" || true
-  done
+  if [[ "${#pids[@]}" -gt 0 ]]; then
+    wait "${pids[@]}"
+    for key in "${keys[@]}"; do
+      merge_branch "$key" || true
+    done
+  fi
 }
 
 # ---------------------------------------------------------------------------
