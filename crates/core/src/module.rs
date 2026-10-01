@@ -89,6 +89,22 @@ pub enum ModuleBehavior {
         input_resistance: f64,
         output_resistance: f64,
     },
+    /// A bounded adjustable regulator. The output target follows the solved
+    /// adjust-pin voltage plus the regulator reference voltage, then respects
+    /// the declared output and dropout safety limits.
+    AdjustableRegulatedSupply {
+        input_positive: PinId,
+        input_negative: PinId,
+        output_positive: PinId,
+        output_negative: PinId,
+        adjust: PinId,
+        reference_voltage: f64,
+        min_output_voltage: f64,
+        max_output_voltage: f64,
+        dropout_voltage: f64,
+        input_resistance: f64,
+        output_resistance: f64,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -113,6 +129,9 @@ impl ModuleBehavior {
                 channels.iter().map(|channel| &channel.output).collect()
             }
             Self::RegulatedSupply {
+                output_positive, ..
+            }
+            | Self::AdjustableRegulatedSupply {
                 output_positive, ..
             } => vec![output_positive],
         }
@@ -160,6 +179,20 @@ impl ModuleBehavior {
                 output_positive,
                 output_negative,
             ],
+            Self::AdjustableRegulatedSupply {
+                input_positive,
+                input_negative,
+                output_positive,
+                output_negative,
+                adjust,
+                ..
+            } => vec![
+                input_positive,
+                input_negative,
+                output_positive,
+                output_negative,
+                adjust,
+            ],
         }
     }
 }
@@ -172,6 +205,20 @@ impl ModuleSpec {
     pub fn referenced_pins(&self) -> Vec<&PinId> {
         self.behavior.referenced_pins()
     }
+}
+
+pub(crate) fn adjustable_output_target(
+    input_voltage: f64,
+    adjust_voltage: f64,
+    reference_voltage: f64,
+    min_output_voltage: f64,
+    max_output_voltage: f64,
+    dropout_voltage: f64,
+) -> f64 {
+    let available = (input_voltage - dropout_voltage).max(0.0);
+    let requested =
+        (adjust_voltage + reference_voltage).clamp(min_output_voltage, max_output_voltage);
+    available.min(requested)
 }
 
 #[cfg(test)]
@@ -195,6 +242,40 @@ mod tests {
             let output = available.min(target);
             prop_assert!(output.is_finite());
             prop_assert!((0.0..=target).contains(&output));
+        }
+
+        #[test]
+        fn adjustable_target_is_bounded_and_monotone(
+            input in 0.0f64..14.0,
+            adjust in 0.0f64..12.0,
+            reference in 0.1f64..2.0,
+            min_output in 0.0f64..2.0,
+            span in 0.1f64..12.0,
+            dropout in 0.0f64..3.0,
+        ) {
+            let max_output = min_output + span;
+            let output = adjustable_output_target(
+                input,
+                adjust,
+                reference,
+                min_output,
+                max_output,
+                dropout,
+            );
+            prop_assert!(output.is_finite());
+            prop_assert!(output >= 0.0);
+            prop_assert!(output <= max_output);
+            prop_assert!(output <= (input - dropout).max(0.0) + 1e-12);
+
+            let higher_adjust = adjustable_output_target(
+                input,
+                adjust + 0.1,
+                reference,
+                min_output,
+                max_output,
+                dropout,
+            );
+            prop_assert!(higher_adjust + 1e-12 >= output);
         }
 
         #[test]

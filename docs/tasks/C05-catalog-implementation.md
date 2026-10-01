@@ -1,8 +1,8 @@
 # C05 — Home-tool and power-energy fixtures
 
-Status: in_progress; the source review is recorded and implementation starts
-with the Section 07 timer entry whose existing timer, RC, control, buzzer, LED,
-and transistor contracts are sufficient.
+Status: in_progress; the source review is recorded and implementation has
+admitted the Section 07 timer, pulse-generator, and adjustable-regulator
+entries whose calculated contracts are sufficient.
 
 ## Scope
 
@@ -18,9 +18,14 @@ and [`10-power-energy.md`](../../breadboard-circuits/spec/10-power-energy.md).
 
 - S07-01, S07-02, S07-03, S07-04, S07-07, S07-11, and S07-12 require probes,
   unknown-device sockets, zener behavior, module contracts, or physical props.
-- S07-05, S07-06, S07-08, S07-13, S07-14, and S07-15 require regulator,
-  comparator, counter, measurement, or module contracts not present in the
-  current core. Keep them blocked rather than presenting scripted readings.
+- S07-05, S07-13, S07-14, and S07-15 require regulator, comparator, counter,
+  measurement, or module contracts not present in the current core. Keep them
+  blocked rather than presenting scripted readings.
+- S07-06 is admitted through the calculated adjustable-regulated-supply
+  module contract. Its 12 V input, 2 V dropout limit, 10 V output clamp,
+  ADJ feedback, reverse-protection diodes, and high-impedance voltmeter are
+  explicit electrical behavior; the source's 5 kΩ label versus its 1.25–10 V
+  range remains a bounded calibration discrepancy.
 - S07-09 can use the existing timer/RC, button-as-reed-contact substitute,
   buzzer, resistor, and capacitor contracts. The physical magnet and door are
   presentation discrepancies.
@@ -58,6 +63,14 @@ companion branch. S07-08 uses an adjustable calculated 555 astable and LED
 pulse readout. The source timing calibration, passive-buzzer behavior, rotary
 selector, and external output terminals remain explicit discrepancies; manual
 browser and real-breadboard evidence remain pending.
+
+S07-06 uses `fixtures/projects/c05-s07-06-adjustable-power-supply.json` and a
+calculated LM317-style adjustable regulator with explicit IN/OUT/ADJ/GND pins,
+240 Ω feedback, a 5 kΩ control, both 1N4007 protection paths, three
+capacitors, and a calculated analog-transfer voltmeter. Its feedback
+monotonicity/bounds regression, 4-node topology, unique lead/wire placement,
+app menu reachability, fixture validation, and 4,000-step transient simulation
+passed; manual browser and real-breadboard evidence remain pending.
 
 The S07-10 full gate passed on 2026-09-29 with `cargo fmt --all --check`,
 `cargo clippy --workspace --all-targets --locked -- -D warnings`,
