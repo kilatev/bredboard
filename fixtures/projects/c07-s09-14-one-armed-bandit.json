@@ -1,0 +1,797 @@
+{
+  "format_version": 1,
+  "title": "C07-S09-14: One-armed bandit",
+  "board": {
+    "model": "half_size_solderless"
+  },
+  "components": [
+    {
+      "id": "V1",
+      "kind": "dc_voltage_source",
+      "pins": {
+        "positive": "TP+:1",
+        "negative": "TP-:1"
+      },
+      "parameters": {
+        "voltage": 5
+      }
+    },
+    {
+      "id": "START",
+      "kind": "momentary_button",
+      "pins": {
+        "a": "TP+:2",
+        "b": "A1"
+      },
+      "parameters": {}
+    },
+    {
+      "id": "STOP1",
+      "kind": "momentary_button",
+      "pins": {
+        "a": "TP+:3",
+        "b": "F1"
+      },
+      "parameters": {}
+    },
+    {
+      "id": "STOP2",
+      "kind": "momentary_button",
+      "pins": {
+        "a": "TP+:4",
+        "b": "A2"
+      },
+      "parameters": {}
+    },
+    {
+      "id": "STOP3",
+      "kind": "momentary_button",
+      "pins": {
+        "a": "TP+:5",
+        "b": "F2"
+      },
+      "parameters": {}
+    },
+    {
+      "id": "R_START",
+      "kind": "resistor",
+      "pins": {
+        "a": "B1",
+        "b": "TP-:2"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_STOP1",
+      "kind": "resistor",
+      "pins": {
+        "a": "G1",
+        "b": "TP-:3"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_STOP2",
+      "kind": "resistor",
+      "pins": {
+        "a": "B2",
+        "b": "TP-:4"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_STOP3",
+      "kind": "resistor",
+      "pins": {
+        "a": "G2",
+        "b": "TP-:5"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_TIMING1",
+      "kind": "resistor",
+      "pins": {
+        "a": "TP+:6",
+        "b": "A3"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_TIMING2",
+      "kind": "resistor",
+      "pins": {
+        "a": "TP+:7",
+        "b": "F3"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "C_TIMING1",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "B3",
+        "negative": "TP-:6"
+      },
+      "parameters": {
+        "capacitance": 0.000001
+      }
+    },
+    {
+      "id": "C_TIMING2",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "G3",
+        "negative": "TP-:7"
+      },
+      "parameters": {
+        "capacitance": 0.000001
+      }
+    },
+    {
+      "id": "C_DEC1",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "TP+:8",
+        "negative": "TP-:8"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C_DEC2",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "TP+:9",
+        "negative": "TP-:9"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C_DEC3",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "TP+:10",
+        "negative": "TP-:10"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C_DEC4",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "TP+:11",
+        "negative": "TP-:11"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C_DEC5",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "TP+:12",
+        "negative": "TP-:12"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C_DEC6",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "TP+:13",
+        "negative": "TP-:13"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "T1",
+      "kind": "timer_555",
+      "pins": {
+        "control": "TP-:14",
+        "discharge": "C3",
+        "gnd": "TP-:15",
+        "output": "A4",
+        "reset": "TP+:14",
+        "threshold": "D3",
+        "trigger": "E3",
+        "vcc": "TP+:15"
+      },
+      "parameters": {
+        "output_resistance": 100,
+        "discharge_resistance": 100
+      }
+    },
+    {
+      "id": "T2",
+      "kind": "timer_555",
+      "pins": {
+        "control": "TP-:16",
+        "discharge": "H3",
+        "gnd": "TP-:17",
+        "output": "F4",
+        "reset": "A5",
+        "threshold": "I3",
+        "trigger": "J3",
+        "vcc": "TP+:16"
+      },
+      "parameters": {
+        "output_resistance": 100,
+        "discharge_resistance": 100
+      }
+    },
+    {
+      "id": "GATE1",
+      "kind": "d_flip_flop",
+      "pins": {
+        "clock": "TP+:17",
+        "data": "TP-:18",
+        "gnd": "TP-:19",
+        "not_q": "F5",
+        "q": "A6",
+        "reset": "H1",
+        "set": "C1",
+        "vcc": "TP+:18"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "GATE2",
+      "kind": "d_flip_flop",
+      "pins": {
+        "clock": "TP+:19",
+        "data": "TP-:20",
+        "gnd": "TP-:21",
+        "not_q": "F6",
+        "q": "A7",
+        "reset": "C2",
+        "set": "D1",
+        "vcc": "TP+:20"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "GATE3",
+      "kind": "d_flip_flop",
+      "pins": {
+        "clock": "TP+:21",
+        "data": "TP-:22",
+        "gnd": "TP-:23",
+        "not_q": "F7",
+        "q": "A8",
+        "reset": "H2",
+        "set": "E1",
+        "vcc": "TP+:22"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "D1",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "B4",
+        "carry": "TP-:24",
+        "enable": "B6",
+        "gnd": "TP-:25",
+        "q0": "F8",
+        "q1": "A9",
+        "q2": "F9",
+        "q3": "A10",
+        "q4": "TP-:26",
+        "q5": "TP-:27",
+        "q6": "TP-:28",
+        "q7": "TP-:29",
+        "q8": "TP-:30",
+        "q9": "TP-:31",
+        "reset": "TP-:32",
+        "vcc": "TP+:23"
+      },
+      "parameters": {
+        "modulus": 10,
+        "output_mode": 0,
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "D2",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "C4",
+        "carry": "TP-:33",
+        "enable": "B7",
+        "gnd": "TP-:34",
+        "q0": "F10",
+        "q1": "A11",
+        "q2": "F11",
+        "q3": "A12",
+        "q4": "TP-:35",
+        "q5": "TP-:36",
+        "q6": "TP-:37",
+        "q7": "TP-:38",
+        "q8": "TP-:39",
+        "q9": "TP-:40",
+        "reset": "TP-:41",
+        "vcc": "TP+:24"
+      },
+      "parameters": {
+        "modulus": 10,
+        "output_mode": 0,
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "D3",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "D4",
+        "carry": "TP-:42",
+        "enable": "B8",
+        "gnd": "TP-:43",
+        "q0": "F12",
+        "q1": "A13",
+        "q2": "F13",
+        "q3": "A14",
+        "q4": "TP-:44",
+        "q5": "TP-:45",
+        "q6": "TP-:46",
+        "q7": "TP-:47",
+        "q8": "TP-:48",
+        "q9": "TP-:49",
+        "reset": "TP-:50",
+        "vcc": "TP+:25"
+      },
+      "parameters": {
+        "modulus": 10,
+        "output_mode": 0,
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "DISP1",
+      "kind": "seven_segment_display",
+      "pins": {
+        "a": "F14",
+        "b": "A15",
+        "c": "F15",
+        "common": "TP-:51",
+        "d": "A16",
+        "e": "F16",
+        "f": "A17",
+        "g": "F17",
+        "gnd": "TP-:52",
+        "input_b0": "G8",
+        "input_b1": "B9",
+        "input_b2": "G9",
+        "input_b3": "B10",
+        "vcc": "TP+:26"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "DISP2",
+      "kind": "seven_segment_display",
+      "pins": {
+        "a": "A18",
+        "b": "F18",
+        "c": "A19",
+        "common": "TP-:53",
+        "d": "F19",
+        "e": "A20",
+        "f": "F20",
+        "g": "A21",
+        "gnd": "TP-:54",
+        "input_b0": "G10",
+        "input_b1": "B11",
+        "input_b2": "G11",
+        "input_b3": "B12",
+        "vcc": "TP+:27"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "DISP3",
+      "kind": "seven_segment_display",
+      "pins": {
+        "a": "F21",
+        "b": "A22",
+        "c": "F22",
+        "common": "TP-:55",
+        "d": "A23",
+        "e": "F23",
+        "f": "A24",
+        "g": "F24",
+        "gnd": "TP-:56",
+        "input_b0": "G12",
+        "input_b1": "B13",
+        "input_b2": "G13",
+        "input_b3": "B14",
+        "vcc": "TP+:28"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "R_A_a",
+      "kind": "resistor",
+      "pins": {
+        "a": "G14",
+        "b": "TP-:57"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A_b",
+      "kind": "resistor",
+      "pins": {
+        "a": "B15",
+        "b": "TP-:58"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A_c",
+      "kind": "resistor",
+      "pins": {
+        "a": "G15",
+        "b": "TP-:59"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A_d",
+      "kind": "resistor",
+      "pins": {
+        "a": "B16",
+        "b": "TP-:60"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A_e",
+      "kind": "resistor",
+      "pins": {
+        "a": "G16",
+        "b": "TP-:61"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A_f",
+      "kind": "resistor",
+      "pins": {
+        "a": "B17",
+        "b": "TP-:62"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A_g",
+      "kind": "resistor",
+      "pins": {
+        "a": "G17",
+        "b": "TP-:63"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B_a",
+      "kind": "resistor",
+      "pins": {
+        "a": "B18",
+        "b": "TP-:64"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B_b",
+      "kind": "resistor",
+      "pins": {
+        "a": "G18",
+        "b": "TP-:65"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B_c",
+      "kind": "resistor",
+      "pins": {
+        "a": "B19",
+        "b": "TP-:66"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B_d",
+      "kind": "resistor",
+      "pins": {
+        "a": "G19",
+        "b": "TP-:67"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B_e",
+      "kind": "resistor",
+      "pins": {
+        "a": "B20",
+        "b": "TP-:68"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B_f",
+      "kind": "resistor",
+      "pins": {
+        "a": "G20",
+        "b": "TP-:69"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B_g",
+      "kind": "resistor",
+      "pins": {
+        "a": "B21",
+        "b": "TP-:70"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_C_a",
+      "kind": "resistor",
+      "pins": {
+        "a": "G21",
+        "b": "TP-:71"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_C_b",
+      "kind": "resistor",
+      "pins": {
+        "a": "B22",
+        "b": "TP-:72"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_C_c",
+      "kind": "resistor",
+      "pins": {
+        "a": "G22",
+        "b": "TP-:73"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_C_d",
+      "kind": "resistor",
+      "pins": {
+        "a": "B23",
+        "b": "TP-:74"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_C_e",
+      "kind": "resistor",
+      "pins": {
+        "a": "G23",
+        "b": "TP-:75"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "CMP1",
+      "kind": "comparator",
+      "pins": {
+        "gnd": "TP-:78",
+        "inverting": "H10",
+        "non_inverting": "H8",
+        "output": "A25",
+        "vcc": "TP+:29"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "CMP2",
+      "kind": "comparator",
+      "pins": {
+        "gnd": "TP-:79",
+        "inverting": "H12",
+        "non_inverting": "I10",
+        "output": "F25",
+        "vcc": "TP+:30"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "WIN",
+      "kind": "logic_gate",
+      "pins": {
+        "gnd": "TP-:80",
+        "input_a": "B25",
+        "input_b": "G25",
+        "output": "B5",
+        "vcc": "TP+:31"
+      },
+      "parameters": {
+        "operation": 0,
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "PKG_4518_A",
+      "kind": "ic_device",
+      "pins": {
+        "gnd": "TP-:81",
+        "input": "TP-:82",
+        "output": "A26",
+        "vcc": "TP+:32"
+      },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": {
+          "gnd": "ground",
+          "input": "input",
+          "output": "output",
+          "vcc": "supply"
+        },
+        "behavior": {
+          "behavior": "linear",
+          "output": "output",
+          "reference": "gnd",
+          "inputs": [
+            {
+              "pin": "input",
+              "gain": 0
+            }
+          ],
+          "offset": 0,
+          "min_output": 0,
+          "max_output": 0,
+          "input_resistance": 1000000,
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "PKG_4518_B",
+      "kind": "ic_device",
+      "pins": {
+        "gnd": "TP-:83",
+        "input": "TP-:84",
+        "output": "F26",
+        "vcc": "TP+:33"
+      },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": {
+          "gnd": "ground",
+          "input": "input",
+          "output": "output",
+          "vcc": "supply"
+        },
+        "behavior": {
+          "behavior": "linear",
+          "output": "output",
+          "reference": "gnd",
+          "inputs": [
+            {
+              "pin": "input",
+              "gain": 0
+            }
+          ],
+          "offset": 0,
+          "min_output": 0,
+          "max_output": 0,
+          "input_resistance": 1000000,
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "BZ1",
+      "kind": "buzzer",
+      "pins": {
+        "positive": "G4",
+        "negative": "TP-:85"
+      },
+      "parameters": {
+        "resistance": 100
+      }
+    }
+  ],
+  "wires": [],
+  "initial_conditions": {
+    "controls": {
+      "START": "button_released",
+      "STOP1": "button_released",
+      "STOP2": "button_released",
+      "STOP3": "button_released"
+    },
+    "digital_states": {
+      "GATE1": 0,
+      "GATE2": 0,
+      "GATE3": 0,
+      "D1": 0,
+      "D2": 0,
+      "D3": 0
+    }
+  }
+}
