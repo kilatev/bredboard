@@ -138,6 +138,8 @@ const C04_S06_13_JSON: &str =
     include_str!("../../../fixtures/projects/c04-s06-13-modular-synthesizer.json");
 const C05_S07_10_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-10-two-minute-timer.json");
+const C05_S07_04_JSON: &str =
+    include_str!("../../../fixtures/projects/c05-s07-04-transistor-tester.json");
 const C05_S07_09_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-09-refrigerator-guard.json");
 const C05_S07_08_JSON: &str =
@@ -267,6 +269,7 @@ enum Circuit {
     C04S06_11,
     C04S06_12,
     C04S06_13,
+    C05S07_04,
     C05S07_09,
     C05S07_10,
     C05S07_08,
@@ -308,7 +311,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 106] {
+    fn all() -> [Self; 107] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -359,6 +362,7 @@ impl Circuit {
             Self::C04S06_11,
             Self::C04S06_12,
             Self::C04S06_13,
+            Self::C05S07_04,
             Self::C05S07_09,
             Self::C05S07_10,
             Self::C05S07_08,
@@ -502,6 +506,7 @@ impl Circuit {
             Self::C04S06_11 => C04_S06_11_JSON,
             Self::C04S06_12 => C04_S06_12_JSON,
             Self::C04S06_13 => C04_S06_13_JSON,
+            Self::C05S07_04 => C05_S07_04_JSON,
             Self::C05S07_09 => C05_S07_09_JSON,
             Self::C05S07_10 => C05_S07_10_JSON,
             Self::C05S07_08 => C05_S07_08_JSON,
@@ -612,6 +617,7 @@ impl Circuit {
             Self::C04S06_11 => "C04-S06-11: ROBOT VOICE",
             Self::C04S06_12 => "C04-S06-12: DRUM MACHINE",
             Self::C04S06_13 => "C04-S06-13: MODULAR SYNTHESIZER",
+            Self::C05S07_04 => "C05-S07-04: TRANSISTOR TESTER",
             Self::C05S07_09 => "C05-S07-09: REFRIGERATOR-DOOR GUARD",
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
@@ -840,6 +846,10 @@ impl Circuit {
             Self::C04S06_13 => (
                 "A calculated 555 VCO proxy, two finite TL074 transfer stages, RC attack/release envelope, voltage-controlled resistance VCA, and bounded LM386-style amplifier compose a patchable single-supply synth. The CD4046 waveform, exact filter response, and musical timbre remain explicit source discrepancies.",
                 "Task: drag RV1/RV2, press GATE, run the fixture, and compare the calculated envelope, virtual-ground output, VCA current, and speaker load.",
+            ),
+            Self::C05S07_04 => (
+                "Two calculated BJT test sockets reuse the nonlinear NPN/PNP model with explicit subject polarity and working state. The green NPN and red PNP channels are current-driven; the source's physical swappable-part interaction is represented by two fixture-selected test channels.",
+                "Task: press B1 to test the NPN socket or B2 to test the PNP socket, run the fixture, and compare the matching LED current with the calculated socket terminal currents.",
             ),
             Self::C05S07_09 => (
                 "A calculated 555 monostable uses a button as a bounded reed-contact substitute and drives a buzzer load through an RC delay. The physical magnet and refrigerator door remain presentation discrepancies.",
@@ -1472,6 +1482,18 @@ impl Circuit {
                 component: "B1",
                 is_switch: false,
             }],
+            Self::C05S07_04 => &[
+                ControlSpec {
+                    label: "B1: TEST NPN SOCKET",
+                    component: "B1",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B2: TEST PNP SOCKET",
+                    component: "B2",
+                    is_switch: false,
+                },
+            ],
             Self::C05S07_09 => &[ControlSpec {
                 label: "S1: DOOR CONTACT",
                 component: "S1",
@@ -3299,6 +3321,41 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C05S07_04 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Transistor sockets: press a test button and run to measure".into(),
+                        |result| {
+                            let socket_current = |component: &str| {
+                                1000.0
+                                    * result
+                                        .other_terminal_currents
+                                        .get(&ComponentId(component.into()))
+                                        .and_then(|pins| {
+                                            pins.get(&bredboard_core::PinId("collector".into()))
+                                        })
+                                        .copied()
+                                        .unwrap_or(0.0)
+                                        .abs()
+                            };
+                            format!(
+                                "GREEN {:.2} mA / XNPN {:.2} mA   RED {:.2} mA / XPNP {:.2} mA",
+                                1000.0
+                                    * result
+                                        .led_currents
+                                        .get(&ComponentId("D1".into()))
+                                        .copied()
+                                        .unwrap_or(0.0),
+                                socket_current("XNPN"),
+                                1000.0
+                                    * result
+                                        .led_currents
+                                        .get(&ComponentId("D2".into()))
+                                        .copied()
+                                        .unwrap_or(0.0),
+                                socket_current("XPNP")
+                            )
+                        },
+                    )
                 } else if bench.circuit == Circuit::C06S08_01 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "Motor current and speed: run to measure".into(),
@@ -3695,6 +3752,25 @@ mod tests {
     }
 
     #[test]
+    fn c05_s07_04_transistor_sockets_drive_the_matching_led_channels() {
+        let mut bench = Bench::new(Circuit::C05S07_04);
+        bench.act(Action::Run);
+        advance_steps(&bench.project, &mut bench.simulation, 1);
+        let result = bench.simulation.last_valid.as_ref().unwrap();
+        assert!(!bench.simulation.stale);
+        assert!(result.led_currents[&ComponentId("D1".into())] > 0.01);
+        assert!(result.led_currents[&ComponentId("D2".into())] > 0.01);
+        assert!(
+            result.other_terminal_currents[&ComponentId("XNPN".into())][&PinId("collector".into())]
+                > 0.01
+        );
+        assert!(
+            result.other_terminal_currents[&ComponentId("XPNP".into())][&PinId("collector".into())]
+                < -0.01
+        );
+    }
+
+    #[test]
     fn c04_s06_01_keeps_equal_dc_loads_and_passive_piezo_silent() {
         let mut bench = Bench::new(Circuit::C04S06_01);
         bench.act(Action::Run);
@@ -3847,7 +3923,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            106
+            107
         );
         assert!(matches!(
             items[0],

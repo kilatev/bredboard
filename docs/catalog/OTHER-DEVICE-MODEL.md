@@ -26,6 +26,15 @@ The supported calculated behaviors are:
   output whose resistance is interpolated from a named control voltage and
   clamped to its declared range.
 
+The `bjt_test_socket` behavior is the explicit device-under-test contract for
+three-pin transistor tester fixtures. It declares base, collector, and emitter
+pins, a socket polarity, a fixture-selected subject polarity, and a subject
+state (`working`, `open`, or `shorted`). A polarity mismatch is electrically
+treated as an open subject. A matching working subject reuses the calculated
+NPN/PNP model (`beta` and `saturation_current`); failure states use bounded
+three-terminal resistive paths. This is a fixture-time test-state mapping, not
+a scripted LED result or a runtime swappable-part editor.
+
 The transformer contract is intentionally a bounded voltage-transfer
 approximation: it includes finite primary and secondary loading but does not
 model magnetic flux, inductance, phase, or saturation. The ring-modulator

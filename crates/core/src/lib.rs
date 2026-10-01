@@ -21,9 +21,9 @@ pub use module::{
     MODULE_MIN_RESISTANCE, ModuleBehavior, ModuleChannel, ModuleInput, ModulePinRole, ModuleSpec,
 };
 pub use other_device::{
-    MAX_OTHER_DEVICE_PINS, OTHER_DEVICE_MAX_RESISTANCE, OTHER_DEVICE_MIN_RESISTANCE,
-    OtherDeviceBehavior, OtherDeviceLinearInput, OtherDevicePinRole, OtherDeviceSpec,
-    controlled_resistance, ring_modulator_output,
+    BjtPolarity, BjtTestSocket, BjtTestState, MAX_OTHER_DEVICE_PINS, OTHER_DEVICE_MAX_RESISTANCE,
+    OTHER_DEVICE_MIN_RESISTANCE, OtherDeviceBehavior, OtherDeviceLinearInput, OtherDevicePinRole,
+    OtherDeviceSpec, controlled_resistance, ring_modulator_output,
 };
 pub use persistence::{
     ACTION_LOG_FORMAT_VERSION, ActionEvent, ActionLog, MODEL_VERSION, PersistenceError,
@@ -1344,8 +1344,8 @@ fn validate_module_resistance(c: &Component, errors: &mut Vec<Diagnostic>, path:
 
 fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec<Diagnostic>) {
     use OtherDeviceBehavior::{
-        LinearTransfer, Resistive, RingModulator, Transformer, VoltageControlledResistance,
-        VoltageSource,
+        BjtTestSocket as BjtTestSocketBehavior, LinearTransfer, Resistive, RingModulator,
+        Transformer, VoltageControlledResistance, VoltageSource,
     };
     use OtherDevicePinRole::{Control, Ground, Input, Output, Reference, Supply, Terminal};
 
@@ -1415,6 +1415,56 @@ fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec
             }
             validate_other_finite(c, errors, "voltage", *voltage);
             validate_other_resistance(c, errors, "internal_resistance", *internal_resistance);
+        }
+        BjtTestSocketBehavior { socket } => {
+            if !role_is(&socket.base, |role| matches!(role, Input | Terminal))
+                || !role_is(&socket.collector, |role| matches!(role, Output | Terminal))
+                || !role_is(&socket.emitter, |role| {
+                    matches!(role, Terminal | Reference | Ground | Supply)
+                })
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_bjt_socket_roles",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "BJT test sockets require base input, collector output, and emitter reference/ground roles",
+                ));
+            }
+            for (path, value) in [
+                ("beta", socket.beta),
+                ("saturation_current", socket.saturation_current),
+                ("open_resistance", socket.open_resistance),
+                ("short_resistance", socket.short_resistance),
+            ] {
+                validate_other_finite(c, errors, path, value);
+            }
+            if !socket.beta.is_finite() || !(10.0..=1000.0).contains(&socket.beta) {
+                errors.push(Diagnostic::new(
+                    "other_device_bjt_beta_range",
+                    format!("components.{}.other_device.behavior.beta", c.id.0),
+                    "BJT beta must be in 10..=1000",
+                ));
+            }
+            if !socket.saturation_current.is_finite()
+                || !(1e-16..=1e-12).contains(&socket.saturation_current)
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_bjt_saturation_range",
+                    format!(
+                        "components.{}.other_device.behavior.saturation_current",
+                        c.id.0
+                    ),
+                    "BJT saturation_current must be in 1e-16..=1e-12 A",
+                ));
+            }
+            validate_other_resistance(c, errors, "open_resistance", socket.open_resistance);
+            validate_other_resistance(c, errors, "short_resistance", socket.short_resistance);
+            if socket.short_resistance >= socket.open_resistance {
+                errors.push(Diagnostic::new(
+                    "other_device_bjt_failure_range",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "short_resistance must be below open_resistance",
+                ));
+            }
         }
         LinearTransfer {
             output,

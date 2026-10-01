@@ -1,7 +1,8 @@
 use crate::{
-    Component, ComponentId, ComponentKind, Contact, ControlState, Diagnostic, DiodeModel,
-    DiodeSpec, IcDeviceBehavior, IcLogicOperation, ModuleBehavior, Node, OtherDeviceBehavior,
-    PinId, Project, compile_topology, controlled_resistance, ring_modulator_output,
+    BjtPolarity, BjtTestState, Component, ComponentId, ComponentKind, Contact, ControlState,
+    Diagnostic, DiodeModel, DiodeSpec, IcDeviceBehavior, IcLogicOperation, ModuleBehavior, Node,
+    OtherDeviceBehavior, PinId, Project, compile_topology, controlled_resistance,
+    ring_modulator_output,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -152,6 +153,18 @@ enum NonlinearElement {
         emitter: usize,
         beta: f64,
         saturation: f64,
+    },
+    OtherBjtSocket {
+        base: usize,
+        collector: usize,
+        emitter: usize,
+        socket_polarity: BjtPolarity,
+        subject_polarity: BjtPolarity,
+        subject_state: BjtTestState,
+        beta: f64,
+        saturation: f64,
+        open_resistance: f64,
+        short_resistance: f64,
     },
     LogicGate {
         input_a: usize,
@@ -515,6 +528,12 @@ fn solve_internal(
                 ..
             }
             | NonlinearElement::Pnp {
+                base,
+                collector,
+                emitter,
+                ..
+            } => vec![(*base, *emitter), (*collector, *emitter)],
+            NonlinearElement::OtherBjtSocket {
                 base,
                 collector,
                 emitter,
@@ -1098,6 +1117,7 @@ fn solve_internal(
                 module_output_voltages.insert(id.clone(), outputs.collect());
             }
             NonlinearElement::OtherSource { .. }
+            | NonlinearElement::OtherBjtSocket { .. }
             | NonlinearElement::OtherLinearTransfer { .. }
             | NonlinearElement::OtherTransformer { .. }
             | NonlinearElement::OtherRingModulator { .. }
@@ -1194,6 +1214,44 @@ fn solve_internal(
                     (voltage_at(positive)? - voltage_at(negative)? - target) / internal_resistance;
                 currents.insert(positive.clone(), current);
                 currents.insert(negative.clone(), -current);
+            }
+            OtherDeviceBehavior::BjtTestSocket { socket } => {
+                let base_voltage = voltage_at(&socket.base)?;
+                let collector_voltage = voltage_at(&socket.collector)?;
+                let emitter_voltage = voltage_at(&socket.emitter)?;
+                let (base_current, collector_current) = match socket.effective_state() {
+                    BjtTestState::Working => match socket.socket_polarity {
+                        BjtPolarity::Npn => {
+                            let (base, collector, _, _) = npn_currents(
+                                base_voltage - emitter_voltage,
+                                collector_voltage - emitter_voltage,
+                                socket.beta,
+                                socket.saturation_current,
+                            );
+                            (base, collector)
+                        }
+                        BjtPolarity::Pnp => {
+                            let (base, collector, _, _) = npn_currents(
+                                emitter_voltage - base_voltage,
+                                emitter_voltage - collector_voltage,
+                                socket.beta,
+                                socket.saturation_current,
+                            );
+                            (-base, -collector)
+                        }
+                    },
+                    BjtTestState::Open => (
+                        (base_voltage - emitter_voltage) / socket.open_resistance,
+                        (collector_voltage - emitter_voltage) / socket.open_resistance,
+                    ),
+                    BjtTestState::Shorted => (
+                        (base_voltage - emitter_voltage) / socket.short_resistance,
+                        (collector_voltage - emitter_voltage) / socket.short_resistance,
+                    ),
+                };
+                currents.insert(socket.base.clone(), base_current);
+                currents.insert(socket.collector.clone(), collector_current);
+                currents.insert(socket.emitter.clone(), -base_current - collector_current);
             }
             OtherDeviceBehavior::LinearTransfer {
                 output,
@@ -1925,6 +1983,24 @@ fn make_branches(
                             resistance: *internal_resistance,
                         });
                     }
+                    OtherDeviceBehavior::BjtTestSocket { socket } => {
+                        let base = node(&socket.base.0)?;
+                        let collector = node(&socket.collector.0)?;
+                        let emitter = node(&socket.emitter.0)?;
+                        active.extend([base, collector, emitter]);
+                        nonlinear.push(NonlinearElement::OtherBjtSocket {
+                            base,
+                            collector,
+                            emitter,
+                            socket_polarity: socket.socket_polarity,
+                            subject_polarity: socket.subject_polarity,
+                            subject_state: socket.subject_state,
+                            beta: socket.beta,
+                            saturation: socket.saturation_current,
+                            open_resistance: socket.open_resistance,
+                            short_resistance: socket.short_resistance,
+                        });
+                    }
                     OtherDeviceBehavior::LinearTransfer {
                         output,
                         reference,
@@ -2578,6 +2654,35 @@ fn stamp_element(
                 rhs,
             );
         }
+        NonlinearElement::OtherBjtSocket {
+            base,
+            collector,
+            emitter,
+            socket_polarity,
+            subject_polarity,
+            subject_state,
+            beta,
+            saturation,
+            open_resistance,
+            short_resistance,
+            ..
+        } => stamp_other_bjt_socket(
+            *base,
+            *collector,
+            *emitter,
+            *socket_polarity,
+            *subject_polarity,
+            *subject_state,
+            *beta,
+            *saturation,
+            *open_resistance,
+            *short_resistance,
+            guess,
+            vars,
+            matrix,
+            rhs,
+            use_collector_base_jacobian,
+        ),
         NonlinearElement::LogicGate {
             input_a,
             input_b,
@@ -3196,6 +3301,92 @@ fn stamp_element(
 }
 
 #[allow(clippy::too_many_arguments)]
+fn stamp_other_bjt_socket(
+    base: usize,
+    collector: usize,
+    emitter: usize,
+    socket_polarity: BjtPolarity,
+    subject_polarity: BjtPolarity,
+    subject_state: BjtTestState,
+    beta: f64,
+    saturation: f64,
+    open_resistance: f64,
+    short_resistance: f64,
+    guess: &[f64],
+    vars: &BTreeMap<usize, usize>,
+    matrix: &mut [Vec<f64>],
+    rhs: &mut [f64],
+    use_collector_base_jacobian: bool,
+) {
+    let state = if socket_polarity == subject_polarity {
+        subject_state
+    } else {
+        BjtTestState::Open
+    };
+    match state {
+        BjtTestState::Working => match socket_polarity {
+            BjtPolarity::Npn => {
+                let vbe = voltage(guess, vars, base) - voltage(guess, vars, emitter);
+                let vce = voltage(guess, vars, collector) - voltage(guess, vars, emitter);
+                let (ib, ic, gm, go) = npn_currents(vbe, vce, beta, saturation);
+                let gm = if use_collector_base_jacobian { gm } else { 0.0 };
+                let (_, gib) = led_current(vbe, 0.026 * (0.001 / saturation).ln(), 100.0);
+                stamp_current(
+                    (base, emitter),
+                    ib,
+                    &[(base, gib), (emitter, -gib)],
+                    guess,
+                    vars,
+                    matrix,
+                    rhs,
+                );
+                stamp_current(
+                    (collector, emitter),
+                    ic,
+                    &[(base, gm), (collector, go), (emitter, -gm - go)],
+                    guess,
+                    vars,
+                    matrix,
+                    rhs,
+                );
+            }
+            BjtPolarity::Pnp => {
+                let veb = voltage(guess, vars, emitter) - voltage(guess, vars, base);
+                let vec = voltage(guess, vars, emitter) - voltage(guess, vars, collector);
+                let (ib, ic, gm, go) = npn_currents(veb, vec, beta, saturation);
+                let gm = if use_collector_base_jacobian { gm } else { 0.0 };
+                let (_, gib) = led_current(veb, 0.026 * (0.001 / saturation).ln(), 100.0);
+                stamp_current(
+                    (emitter, base),
+                    ib,
+                    &[(emitter, gib), (base, -gib)],
+                    guess,
+                    vars,
+                    matrix,
+                    rhs,
+                );
+                stamp_current(
+                    (emitter, collector),
+                    ic,
+                    &[(emitter, gm + go), (base, -gm), (collector, -go)],
+                    guess,
+                    vars,
+                    matrix,
+                    rhs,
+                );
+            }
+        },
+        BjtTestState::Open => {
+            stamp_conductance(matrix, vars, base, emitter, 1.0 / open_resistance);
+            stamp_conductance(matrix, vars, collector, emitter, 1.0 / open_resistance);
+        }
+        BjtTestState::Shorted => {
+            stamp_conductance(matrix, vars, base, emitter, 1.0 / short_resistance);
+            stamp_conductance(matrix, vars, collector, emitter, 1.0 / short_resistance);
+        }
+    }
+}
+
 fn stamp_other_ring_modulator(
     signal: usize,
     carrier: usize,
