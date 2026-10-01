@@ -21,7 +21,8 @@ pub use module::{
     MODULE_MIN_RESISTANCE, ModuleBehavior, ModuleChannel, ModuleInput, ModulePinRole, ModuleSpec,
 };
 pub use other_device::{
-    BjtPolarity, BjtTestSocket, BjtTestState, MAX_OTHER_DEVICE_PINS, OTHER_DEVICE_MAX_RESISTANCE,
+    BjtPolarity, BjtTestSocket, BjtTestState, DiodePolarity, DiodeSubjectKind, DiodeTestSocket,
+    DiodeTestState, MAX_OTHER_DEVICE_PINS, OTHER_DEVICE_MAX_RESISTANCE,
     OTHER_DEVICE_MIN_RESISTANCE, OtherDeviceBehavior, OtherDeviceLinearInput, OtherDevicePinRole,
     OtherDeviceSpec, controlled_resistance, ring_modulator_output,
 };
@@ -1400,8 +1401,9 @@ fn validate_module_resistance(c: &Component, errors: &mut Vec<Diagnostic>, path:
 
 fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec<Diagnostic>) {
     use OtherDeviceBehavior::{
-        BjtTestSocket as BjtTestSocketBehavior, LinearTransfer, Resistive, RingModulator,
-        Transformer, VoltageControlledResistance, VoltageSource,
+        BjtTestSocket as BjtTestSocketBehavior, DiodeTestSocket as DiodeTestSocketBehavior,
+        LinearTransfer, Resistive, RingModulator, Transformer, VoltageControlledResistance,
+        VoltageSource,
     };
     use OtherDevicePinRole::{Control, Ground, Input, Output, Reference, Supply, Terminal};
 
@@ -1517,6 +1519,60 @@ fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec
             if socket.short_resistance >= socket.open_resistance {
                 errors.push(Diagnostic::new(
                     "other_device_bjt_failure_range",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "short_resistance must be below open_resistance",
+                ));
+            }
+        }
+        DiodeTestSocketBehavior { socket } => {
+            if !role_is(&socket.anode, |role| {
+                matches!(role, Terminal | Output | Supply)
+            }) || !role_is(&socket.cathode, |role| {
+                matches!(role, Terminal | Reference | Ground)
+            }) {
+                errors.push(Diagnostic::new(
+                    "other_device_diode_socket_roles",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "diode test sockets require an anode output/supply/terminal and cathode terminal/reference/ground role",
+                ));
+            }
+            for (path, value) in [
+                ("forward_voltage", socket.forward_voltage),
+                ("series_resistance", socket.series_resistance),
+                ("open_resistance", socket.open_resistance),
+                ("short_resistance", socket.short_resistance),
+            ] {
+                validate_other_finite(c, errors, path, value);
+            }
+            if !socket.forward_voltage.is_finite()
+                || !(DIODE_MIN_FORWARD_VOLTAGE..=DIODE_MAX_FORWARD_VOLTAGE)
+                    .contains(&socket.forward_voltage)
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_diode_forward_range",
+                    format!("components.{}.other_device.behavior.forward_voltage", c.id.0),
+                    format!(
+                        "forward_voltage must be in {DIODE_MIN_FORWARD_VOLTAGE}..={DIODE_MAX_FORWARD_VOLTAGE} V"
+                    ),
+                ));
+            }
+            if !socket.series_resistance.is_finite()
+                || !(DIODE_MIN_SERIES_RESISTANCE..=DIODE_MAX_SERIES_RESISTANCE)
+                    .contains(&socket.series_resistance)
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_diode_series_range",
+                    format!("components.{}.other_device.behavior.series_resistance", c.id.0),
+                    format!(
+                        "series_resistance must be in {DIODE_MIN_SERIES_RESISTANCE}..={DIODE_MAX_SERIES_RESISTANCE} ohms"
+                    ),
+                ));
+            }
+            validate_other_resistance(c, errors, "open_resistance", socket.open_resistance);
+            validate_other_resistance(c, errors, "short_resistance", socket.short_resistance);
+            if socket.short_resistance >= socket.open_resistance {
+                errors.push(Diagnostic::new(
+                    "other_device_diode_failure_range",
                     format!("components.{}.other_device.behavior", c.id.0),
                     "short_resistance must be below open_resistance",
                 ));

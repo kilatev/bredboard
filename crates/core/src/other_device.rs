@@ -76,6 +76,28 @@ pub enum BjtTestState {
     Shorted,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DiodeSubjectKind {
+    Led,
+    Diode,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DiodePolarity {
+    Forward,
+    Reverse,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DiodeTestState {
+    Working,
+    Open,
+    Shorted,
+}
+
 /// The calculated electrical contract for a three-pin transistor test socket.
 /// The fixture selects the subject polarity and test state explicitly; the
 /// solver still derives LED results from the BJT equations and board topology.
@@ -89,6 +111,22 @@ pub struct BjtTestSocket {
     pub subject_state: BjtTestState,
     pub beta: f64,
     pub saturation_current: f64,
+    pub open_resistance: f64,
+    pub short_resistance: f64,
+}
+
+/// The calculated electrical contract for a two-terminal LED/diode test
+/// socket. The fixture selects the subject family, polarity, and fault state;
+/// the solver still derives current from the diode equation and board nodes.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct DiodeTestSocket {
+    pub anode: PinId,
+    pub cathode: PinId,
+    pub subject_kind: DiodeSubjectKind,
+    pub subject_polarity: DiodePolarity,
+    pub subject_state: DiodeTestState,
+    pub forward_voltage: f64,
+    pub series_resistance: f64,
     pub open_resistance: f64,
     pub short_resistance: f64,
 }
@@ -135,6 +173,9 @@ pub enum OtherDeviceBehavior {
     /// A three-pin BJT test socket. It reuses the educational NPN/PNP model
     /// with an explicit fixture-selected subject polarity and failure state.
     BjtTestSocket { socket: BjtTestSocket },
+    /// A two-terminal LED/diode test socket. It reuses the shared diode model
+    /// with an explicit fixture-selected subject polarity and failure state.
+    DiodeTestSocket { socket: DiodeTestSocket },
     /// A finite-resistance transfer from one or more sensed pins to an output
     /// relative to a reference pin. It is suitable for an explicitly
     /// parameterized sensor, regulator, amplifier, or module interface.
@@ -212,6 +253,7 @@ impl OtherDeviceSpec {
             OtherDeviceBehavior::Resistive { .. }
             | OtherDeviceBehavior::VoltageSource { .. }
             | OtherDeviceBehavior::BjtTestSocket { .. }
+            | OtherDeviceBehavior::DiodeTestSocket { .. }
             | OtherDeviceBehavior::VoltageControlledResistance { .. } => Vec::new(),
         }
     }
@@ -226,6 +268,9 @@ impl OtherDeviceSpec {
             } => vec![positive, negative],
             OtherDeviceBehavior::BjtTestSocket { socket } => {
                 vec![&socket.base, &socket.collector, &socket.emitter]
+            }
+            OtherDeviceBehavior::DiodeTestSocket { socket } => {
+                vec![&socket.anode, &socket.cathode]
             }
             OtherDeviceBehavior::LinearTransfer {
                 output,

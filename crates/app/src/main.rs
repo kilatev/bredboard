@@ -140,6 +140,8 @@ const C05_S07_10_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-10-two-minute-timer.json");
 const C05_S07_04_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-04-transistor-tester.json");
+const C05_S07_02_JSON: &str =
+    include_str!("../../../fixtures/projects/c05-s07-02-diode-tester.json");
 const C05_S07_09_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-09-refrigerator-guard.json");
 const C05_S07_08_JSON: &str =
@@ -271,6 +273,7 @@ enum Circuit {
     C04S06_11,
     C04S06_12,
     C04S06_13,
+    C05S07_02,
     C05S07_04,
     C05S07_09,
     C05S07_10,
@@ -314,7 +317,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 108] {
+    fn all() -> [Self; 109] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -365,6 +368,7 @@ impl Circuit {
             Self::C04S06_11,
             Self::C04S06_12,
             Self::C04S06_13,
+            Self::C05S07_02,
             Self::C05S07_04,
             Self::C05S07_09,
             Self::C05S07_10,
@@ -510,6 +514,7 @@ impl Circuit {
             Self::C04S06_11 => C04_S06_11_JSON,
             Self::C04S06_12 => C04_S06_12_JSON,
             Self::C04S06_13 => C04_S06_13_JSON,
+            Self::C05S07_02 => C05_S07_02_JSON,
             Self::C05S07_04 => C05_S07_04_JSON,
             Self::C05S07_09 => C05_S07_09_JSON,
             Self::C05S07_10 => C05_S07_10_JSON,
@@ -622,6 +627,7 @@ impl Circuit {
             Self::C04S06_11 => "C04-S06-11: ROBOT VOICE",
             Self::C04S06_12 => "C04-S06-12: DRUM MACHINE",
             Self::C04S06_13 => "C04-S06-13: MODULAR SYNTHESIZER",
+            Self::C05S07_02 => "C05-S07-02: LED / DIODE TESTER",
             Self::C05S07_04 => "C05-S07-04: TRANSISTOR TESTER",
             Self::C05S07_09 => "C05-S07-09: REFRIGERATOR-DOOR GUARD",
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
@@ -852,6 +858,10 @@ impl Circuit {
             Self::C04S06_13 => (
                 "A calculated 555 VCO proxy, two finite TL074 transfer stages, RC attack/release envelope, voltage-controlled resistance VCA, and bounded LM386-style amplifier compose a patchable single-supply synth. The CD4046 waveform, exact filter response, and musical timbre remain explicit source discrepancies.",
                 "Task: drag RV1/RV2, press GATE, run the fixture, and compare the calculated envelope, virtual-ground output, VCA current, and speaker load.",
+            ),
+            Self::C05S07_02 => (
+                "A calculated two-terminal test socket reuses the diode model with an explicit LED subject, forward polarity, and working state. The source's physical swappable-part operation is represented by a fixture-selected subject variant.",
+                "Task: run the fixture and compare the calculated socket current; the current is derived from the 9 V source, 1 kΩ limiter, and selected diode polarity/state.",
             ),
             Self::C05S07_04 => (
                 "Two calculated BJT test sockets reuse the nonlinear NPN/PNP model with explicit subject polarity and working state. The green NPN and red PNP channels are current-driven; the source's physical swappable-part interaction is represented by two fixture-selected test channels.",
@@ -1492,6 +1502,7 @@ impl Circuit {
                 component: "B1",
                 is_switch: false,
             }],
+            Self::C05S07_02 => &[],
             Self::C05S07_04 => &[
                 ControlSpec {
                     label: "B1: TEST NPN SOCKET",
@@ -3335,6 +3346,19 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C05S07_02 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Diode test socket: run to measure".into(),
+                        |result| {
+                            let current = result
+                                .other_terminal_currents
+                                .get(&ComponentId("X1".into()))
+                                .and_then(|pins| pins.get(&PinId("anode".into())))
+                                .copied()
+                                .unwrap_or(0.0);
+                            format!("X1 socket current {:.2} mA", 1000.0 * current)
+                        },
+                    )
                 } else if bench.circuit == Circuit::C05S07_04 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "Transistor sockets: press a test button and run to measure".into(),
@@ -3804,6 +3828,52 @@ mod tests {
     }
 
     #[test]
+    fn c05_s07_02_diode_socket_derives_polarity_and_fault_current() {
+        let measure = |polarity, state| {
+            let mut bench = Bench::new(Circuit::C05S07_02);
+            let component = bench
+                .project
+                .components
+                .iter_mut()
+                .find(|component| component.id == ComponentId("X1".into()))
+                .unwrap();
+            let spec = component.other_device.as_mut().unwrap();
+            let bredboard_core::OtherDeviceBehavior::DiodeTestSocket { socket } =
+                &mut spec.behavior
+            else {
+                panic!("X1 must be a diode test socket");
+            };
+            socket.subject_polarity = polarity;
+            socket.subject_state = state;
+            bredboard_core::solve_dc(&bench.project, &bench.simulation.controls, &BTreeMap::new())
+                .unwrap()
+                .other_terminal_currents[&ComponentId("X1".into())][&PinId("anode".into())]
+                .abs()
+        };
+
+        let working = measure(
+            bredboard_core::DiodePolarity::Forward,
+            bredboard_core::DiodeTestState::Working,
+        );
+        let reversed = measure(
+            bredboard_core::DiodePolarity::Reverse,
+            bredboard_core::DiodeTestState::Working,
+        );
+        let open = measure(
+            bredboard_core::DiodePolarity::Forward,
+            bredboard_core::DiodeTestState::Open,
+        );
+        let shorted = measure(
+            bredboard_core::DiodePolarity::Forward,
+            bredboard_core::DiodeTestState::Shorted,
+        );
+        assert!(working > 0.001, "working current: {working}");
+        assert!(reversed < 1e-6, "reversed current: {reversed}");
+        assert!(open < 1e-6, "open current: {open}");
+        assert!(shorted > 0.001, "shorted current: {shorted}");
+    }
+
+    #[test]
     fn c04_s06_01_keeps_equal_dc_loads_and_passive_piezo_silent() {
         let mut bench = Bench::new(Circuit::C04S06_01);
         bench.act(Action::Run);
@@ -3956,7 +4026,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            108
+            109
         );
         assert!(matches!(
             items[0],

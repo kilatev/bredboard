@@ -1,0 +1,37 @@
+{
+  "format_version": 1,
+  "title": "C05-S07-02: LED and diode tester",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 9.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "A1", "b": "A3" }, "parameters": { "resistance": 1000.0 } },
+    {
+      "id": "X1",
+      "kind": "other",
+      "pins": { "anode": "C5", "cathode": "C7" },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": { "anode": "terminal", "cathode": "reference" },
+        "behavior": {
+          "behavior": "diode_test_socket",
+          "socket": {
+            "anode": "anode",
+            "cathode": "cathode",
+            "subject_kind": "led",
+            "subject_polarity": "forward",
+            "subject_state": "working",
+            "forward_voltage": 2.0,
+            "series_resistance": 20.0,
+            "open_resistance": 1000000000.0,
+            "short_resistance": 1.0
+          }
+        }
+      }
+    }
+  ],
+  "wires": [
+    { "id": "W1", "from": "TP+:3", "to": "B1" },
+    { "id": "W2", "from": "B3", "to": "D5" },
+    { "id": "W3", "from": "D7", "to": "TP-:3" }
+  ]
+}

@@ -35,6 +35,14 @@ NPN/PNP model (`beta` and `saturation_current`); failure states use bounded
 three-terminal resistive paths. This is a fixture-time test-state mapping, not
 a scripted LED result or a runtime swappable-part editor.
 
+The `diode_test_socket` behavior is the corresponding two-terminal contract
+for LED/diode tester fixtures. It declares anode and cathode pins, a
+fixture-selected subject family (`led` or `diode`), polarity, and subject state
+(`working`, `open`, or `shorted`). A working subject reuses the shared diode
+equation in the selected orientation; failure states use bounded two-terminal
+resistive paths. This is also a fixture-time test-state mapping, not a runtime
+swappable-part editor.
+
 The transformer contract is intentionally a bounded voltage-transfer
 approximation: it includes finite primary and secondary loading but does not
 model magnetic flux, inductance, phase, or saturation. The ring-modulator
