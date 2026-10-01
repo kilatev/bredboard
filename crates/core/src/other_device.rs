@@ -162,6 +162,17 @@ pub enum OtherDeviceBehavior {
         negative: PinId,
         resistance: f64,
     },
+    /// A five-wire unipolar stepper load. The common pin feeds four equal
+    /// phase coils; each phase current is calculated from the solved terminal
+    /// voltage. This is an electrical load contract, not a mechanical
+    /// inertia or shaft-position simulation.
+    StepperLoad {
+        common: PinId,
+        phases: [PinId; 4],
+        coil_resistance: f64,
+        rated_voltage: f64,
+        steps_per_revolution: f64,
+    },
     /// A bounded Thevenin source. A non-zero internal resistance keeps source
     /// conflicts diagnosable without introducing an unbounded ideal source.
     VoltageSource {
@@ -251,6 +262,7 @@ impl OtherDeviceSpec {
             } => vec![secondary_positive],
             OtherDeviceBehavior::RingModulator { output, .. } => vec![output],
             OtherDeviceBehavior::Resistive { .. }
+            | OtherDeviceBehavior::StepperLoad { .. }
             | OtherDeviceBehavior::VoltageSource { .. }
             | OtherDeviceBehavior::BjtTestSocket { .. }
             | OtherDeviceBehavior::DiodeTestSocket { .. }
@@ -266,6 +278,11 @@ impl OtherDeviceSpec {
             | OtherDeviceBehavior::VoltageSource {
                 positive, negative, ..
             } => vec![positive, negative],
+            OtherDeviceBehavior::StepperLoad { common, phases, .. } => {
+                let mut pins = vec![common];
+                pins.extend(phases.iter());
+                pins
+            }
             OtherDeviceBehavior::BjtTestSocket { socket } => {
                 vec![&socket.base, &socket.collector, &socket.emitter]
             }

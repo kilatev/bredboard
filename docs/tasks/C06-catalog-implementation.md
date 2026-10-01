@@ -40,8 +40,11 @@ The source record is [`08-motors.md`](../../breadboard-circuits/spec/08-motors.m
   shoot-through diagnostics, and signed motor direction; keep it blocked.
 - S08-11 needs the L293D dual-driver and two-motor chassis contracts; keep it
   blocked.
-- S08-12 needs a stepper motor, ULN2003 driver, and four-phase state contract;
-  keep it blocked.
+- S08-12 is admitted as a calculated four-phase stepper fixture: the
+  CD4017 Q0–Q3 outputs drive a four-channel ULN2003 open-collector contract,
+  and the 28BYJ-48 is represented by a five-wire four-coil load. Shaft
+  rotation remains presentation-only; no scripted position or motion outcome
+  is used.
 - S08-13 and S08-14 need two-motor chassis motion plus light or reflectance
   sensor contracts; keep them blocked.
 - S08-15 needs a solar-panel source, energy-storage contract, and burst motor
@@ -119,11 +122,36 @@ cargo test -p bredboard-app exercise_catalog_keeps_search_groups_and_circuits_se
 cargo run -p bredboard-tools --locked -- validate-catalog breadboard-circuits/spec/catalog.json breadboard-circuits/spec/catalog.schema.json — passed; 20 sections, 212 schematics
 ```
 
+The CAT-S08-12 slice adds
+`fixtures/projects/c06-s08-12-stepper-motor.json` and registers it in the app
+menu. It maps the source NE555 clock, CD4017 modulo-five sequence with Q4
+reset, ULN2003 four-channel open-collector driver, and 28BYJ-48 five-wire
+stepper load. The stepper contract calculates each coil current from the
+common and phase voltages; the app exposes the four phase currents and active
+phase. The source schematic's carry/reset behavior is made explicit with a
+carry-to-ground wire, avoiding a floating digital input under the core
+contract.
+
+Focused evidence for the slice:
+
+```text
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c06-s08-12-stepper-motor.json — passed; 9 components, 2 wires, 20 derived nodes
+cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c06-s08-12-stepper-motor.json 4000 — passed; step 4000 at 0.400000 s without diagnostics
+cargo test -p bredboard-core c06_stepper_fixture_calculates_four_phase_load_and_driver_mapping --locked — passed; four direct phases, current balance, 20-node topology
+cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
+cargo test -p bredboard-app exercise_catalog_keeps_search_groups_and_circuits_separate --locked — passed; 113 catalog circuits
+```
+
+The full verification gate also passed: workspace formatting, Clippy,
+workspace tests, native and WASM app builds, catalog validation, and
+`git diff --check` across 2026-10-01–02. Manual browser and real-breadboard
+evidence remain pending.
+
 ## Current blockers
 
 - Motor-generator input, DPDT polarity switching, PWM/MOSFET/flyback behavior,
   servo angle, physical fan airflow/closed-loop thermal scene, mechanical
-  position, H-bridge safety, L293D, stepper/ULN2003, chassis motion,
+  position, H-bridge safety, L293D, chassis motion,
   optical/reflectance sensors, solar energy storage, and display/measurement
   contracts are not yet available.
 - Manual interaction and real-breadboard evidence are pending for any new
