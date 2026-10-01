@@ -25,8 +25,9 @@ LEDGER="docs/catalog/CATALOG-AUDIT-LEDGER.md"
 BASE_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 WORKTREE_ROOT="${WORKTREE_ROOT:-$REPO_ROOT/.codex-batch-worktrees}"
 LOG_DIR="${LOG_DIR:-$REPO_ROOT/.codex-batch-logs}"
-SHARED_TARGET_DIR="${SHARED_TARGET_DIR:-$REPO_ROOT/.cargo-target-shared}"
-mkdir -p "$WORKTREE_ROOT" "$LOG_DIR" "$SHARED_TARGET_DIR"
+TARGET_POOL_ROOT="${TARGET_POOL_ROOT:-$REPO_ROOT/.cargo-target-shared}"
+BATCH_TMPDIR="${BATCH_TMPDIR:-$REPO_ROOT/.codex-batch-tmp}"
+mkdir -p "$WORKTREE_ROOT" "$LOG_DIR" "$TARGET_POOL_ROOT" "$BATCH_TMPDIR"
 
 MODE="${1:-}"
 shift || true
@@ -54,7 +55,7 @@ ledger_rows() {
 }
 
 run_agent() {
-  local key="$1" prompt="$2"
+  local key="$1" prompt="$2" target_dir="$3"
   local safe_key="${key//\//-}"
   local branch="wt/catalog-batch/${safe_key,,}"
   local wt_dir="$WORKTREE_ROOT/$safe_key"
@@ -64,8 +65,9 @@ run_agent() {
   git worktree add -q -b "$branch" "$wt_dir" "$BASE_BRANCH" 2>>"$log_file" \
     || { git branch -D "$branch" 2>/dev/null || true; git worktree add -q -b "$branch" "$wt_dir" "$BASE_BRANCH"; }
 
-  echo "[$key] agent starting (log: $log_file)"
-  if CARGO_TARGET_DIR="$SHARED_TARGET_DIR" codex exec \
+  mkdir -p "$target_dir"
+  echo "[$key] agent starting (log: $log_file, target_dir: $target_dir)"
+  if CARGO_TARGET_DIR="$target_dir" TMPDIR="$BATCH_TMPDIR" codex exec \
       -C "$wt_dir" \
       --sandbox workspace-write \
       --skip-git-repo-check \
@@ -96,7 +98,7 @@ merge_branch() {
     return 1
   fi
 
-  if ! CARGO_TARGET_DIR="$SHARED_TARGET_DIR" cargo check --workspace --all-targets --locked >>"$LOG_DIR/${safe_key}.merge-check.log" 2>&1; then
+  if ! CARGO_TARGET_DIR="$TARGET_POOL_ROOT/slot-0" cargo check --workspace --all-targets --locked >>"$LOG_DIR/${safe_key}.merge-check.log" 2>&1; then
     echo "[$key] POST-MERGE cargo check FAILED after merging — see $LOG_DIR/${safe_key}.merge-check.log; leaving merge commit in place for manual fix (consider 'git revert')" >&2
     return 1
   fi
@@ -106,12 +108,18 @@ merge_branch() {
 
 run_batch() {
   # args: key1 prompt1 key2 prompt2 ...
-  local pids=() keys=()
+  # Each concurrently-running agent gets its own disk-backed CARGO_TARGET_DIR
+  # slot (slot-0 .. slot-(PARALLEL-1)), round-robin assigned, so no two
+  # agents running at the same time ever share a target dir (no cargo lock
+  # contention) while deps still compile once per slot and get reused across
+  # sequential sub-batches.
+  local pids=() keys=() slot=0
   while [[ $# -gt 0 ]]; do
     local key="$1" prompt="$2"; shift 2
-    run_agent "$key" "$prompt" &
+    run_agent "$key" "$prompt" "$TARGET_POOL_ROOT/slot-$slot" &
     pids+=("$!")
     keys+=("$key")
+    slot=$(( (slot + 1) % PARALLEL ))
     if [[ "${#pids[@]}" -ge "$PARALLEL" ]]; then
       wait "${pids[@]}"
       pids=()
@@ -156,7 +164,13 @@ individual catalog fixtures yet — only the shared model/contract they need.
 When done, update the 'Component/model readiness' column for the affected
 rows in docs/catalog/CATALOG-AUDIT-LEDGER.md (remove the 'need:$token' marker
 once satisfied) and leave their disposition as blocked_component if a fixture
-still needs to be built, or note remaining gaps."
+still needs to be built, or note remaining gaps.
+
+CARGO_TARGET_DIR and TMPDIR are already exported for every cargo invocation
+you run — use them as-is for every cargo command. Do not redirect either
+elsewhere, and never point a build at /tmp directly: on this machine /tmp is
+a small tmpfs mount (RAM-backed, capped), not disk, and filling it has
+previously crashed a build with SIGBUS."
     run_batch "$token" "$prompt"
   done
 }
@@ -185,7 +199,13 @@ safety, or buildability finding using the codebook in
 docs/catalog/CATALOG-AUDIT-LEDGER.md instead of guessing past it. Update this
 scheme's row in docs/catalog/CATALOG-AUDIT-LEDGER.md (disposition, evidence
 columns) to reflect the real outcome — fixture_ready only if automated
-evidence actually passed."
+evidence actually passed.
+
+CARGO_TARGET_DIR and TMPDIR are already exported for every cargo invocation
+you run — use them as-is for every cargo command. Do not redirect either
+elsewhere, and never point a build at /tmp directly: on this machine /tmp is
+a small tmpfs mount (RAM-backed, capped), not disk, and filling it has
+previously crashed a build with SIGBUS."
     args+=("$key" "$prompt")
   done <<< "$eligible"
 

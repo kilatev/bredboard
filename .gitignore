@@ -4,3 +4,4 @@
 /.cargo-target-shared/
 /.codex-batch-logs/
 /.codex-batch-worktrees/
+/.codex-batch-tmp/
