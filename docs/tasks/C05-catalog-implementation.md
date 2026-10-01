@@ -127,6 +127,35 @@ cargo test -p bredboard-app c05_s07_02_diode_socket_derives_polarity_and_fault_c
 cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
 ```
 
+The CAT-S07-03 slice admits
+`fixtures/projects/c05-s07-03-battery-tester.json` as a calculated discrete
+threshold fixture. The tested 9 V battery is represented by the standard DC
+source contract; the board derives the source's 6.8 V zener reference, 1 kΩ
+base feed, 10 kΩ pull-down, BC547-style NPN branch, 1N4148 isolation diode,
+and green/red LED currents from the normal topology. A focused 7.0 V versus
+9.0 V regression proves the depleted/healthy transition and zener conduction.
+At 9.0 V the bounded NPN/LED model leaves a small calculated red residual
+current, so the fixture records current ordering rather than claiming an
+ideal zero-current red state. The terminal/battery insertion remains a
+presentation proxy and manual evidence is pending.
+
+Focused CAT-S07-03 evidence on 2026-10-02:
+
+```text
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c05-s07-03-battery-tester.json — passed; 9 components, 5 wires, 7 derived nodes
+cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c05-s07-03-battery-tester.json 4000 — passed; transient state advanced without diagnostics
+cargo test -p bredboard-app c05_s07_03_battery_voltage_switches_calculated_led_indicators --locked — passed; 7.0 V/9.0 V calculated LED-threshold regression
+cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
+```
+
+The CAT-S07-03 post-slice workspace gate passed on 2026-10-02:
+`cargo fmt --all --check`, `cargo clippy --workspace --all-targets --locked
+-- -D warnings`, and `cargo test --workspace --locked` (61 app, 149 core, 3
+tools, 0 doc-test failures); native Linux and WASM app builds;
+`validate-catalog` (20 sections, 212 schematics); and `git diff --check` all
+passed. The existing long-running alternating-transistor tests completed as
+part of the workspace run.
+
 The CAT-S07-04 slice admits `fixtures/projects/c05-s07-04-transistor-tester.json`
 through a calculated `bjt_test_socket` behavior. Its two `Other` instances
 declare explicit NPN and PNP socket polarity, matching working subject state,
@@ -235,11 +264,13 @@ bounded measurement":
   calculated continuity faults.
 
 `CAT-S07-03` (battery tester) and `CAT-S07-13` (battery charge gauge) are
-adjacent but distinct: they need a bounded *measurement* contract (voltage
-threshold → LED/bargraph readout), which is closer to a parameterized
-`LinearTransfer` than to a new discrete-state type, though both would
-consume a device-under-test socket if one existed. `CAT-S07-06` (adjustable
-PSU) is unrelated — it needs a three-terminal regulator transfer model with
+adjacent but distinct: S07-03 is now covered by the source's calculated
+zener/NPN/diode threshold network, while S07-13 still needs a bounded
+*measurement* contract (voltage threshold → LED/bargraph readout), which is
+closer to a parameterized `LinearTransfer` than to a new discrete-state type.
+Neither entry requires a runtime-swappable device socket for its current
+bounded fixture scope. `CAT-S07-06` (adjustable PSU) is unrelated — it needs
+a three-terminal regulator transfer model with
 safety limits, not a swappable test subject, and must stay out of this
 slice.
 
