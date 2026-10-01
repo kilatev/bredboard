@@ -1,9 +1,9 @@
 use crate::module::adjustable_output_target;
 use crate::{
     BjtPolarity, BjtTestState, Component, ComponentId, ComponentKind, Contact, ControlState,
-    Diagnostic, DiodeModel, DiodeSpec, IcDeviceBehavior, IcLogicOperation, ModuleBehavior, Node,
-    OtherDeviceBehavior, PinId, Project, compile_topology, controlled_resistance,
-    ring_modulator_output,
+    Diagnostic, DiodeModel, DiodePolarity, DiodeSpec, DiodeTestState, IcDeviceBehavior,
+    IcLogicOperation, ModuleBehavior, Node, OtherDeviceBehavior, PinId, Project, compile_topology,
+    controlled_resistance, ring_modulator_output,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -164,6 +164,15 @@ enum NonlinearElement {
         subject_state: BjtTestState,
         beta: f64,
         saturation: f64,
+        open_resistance: f64,
+        short_resistance: f64,
+    },
+    OtherDiodeSocket {
+        anode: usize,
+        cathode: usize,
+        subject_polarity: DiodePolarity,
+        subject_state: DiodeTestState,
+        model: DiodeModel,
         open_resistance: f64,
         short_resistance: f64,
     },
@@ -540,6 +549,9 @@ fn solve_internal(
                 emitter,
                 ..
             } => vec![(*base, *emitter), (*collector, *emitter)],
+            NonlinearElement::OtherDiodeSocket { anode, cathode, .. } => {
+                vec![(*anode, *cathode)]
+            }
             NonlinearElement::LogicGate {
                 input_a,
                 input_b,
@@ -1119,6 +1131,7 @@ fn solve_internal(
             }
             NonlinearElement::OtherSource { .. }
             | NonlinearElement::OtherBjtSocket { .. }
+            | NonlinearElement::OtherDiodeSocket { .. }
             | NonlinearElement::OtherLinearTransfer { .. }
             | NonlinearElement::OtherTransformer { .. }
             | NonlinearElement::OtherRingModulator { .. }
@@ -1253,6 +1266,35 @@ fn solve_internal(
                 currents.insert(socket.base.clone(), base_current);
                 currents.insert(socket.collector.clone(), collector_current);
                 currents.insert(socket.emitter.clone(), -base_current - collector_current);
+            }
+            OtherDeviceBehavior::DiodeTestSocket { socket } => {
+                let anode_voltage = voltage_at(&socket.anode)?;
+                let cathode_voltage = voltage_at(&socket.cathode)?;
+                let model = DiodeModel::new(
+                    socket.forward_voltage,
+                    socket.series_resistance,
+                    DiodeSpec::default(),
+                )
+                .map_err(|error| {
+                    calc(
+                        "invalid_diode_test_socket",
+                        format!("invalid diode test socket model: {error:?}"),
+                    )
+                })?;
+                let current = match socket.subject_state {
+                    DiodeTestState::Working => match socket.subject_polarity {
+                        DiodePolarity::Forward => model.current(anode_voltage - cathode_voltage),
+                        DiodePolarity::Reverse => -model.current(cathode_voltage - anode_voltage),
+                    },
+                    DiodeTestState::Open => {
+                        (anode_voltage - cathode_voltage) / socket.open_resistance
+                    }
+                    DiodeTestState::Shorted => {
+                        (anode_voltage - cathode_voltage) / socket.short_resistance
+                    }
+                };
+                currents.insert(socket.anode.clone(), current);
+                currents.insert(socket.cathode.clone(), -current);
             }
             OtherDeviceBehavior::LinearTransfer {
                 output,
@@ -2002,6 +2044,33 @@ fn make_branches(
                             short_resistance: socket.short_resistance,
                         });
                     }
+                    OtherDeviceBehavior::DiodeTestSocket { socket } => {
+                        let anode = node(&socket.anode.0)?;
+                        let cathode = node(&socket.cathode.0)?;
+                        active.extend([anode, cathode]);
+                        nonlinear.push(NonlinearElement::OtherDiodeSocket {
+                            anode,
+                            cathode,
+                            subject_polarity: socket.subject_polarity,
+                            subject_state: socket.subject_state,
+                            model: DiodeModel::new(
+                                socket.forward_voltage,
+                                socket.series_resistance,
+                                DiodeSpec::default(),
+                            )
+                            .map_err(|error| {
+                                calc(
+                                    "invalid_diode_test_socket",
+                                    format!(
+                                        "component {} has an invalid diode test socket model: {error:?}",
+                                        component.id.0
+                                    ),
+                                )
+                            })?,
+                            open_resistance: socket.open_resistance,
+                            short_resistance: socket.short_resistance,
+                        });
+                    }
                     OtherDeviceBehavior::LinearTransfer {
                         output,
                         reference,
@@ -2683,6 +2752,27 @@ fn stamp_element(
             matrix,
             rhs,
             use_collector_base_jacobian,
+        ),
+        NonlinearElement::OtherDiodeSocket {
+            anode,
+            cathode,
+            subject_polarity,
+            subject_state,
+            model,
+            open_resistance,
+            short_resistance,
+        } => stamp_other_diode_socket(
+            *anode,
+            *cathode,
+            *subject_polarity,
+            *subject_state,
+            *model,
+            *open_resistance,
+            *short_resistance,
+            guess,
+            vars,
+            matrix,
+            rhs,
         ),
         NonlinearElement::LogicGate {
             input_a,
@@ -3384,6 +3474,52 @@ fn stamp_other_bjt_socket(
         BjtTestState::Shorted => {
             stamp_conductance(matrix, vars, base, emitter, 1.0 / short_resistance);
             stamp_conductance(matrix, vars, collector, emitter, 1.0 / short_resistance);
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn stamp_other_diode_socket(
+    anode: usize,
+    cathode: usize,
+    subject_polarity: DiodePolarity,
+    subject_state: DiodeTestState,
+    model: DiodeModel,
+    open_resistance: f64,
+    short_resistance: f64,
+    guess: &[f64],
+    vars: &BTreeMap<usize, usize>,
+    matrix: &mut [Vec<f64>],
+    rhs: &mut [f64],
+) {
+    match subject_state {
+        DiodeTestState::Working => {
+            let voltage = voltage(guess, vars, anode) - voltage(guess, vars, cathode);
+            let (current, conductance) = match subject_polarity {
+                DiodePolarity::Forward => {
+                    let linearization = model.linearize(voltage);
+                    (linearization.current, linearization.conductance)
+                }
+                DiodePolarity::Reverse => {
+                    let linearization = model.linearize(-voltage);
+                    (-linearization.current, linearization.conductance)
+                }
+            };
+            stamp_current(
+                (anode, cathode),
+                current,
+                &[(anode, conductance), (cathode, -conductance)],
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
+        DiodeTestState::Open => {
+            stamp_conductance(matrix, vars, anode, cathode, 1.0 / open_resistance)
+        }
+        DiodeTestState::Shorted => {
+            stamp_conductance(matrix, vars, anode, cathode, 1.0 / short_resistance)
         }
     }
 }

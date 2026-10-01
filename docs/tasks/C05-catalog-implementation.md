@@ -16,7 +16,7 @@ and [`10-power-energy.md`](../../breadboard-circuits/spec/10-power-energy.md).
 
 ## Source and design review
 
-- S07-01, S07-02, S07-03, S07-04, S07-07, S07-11, and S07-12 require probes,
+- S07-01, S07-03, S07-04, S07-07, S07-11, and S07-12 require probes,
   unknown-device sockets, zener behavior, module contracts, or physical props.
 - S07-05, S07-13, S07-14, and S07-15 require regulator, comparator, counter,
   measurement, or module contracts not present in the current core. Keep them
@@ -91,29 +91,39 @@ reed-contact substitute, a 330 kΩ delay resistor, a 100 µF capacitor, and a
 bounded buzzer load. The physical magnet and refrigerator door remain
 presentation discrepancies; no scripted electrical outcome is used.
 
-The CAT-S07-02 source review remains blocked at the component-contract gate.
-Its SVG and BOM define a 9 V source, 1 kΩ series resistor, and a two-terminal
-socket for an unspecified LED or diode; they do not define the tested part's
-polarity, working/fault state, or insertion/control semantics. The shared
-`Other` contract is therefore insufficient to admit a truthful fixture without
-inventing the tested result. No project, menu registration, or automated
-fixture evidence was added; the ledger remains `blocked_component` with `I0`
-evidence and the shared `S-GEN`/`B-COARSE` findings.
+The CAT-S07-02 slice admits
+`fixtures/projects/c05-s07-02-diode-tester.json` through the calculated
+`diode_test_socket` behavior. The fixture preserves the source's 9 V source,
+1 kΩ limiter, and two-terminal socket, and selects an LED subject in the
+working forward-polarity state. The solver reuses the shared diode equation;
+focused regression coverage also checks reversed, open, and shorted subject
+states. Physical insertion remains a presentation discrepancy, not a scripted
+electrical result.
 
-CAT-S07-02 verification on 2026-09-30: `cargo fmt --all --check`, `cargo
+CAT-S07-02 verification on 2026-10-01: `cargo fmt --all --check`, `cargo
 clippy --workspace --all-targets --locked -- -D warnings`, `cargo test
---workspace --locked` (54 app, 141 core, 3 tools, 0 doc-test failures),
+--workspace --locked` (56 app, 144 core, 3 tools, 0 doc-test failures),
 `cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked`,
 `cargo build -p bredboard-app --target wasm32-unknown-unknown --locked`,
 `cargo run -p bredboard-tools --locked -- validate-catalog
 breadboard-circuits/spec/catalog.json`, and `git diff --check` all passed.
-Fixture validation and simulation were not run because no fixture was admitted.
+The CAT-S07-02 fixture validation and 4,000-step simulation also passed; the
+focused results are recorded below.
 
-Focused evidence for the slice:
+Focused evidence for the S07-09 slice:
 
 ```text
 cargo run -p bredboard-tools --locked -- validate fixtures/projects/c05-s07-09-refrigerator-guard.json — passed; 7 components, 5 wires, 5 derived nodes
 cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c05-s07-09-refrigerator-guard.json 4000 — passed; transient state advanced without diagnostics
+cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
+```
+
+Focused CAT-S07-02 evidence on 2026-10-01:
+
+```text
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c05-s07-02-diode-tester.json — passed; 3 components, 3 wires, 3 derived nodes
+cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c05-s07-02-diode-tester.json 4000 — passed; transient state advanced without diagnostics
+cargo test -p bredboard-app c05_s07_02_diode_socket_derives_polarity_and_fault_current --locked — passed; working/reversed/open/shorted calculated currents
 cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
 ```
 
@@ -141,7 +151,7 @@ automated evidence above passed, and the baseline gate remains pending.
 
 ## Current blockers
 
-- Physical probes, remaining unknown-device sockets (S07-02/S07-12), AC sources, battery and lemon-cell
+- Physical probes, the remaining unknown-device socket (S07-12), AC sources, battery and lemon-cell
   models, regulators, comparators, counters, measurement modules, inductors,
   MOSFETs, supercapacitors, charger modules, solar sources, and bargraph
   instrumentation are not yet available. The shared diode model is available;
@@ -162,11 +172,10 @@ provide a runtime swappable-part editor. The remaining runtime-variable input
 in core is the continuous `control_ratios: BTreeMap<ComponentId, f64>` used for
 potentiometer/photoresistor-style interpolation.
 
-Two remaining ledger rows share this exact shape — "insert an unknown/swappable
+The remaining ledger row shares this exact shape — "insert an unknown/swappable
 part of a known family into a fixed test harness, read out pass/fail or a
 bounded measurement":
 
-- `CAT-S07-02` — LED/diode tester: needs polarity and working/fault state.
 - `CAT-S07-12` — network-cable tester: needs RJ45 terminal/pair mapping and
   calculated continuity faults.
 
@@ -179,31 +188,28 @@ PSU) is unrelated — it needs a three-terminal regulator transfer model with
 safety limits, not a swappable test subject, and must stay out of this
 slice.
 
-The shared contract is now implemented for CAT-S07-04. Proposed shape for the
-remaining rows (record here so a future models-wave pass has a concrete
-starting point, per AGENTS.md's "no scripted electrical outcomes" and "derive
-connectivity from contacts/pins/wires" rules):
+The shared contract is now implemented for CAT-S07-04 and CAT-S07-02.
+`DiodeTestSocket` covers the two-terminal LED/diode family, polarity, and
+working/open/shorted fixture states. The remaining S07-12 model work still
+needs a concrete starting point, per AGENTS.md's "no scripted electrical
+outcomes" and "derive connectivity from contacts/pins/wires" rules:
 
 1. Extend the existing `bjt_test_socket` pattern or add a related
    `TestSubjectSpec` type in
    `crates/core/src/other_device.rs`, parallel to `OtherDeviceBehavior`,
-   describing a socket with: the pin roles a plugged part exposes, a closed
-   set of named discrete variants (e.g. `Diode { reversed: bool }`, `Bjt {
-   polarity: Npn | Pnp }`, `CablePair { open: bool, shorted: bool }`), and,
-   per variant, the electrical branch(es) that variant contributes to the
-   solver — reusing the existing diode/BJT/resistive contracts rather than
-   inventing new electrical math.
+   describing an RJ45 socket with the pin roles a plugged cable exposes, a
+   closed set of named pair mappings and continuity faults, and per variant
+   the electrical branches that variant contributes to the solver — reusing
+   the existing resistive contract rather than inventing new electrical math.
 2. Selecting a variant is a fixture-authoring-time or `InitialConditions`
    choice (mirroring how `control_ratios` is already threaded through),
    never a per-frame or animation-driven change.
-3. Property tests: for each remaining variant, assert the solver produces the
-   electrically-correct pass/fail readout (e.g. LED lights only on correct
-   polarity with a working diode); use reproducible seeds where randomness
-   picks the presented variant.
-4. Once the remaining type lands, revisit `CAT-S07-02` and `CAT-S07-12`
-   fixtures using it; each remains its own scheme-implementation slice with
-   its own ledger/evidence update, not bundled into the model-landing
-   commit.
+3. Property tests: for each cable variant, assert the solver produces the
+   electrically-correct continuity readout; use reproducible seeds where
+   randomness picks the presented variant.
+4. Once the remaining cable type lands, revisit `CAT-S07-12` as its own
+   scheme-implementation slice with its own ledger/evidence update, not
+   bundled into the model-landing commit.
 
 This is a plan record, not an active Codex Goal — per AGENTS.md, do not
 start implementing it until explicitly requested.
