@@ -137,7 +137,15 @@ impl SimulationState {
                 | ComponentKind::ShiftRegister
                 | ComponentKind::StepSequencer
                 | ComponentKind::Sram => {
-                    digital_states.insert(component.id.clone(), 0);
+                    digital_states.insert(
+                        component.id.clone(),
+                        project
+                            .initial_conditions
+                            .digital_states
+                            .get(&component.id)
+                            .copied()
+                            .unwrap_or(0),
+                    );
                 }
                 _ => {}
             }
@@ -578,7 +586,20 @@ fn update_digital_states(
                 } else if rising && voltage(&component.id, "enable") > supply * 0.5 {
                     let modulus = component.parameters["modulus"] as u32;
                     let value = *entry & 0x3ff;
-                    *entry = (if value + 1 >= modulus { 0 } else { value + 1 }) | (1 << 16);
+                    let next = if component
+                        .parameters
+                        .get("count_direction")
+                        .copied()
+                        .unwrap_or(1.0)
+                        < 0.0
+                    {
+                        if value == 0 { modulus - 1 } else { value - 1 }
+                    } else if value + 1 >= modulus {
+                        0
+                    } else {
+                        value + 1
+                    };
+                    *entry = next | (1 << 16);
                 } else {
                     *entry = (*entry & 0x3ff) | u32::from(clock_high) << 16;
                 }
@@ -923,6 +944,50 @@ mod tests {
         );
         advance_steps(&project, &mut state, 1);
         assert_eq!(state.digital_states[&ComponentId("U1".into())] & 0x3ff, 1);
+    }
+
+    #[test]
+    fn c07_s09_10_clock_fixture_counts_down_and_transfers_turn() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c07-s09-10-chess-clock.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetParameter {
+                    component: ComponentId("XTAL".into()),
+                    name: "frequency_hz".into(),
+                    value: 1_000.0,
+                },
+                Action::Run,
+            ],
+        );
+        advance_steps(&project, &mut state, 10);
+
+        assert_eq!(state.digital_states[&ComponentId("U_A2".into())] & 0x3ff, 4);
+        assert_eq!(state.digital_states[&ComponentId("U_A1".into())] & 0x3ff, 5);
+        assert_eq!(state.digital_states[&ComponentId("U_A0".into())] & 0x3ff, 9);
+        assert_eq!(state.digital_states[&ComponentId("U_TURN".into())] & 1, 0);
+        assert!(!state.stale, "diagnostics: {:?}", state.diagnostics);
+
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                Action::SetControl {
+                    component: ComponentId("B1".into()),
+                    state: ControlState::ButtonPressed,
+                },
+                Action::SingleStep,
+            ],
+        );
+        assert_eq!(state.digital_states[&ComponentId("U_TURN".into())] & 1, 1);
     }
 
     #[test]

@@ -67,7 +67,11 @@ Environment: Rust 1.95.0. The project-local `mise.toml` was preserved in a separ
 - `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo run -p bredboard-tools --locked -- solve fixtures/projects/resistor-divider.json` — passed; midpoint 2.5 V and series current 2.5 mA.
 - `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo run -p bredboard-tools --locked -- solve fixtures/projects/floating-resistors.json` — rejected with `floating_network`.
 - `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo run -p bredboard-tools --locked -- solve fixtures/projects/conflicting-sources.json` — rejected with `conflicting_sources`.
-- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo run -p bredboard-tools --locked -- validate fixtures/projects/at-component-limit.json` — accepted 64 components.
-- `PATH=/home/vetalik/.cargo/bin:/usr/bin:/bin cargo run -p bredboard-tools --locked -- validate fixtures/projects/over-component-limit.json` — rejected with `component_limit`.
+- The historical 64/65-component CLI probes were superseded by the
+  dense-catalog capacity extension: the current limit is 128 components so
+  complete hardware-logic BOMs can be represented. The current boundary is
+  covered by `tests::rejects_duplicate_ids_and_scope_overflow`, which derives
+  its over-limit case from `MAX_COMPONENTS` and continues to assert the
+  `component_limit` diagnostic.
 - Core tests analytically verify parallel branch currents and ideal-source shorts, and verify released/pressed button and NC/NO changeover behavior. One minimized Proptest failure during development (R1=10 ohm, R2=10 ohm) exposed incorrect choice of voltage reference; fixed by grounding the source negative node and retained in `crates/core/proptest-regressions/solver.txt`.
 - No browser/UI behavior is in scope for this core/CLI task.

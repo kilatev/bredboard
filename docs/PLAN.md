@@ -36,7 +36,7 @@ Selected numerical baseline:
 - Modified nodal analysis (MNA), `f64`, stable node/component ordering, sequential execution.
 - Backward Euler capacitor integration with a fixed 100 microsecond step.
 - Bounded iterative solution with a smooth forward LED diode and a base-controlled NPN collector-emitter conductance. These are educational approximations; the NPN model does not predict precise device-specific curves.
-- Scope limits: 64 components, 128 compiled electrical nodes, and 256 wires. Check limits before expensive computation.
+- Scope limits: 128 components, 128 compiled electrical nodes, and 256 wires. Check limits before expensive computation; the larger component cap accommodates dense catalog BOM fixtures.
 - Bounded nonlinear iterations and explicit nonconvergence diagnostics; implementation constants and supported model ranges must be documented and covered by tests when introduced.
 
 Diagnose invalid parameters, floating circuits, contradictory sources, and nonconvergence. Stop simulated time on calculation failure, keep the last valid state, and mark its readings stale. The three fixed fixtures use safe nominal values; a component-rating system is outside this MVP.
