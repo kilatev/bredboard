@@ -5245,6 +5245,7 @@ mod tests {
         fixture_json!(C02_S03_02, "c02-s03-02-555-monostable.json");
         fixture_json!(C02_S03_07, "c02-s03-07-light-theremin.json");
         fixture_json!(C04_S06_11, "c04-s06-11-robot-voice.json");
+        fixture_json!(C05_S07_05, "c05-s07-05-usb-5v-supply.json");
         fixture_json!(C05_S07_06, "c05-s07-06-adjustable-power-supply.json");
 
         #[test]
@@ -5931,6 +5932,44 @@ mod tests {
             let output =
                 result.module_output_voltages[&ComponentId("M1".into())][&PinId("out".into())];
             assert!((output - 3.2967).abs() < 0.01, "output={output}");
+        }
+
+        #[test]
+        fn c05_battery_supply_regulates_five_volts_and_limits_usb_load() {
+            let project = fixture(C05_S07_05);
+            let mut dc_project = project.clone();
+            dc_project
+                .components
+                .retain(|component| component.kind != ComponentKind::Capacitor);
+
+            let result = solve_dc(&dc_project, &BTreeMap::new(), &BTreeMap::new())
+                .expect("battery supply should solve");
+            let output =
+                result.module_output_voltages[&ComponentId("U1".into())][&PinId("out".into())];
+            let led_current = result.led_currents[&ComponentId("LED1".into())];
+            let usb_current = result.other_terminal_currents[&ComponentId("USB1".into())]
+                [&PinId("positive".into())]
+                .abs();
+            assert!((4.9..=5.1).contains(&output), "output={output}");
+            assert!(led_current > 0.005, "led_current={led_current}");
+            assert!(usb_current < 1e-6, "usb_current={usb_current}");
+
+            let mut dropout_project = dc_project;
+            dropout_project
+                .components
+                .iter_mut()
+                .find(|component| component.id == ComponentId("V1".into()))
+                .expect("battery source")
+                .parameters
+                .insert("voltage".into(), 6.0);
+            let dropout = solve_dc(&dropout_project, &BTreeMap::new(), &BTreeMap::new())
+                .expect("dropout case should remain bounded");
+            let dropout_output =
+                dropout.module_output_voltages[&ComponentId("U1".into())][&PinId("out".into())];
+            assert!(
+                (3.9..=4.1).contains(&dropout_output),
+                "output={dropout_output}"
+            );
         }
 
         #[test]

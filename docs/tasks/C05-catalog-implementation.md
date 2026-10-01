@@ -18,7 +18,7 @@ and [`10-power-energy.md`](../../breadboard-circuits/spec/10-power-energy.md).
 
 - S07-01, S07-03, S07-04, S07-07, S07-11, and S07-12 require probes,
   unknown-device sockets, zener behavior, module contracts, or physical props.
-- S07-05, S07-13, S07-14, and S07-15 require regulator, comparator, counter,
+- S07-13, S07-14, and S07-15 require comparator, counter,
   measurement, or module contracts not present in the current core. Keep them
   blocked rather than presenting scripted readings.
 - S07-06 is admitted through the calculated adjustable-regulated-supply
@@ -145,14 +145,36 @@ cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes 
 cargo test -p bredboard-app exercise_catalog_keeps_search_groups_and_circuits_separate --locked — passed; 107 circuits
 ```
 
-The full workspace gate was not rerun after this slice because concurrent
-catalog work exhausted the shared temporary build quota; the fixture-specific
-automated evidence above passed, and the baseline gate remains pending.
+The CAT-S07-05 slice admits
+`fixtures/projects/c05-s07-05-usb-5v-supply.json` through the existing
+calculated `regulated_supply` module contract. Its 9 V source, 5 V target,
+2 V dropout limit, three decoupling capacitors, 330 Ω/green-LED load, and
+two-terminal high-impedance USB adapter are represented in the solved board
+topology. USB protocol, attached-device charging current, and regulator
+thermal/current limits remain explicit discrepancies; the fixture does not
+claim those behaviors.
+
+Focused CAT-S07-05 evidence on 2026-10-01:
+
+```text
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c05-s07-05-usb-5v-supply.json — passed; 8 components, 1 wire, 4 derived nodes
+cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c05-s07-05-usb-5v-supply.json 4000 — passed; transient state advanced without diagnostics
+cargo test -p bredboard-core c05_battery_supply_regulates_five_volts_and_limits_usb_load --locked — passed; 5 V regulation, LED load, high-impedance USB connector, and bounded dropout
+cargo test -p bredboard-app c05_s07_05_regulates_five_volts_and_keeps_usb_connector_high_impedance --locked — passed
+cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
+```
+
+The full workspace gate passed on 2026-10-01 after this slice: `cargo fmt
+--all --check`, Clippy, workspace tests (57 app, 145 core, 3 tools, 0
+doc-test failures), native Linux and WASM app builds, catalog validation, and
+`git diff --check` all passed. The required Cargo commands used the exported
+shared target and temporary directories; no build output was redirected to
+`/tmp`.
 
 ## Current blockers
 
 - Physical probes, the remaining unknown-device socket (S07-12), AC sources, battery and lemon-cell
-  models, regulators, comparators, counters, measurement modules, inductors,
+  models, comparators, counters, measurement modules, inductors,
   MOSFETs, supercapacitors, charger modules, solar sources, and bargraph
   instrumentation are not yet available. The shared diode model is available;
   row-specific diode wiring and power-stage behavior remain fixture work.
