@@ -96,7 +96,7 @@ merge_branch() {
     return 1
   fi
 
-  if ! CARGO_TARGET_DIR="$SHARED_TARGET_DIR" cargo check --workspace --locked >>"$LOG_DIR/${safe_key}.merge-check.log" 2>&1; then
+  if ! CARGO_TARGET_DIR="$SHARED_TARGET_DIR" cargo check --workspace --all-targets --locked >>"$LOG_DIR/${safe_key}.merge-check.log" 2>&1; then
     echo "[$key] POST-MERGE cargo check FAILED after merging — see $LOG_DIR/${safe_key}.merge-check.log; leaving merge commit in place for manual fix (consider 'git revert')" >&2
     return 1
   fi

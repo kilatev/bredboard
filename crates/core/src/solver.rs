@@ -3388,6 +3388,7 @@ fn stamp_other_bjt_socket(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn stamp_other_ring_modulator(
     signal: usize,
     carrier: usize,
