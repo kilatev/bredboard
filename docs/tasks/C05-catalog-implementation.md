@@ -89,7 +89,7 @@ evidence and the shared `S-GEN`/`B-COARSE` findings.
 
 CAT-S07-02 verification on 2026-09-30: `cargo fmt --all --check`, `cargo
 clippy --workspace --all-targets --locked -- -D warnings`, `cargo test
---workspace --locked` (52 app, 133 core, 3 tools, 0 doc-test failures),
+--workspace --locked` (54 app, 141 core, 3 tools, 0 doc-test failures),
 `cargo build -p bredboard-app --target x86_64-unknown-linux-gnu --locked`,
 `cargo build -p bredboard-app --target wasm32-unknown-unknown --locked`,
 `cargo run -p bredboard-tools --locked -- validate-catalog
