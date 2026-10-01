@@ -203,7 +203,10 @@ manual evidence is pending.
 CAT-S06-10 now has a bounded candidate at
 `fixtures/projects/c04-s06-10-light-music.json` and a menu entry. The candidate
 validates as 34 components, 4 wires, and 16 derived nodes; its focused
-three-LED regression passed. It remains `blocked_component` in the ledger:
+`c04_light_music_calculates_three_led_band_branches` three-LED regression,
+fixture validation, 4,000-step simulation, catalog validation, Clippy, full
+workspace tests (55 app, 144 core, 3 tools, zero doc-test failures), and native
+Linux/WASM builds passed on 2026-10-01. It remains `blocked_component` in the ledger:
 `MIC1` is an explicit fixed Thevenin test source and `U1`–`U4` are generic
 linear transfers, so this evidence does not claim live microphone capture,
 TL074 package mapping, or frequency-selective light response.
