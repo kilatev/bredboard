@@ -1,0 +1,1760 @@
+{
+  "format_version": 1,
+  "title": "C07-S09-10: Chess clock",
+  "board": {
+    "model": {
+      "multi_board": {
+        "boards": [
+          {
+            "id": "logic_a",
+            "model": "half_size_solderless"
+          },
+          {
+            "id": "logic_b",
+            "model": "half_size_solderless"
+          },
+          {
+            "id": "logic_c",
+            "model": "half_size_solderless"
+          }
+        ]
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "V1",
+      "kind": "dc_voltage_source",
+      "pins": {
+        "positive": "logic_a/TP+:1",
+        "negative": "logic_a/TP-:1"
+      },
+      "parameters": {
+        "voltage": 5
+      }
+    },
+    {
+      "id": "XTAL",
+      "kind": "clock_source",
+      "pins": {
+        "output": "logic_a/A1",
+        "vcc": "logic_a/G1",
+        "gnd": "logic_a/B2"
+      },
+      "parameters": {
+        "frequency_hz": 2,
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "C_X1",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/B1",
+        "negative": "logic_a/C2"
+      },
+      "parameters": {
+        "capacitance": 2.2e-11
+      }
+    },
+    {
+      "id": "C_X2",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/C1",
+        "negative": "logic_a/D2"
+      },
+      "parameters": {
+        "capacitance": 3.3e-11
+      }
+    },
+    {
+      "id": "R_XTAL",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_a/D1",
+        "b": "logic_a/G2"
+      },
+      "parameters": {
+        "resistance": 10000000
+      }
+    },
+    {
+      "id": "C_DEC1",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/H1",
+        "negative": "logic_a/H2"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C_DEC2",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/I1",
+        "negative": "logic_a/I2"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C_DEC3",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/B3",
+        "negative": "logic_a/G3"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C_DEC4",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/C3",
+        "negative": "logic_a/H3"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C_DEC5",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/D3",
+        "negative": "logic_a/I3"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C_DEC6",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/B4",
+        "negative": "logic_a/G4"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C_DEC7",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/C4",
+        "negative": "logic_a/H4"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C_DEC8",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/D4",
+        "negative": "logic_a/I4"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C_DEC9",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/B5",
+        "negative": "logic_a/G5"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C_DEC10",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/C5",
+        "negative": "logic_a/H5"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "B1",
+      "kind": "momentary_button",
+      "pins": {
+        "a": "logic_a/D5",
+        "b": "logic_a/A6"
+      },
+      "parameters": {}
+    },
+    {
+      "id": "B2",
+      "kind": "momentary_button",
+      "pins": {
+        "a": "logic_a/G6",
+        "b": "logic_a/A7"
+      },
+      "parameters": {}
+    },
+    {
+      "id": "R_B1",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_a/B6",
+        "b": "logic_a/I5"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B2",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_a/B7",
+        "b": "logic_a/G7"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "G_A",
+      "kind": "logic_gate",
+      "pins": {
+        "gnd": "logic_a/H7",
+        "input_a": "logic_a/E5",
+        "input_b": "logic_a/A8",
+        "output": "logic_a/F8",
+        "vcc": "logic_a/H6"
+      },
+      "parameters": {
+        "operation": 0,
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "G_B",
+      "kind": "logic_gate",
+      "pins": {
+        "gnd": "logic_a/I7",
+        "input_a": "logic_a/J6",
+        "input_b": "logic_a/A9",
+        "output": "logic_a/F9",
+        "vcc": "logic_a/I6"
+      },
+      "parameters": {
+        "operation": 0,
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "G_TURN",
+      "kind": "logic_gate",
+      "pins": {
+        "gnd": "logic_a/B10",
+        "input_a": "logic_a/C6",
+        "input_b": "logic_a/C7",
+        "output": "logic_a/F10",
+        "vcc": "logic_a/B11"
+      },
+      "parameters": {
+        "operation": 1,
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "U_DIV",
+      "kind": "d_flip_flop",
+      "pins": {
+        "clock": "logic_a/G11",
+        "data": "logic_a/A12",
+        "gnd": "logic_a/C10",
+        "not_q": "logic_a/B12",
+        "q": "logic_a/F12",
+        "reset": "logic_a/D10",
+        "set": "logic_a/B13",
+        "vcc": "logic_a/C11"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "U_TURN",
+      "kind": "d_flip_flop",
+      "pins": {
+        "clock": "logic_a/G10",
+        "data": "logic_a/B8",
+        "gnd": "logic_a/C13",
+        "not_q": "logic_a/C8",
+        "q": "logic_a/B9",
+        "reset": "logic_a/D13",
+        "set": "logic_a/G13",
+        "vcc": "logic_a/D11"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "U_A0",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "logic_a/G12",
+        "carry": "logic_a/A14",
+        "enable": "logic_a/D8",
+        "gnd": "logic_a/H13",
+        "reset": "logic_a/I13",
+        "vcc": "logic_a/G14",
+        "q0": "logic_a/A15",
+        "q1": "logic_a/F15",
+        "q2": "logic_a/A16",
+        "q3": "logic_a/F16",
+        "q4": "logic_a/B17",
+        "q5": "logic_a/C17",
+        "q6": "logic_a/D17",
+        "q7": "logic_a/G17",
+        "q8": "logic_a/H17",
+        "q9": "logic_a/I17"
+      },
+      "parameters": {
+        "modulus": 10,
+        "output_mode": 0,
+        "count_direction": -1,
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "U_A1",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "logic_a/B14",
+        "carry": "logic_a/A18",
+        "enable": "logic_a/G18",
+        "gnd": "logic_a/B19",
+        "reset": "logic_a/C19",
+        "vcc": "logic_a/H14",
+        "q0": "logic_a/F19",
+        "q1": "logic_a/A20",
+        "q2": "logic_a/F20",
+        "q3": "logic_a/A21",
+        "q4": "logic_a/D19",
+        "q5": "logic_a/G21",
+        "q6": "logic_a/H21",
+        "q7": "logic_a/I21",
+        "q8": "logic_a/B22",
+        "q9": "logic_a/C22"
+      },
+      "parameters": {
+        "modulus": 6,
+        "output_mode": 0,
+        "count_direction": -1,
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "U_A2",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "logic_a/B18",
+        "carry": "logic_a/F22",
+        "enable": "logic_a/H18",
+        "gnd": "logic_a/D22",
+        "reset": "logic_a/B23",
+        "vcc": "logic_a/I14",
+        "q0": "logic_a/F23",
+        "q1": "logic_a/A24",
+        "q2": "logic_a/F24",
+        "q3": "logic_a/A25",
+        "q4": "logic_a/C23",
+        "q5": "logic_a/D23",
+        "q6": "logic_a/G25",
+        "q7": "logic_a/H25",
+        "q8": "logic_a/I25",
+        "q9": "logic_a/B26"
+      },
+      "parameters": {
+        "modulus": 10,
+        "output_mode": 0,
+        "count_direction": -1,
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "U_B0",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "logic_a/H12",
+        "carry": "logic_a/F26",
+        "enable": "logic_a/C9",
+        "gnd": "logic_a/C26",
+        "reset": "logic_a/D26",
+        "vcc": "logic_a/B27",
+        "q0": "logic_a/F27",
+        "q1": "logic_a/A28",
+        "q2": "logic_a/F28",
+        "q3": "logic_a/A29",
+        "q4": "logic_a/G29",
+        "q5": "logic_a/H29",
+        "q6": "logic_a/I29",
+        "q7": "logic_a/B30",
+        "q8": "logic_a/C30",
+        "q9": "logic_a/D30"
+      },
+      "parameters": {
+        "modulus": 10,
+        "output_mode": 0,
+        "count_direction": -1,
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "U_B1",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "logic_a/G26",
+        "carry": "logic_a/F30",
+        "enable": "logic_a/D9",
+        "gnd": "logic_b/B1",
+        "reset": "logic_b/C1",
+        "vcc": "logic_a/C27",
+        "q0": "logic_b/F1",
+        "q1": "logic_b/A2",
+        "q2": "logic_b/F2",
+        "q3": "logic_b/A3",
+        "q4": "logic_b/D1",
+        "q5": "logic_b/G3",
+        "q6": "logic_b/H3",
+        "q7": "logic_b/I3",
+        "q8": "logic_b/B4",
+        "q9": "logic_b/C4"
+      },
+      "parameters": {
+        "modulus": 6,
+        "output_mode": 0,
+        "count_direction": -1,
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "U_B2",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "logic_a/G30",
+        "carry": "logic_b/F4",
+        "enable": "logic_b/B5",
+        "gnd": "logic_b/D4",
+        "reset": "logic_b/G5",
+        "vcc": "logic_a/D27",
+        "q0": "logic_b/A6",
+        "q1": "logic_b/F6",
+        "q2": "logic_b/A7",
+        "q3": "logic_b/F7",
+        "q4": "logic_b/H5",
+        "q5": "logic_b/I5",
+        "q6": "logic_b/B8",
+        "q7": "logic_b/C8",
+        "q8": "logic_b/D8",
+        "q9": "logic_b/G8"
+      },
+      "parameters": {
+        "modulus": 10,
+        "output_mode": 0,
+        "count_direction": -1,
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "DISP_A0",
+      "kind": "seven_segment_display",
+      "pins": {
+        "a": "logic_b/H8",
+        "b": "logic_b/I8",
+        "c": "logic_b/B9",
+        "common": "logic_b/C9",
+        "d": "logic_b/D9",
+        "e": "logic_b/G9",
+        "f": "logic_b/H9",
+        "g": "logic_b/I9",
+        "gnd": "logic_b/B10",
+        "input_b0": "logic_a/B15",
+        "input_b1": "logic_a/G15",
+        "input_b2": "logic_a/B16",
+        "input_b3": "logic_a/G16",
+        "vcc": "logic_b/G10"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "R_A0_A",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/H10",
+        "b": "logic_b/C10"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A0_B",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/I10",
+        "b": "logic_b/D10"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A0_C",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/B11",
+        "b": "logic_b/G11"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A0_D",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/C11",
+        "b": "logic_b/H11"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A0_E",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/D11",
+        "b": "logic_b/I11"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A0_F",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/B12",
+        "b": "logic_b/G12"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A0_G",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/C12",
+        "b": "logic_b/H12"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "DISP_A1",
+      "kind": "seven_segment_display",
+      "pins": {
+        "a": "logic_b/I12",
+        "b": "logic_b/B13",
+        "c": "logic_b/C13",
+        "common": "logic_b/D13",
+        "d": "logic_b/G13",
+        "e": "logic_b/H13",
+        "f": "logic_b/I13",
+        "g": "logic_b/B14",
+        "gnd": "logic_b/C14",
+        "input_b0": "logic_a/G19",
+        "input_b1": "logic_a/B20",
+        "input_b2": "logic_a/G20",
+        "input_b3": "logic_a/B21",
+        "vcc": "logic_b/D12"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "R_A1_A",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/G14",
+        "b": "logic_b/D14"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A1_B",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/H14",
+        "b": "logic_b/B15"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A1_C",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/I14",
+        "b": "logic_b/C15"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A1_D",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/G15",
+        "b": "logic_b/D15"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A1_E",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/H15",
+        "b": "logic_b/B16"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A1_F",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/I15",
+        "b": "logic_b/C16"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A1_G",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/G16",
+        "b": "logic_b/D16"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "DISP_A2",
+      "kind": "seven_segment_display",
+      "pins": {
+        "a": "logic_b/B17",
+        "b": "logic_b/C17",
+        "c": "logic_b/D17",
+        "common": "logic_b/G17",
+        "d": "logic_b/H17",
+        "e": "logic_b/I17",
+        "f": "logic_b/B18",
+        "g": "logic_b/C18",
+        "gnd": "logic_b/D18",
+        "input_b0": "logic_a/G23",
+        "input_b1": "logic_a/B24",
+        "input_b2": "logic_a/G24",
+        "input_b3": "logic_a/B25",
+        "vcc": "logic_b/H16"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "R_A2_A",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/I16",
+        "b": "logic_b/G18"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A2_B",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/B19",
+        "b": "logic_b/H18"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A2_C",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/C19",
+        "b": "logic_b/I18"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A2_D",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/D19",
+        "b": "logic_b/G19"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A2_E",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/B20",
+        "b": "logic_b/H19"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A2_F",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/C20",
+        "b": "logic_b/I19"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_A2_G",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/D20",
+        "b": "logic_b/G20"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "DISP_B0",
+      "kind": "seven_segment_display",
+      "pins": {
+        "a": "logic_b/H20",
+        "b": "logic_b/I20",
+        "c": "logic_b/B21",
+        "common": "logic_b/C21",
+        "d": "logic_b/D21",
+        "e": "logic_b/G21",
+        "f": "logic_b/H21",
+        "g": "logic_b/I21",
+        "gnd": "logic_b/B22",
+        "input_b0": "logic_a/G27",
+        "input_b1": "logic_a/B28",
+        "input_b2": "logic_a/G28",
+        "input_b3": "logic_a/B29",
+        "vcc": "logic_b/G22"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "R_B0_A",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/H22",
+        "b": "logic_b/C22"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B0_B",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/I22",
+        "b": "logic_b/D22"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B0_C",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/B23",
+        "b": "logic_b/G23"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B0_D",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/C23",
+        "b": "logic_b/H23"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B0_E",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/D23",
+        "b": "logic_b/I23"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B0_F",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/B24",
+        "b": "logic_b/G24"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B0_G",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/C24",
+        "b": "logic_b/H24"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "DISP_B1",
+      "kind": "seven_segment_display",
+      "pins": {
+        "a": "logic_b/I24",
+        "b": "logic_b/B25",
+        "c": "logic_b/C25",
+        "common": "logic_b/D25",
+        "d": "logic_b/G25",
+        "e": "logic_b/H25",
+        "f": "logic_b/I25",
+        "g": "logic_b/B26",
+        "gnd": "logic_b/C26",
+        "input_b0": "logic_b/G1",
+        "input_b1": "logic_b/B2",
+        "input_b2": "logic_b/G2",
+        "input_b3": "logic_b/B3",
+        "vcc": "logic_b/D24"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "R_B1_A",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/G26",
+        "b": "logic_b/D26"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B1_B",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/H26",
+        "b": "logic_b/B27"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B1_C",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/I26",
+        "b": "logic_b/C27"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B1_D",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/G27",
+        "b": "logic_b/D27"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B1_E",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/H27",
+        "b": "logic_b/B28"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B1_F",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/I27",
+        "b": "logic_b/C28"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B1_G",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/G28",
+        "b": "logic_b/D28"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "DISP_B2",
+      "kind": "seven_segment_display",
+      "pins": {
+        "a": "logic_b/B29",
+        "b": "logic_b/C29",
+        "c": "logic_b/D29",
+        "common": "logic_b/G29",
+        "d": "logic_b/H29",
+        "e": "logic_b/I29",
+        "f": "logic_b/B30",
+        "g": "logic_b/C30",
+        "gnd": "logic_b/D30",
+        "input_b0": "logic_b/B6",
+        "input_b1": "logic_b/G6",
+        "input_b2": "logic_b/B7",
+        "input_b3": "logic_b/G7",
+        "vcc": "logic_b/H28"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "R_B2_A",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/I28",
+        "b": "logic_b/G30"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B2_B",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/B1",
+        "b": "logic_b/H30"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B2_C",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/C1",
+        "b": "logic_b/I30"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B2_D",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/D1",
+        "b": "logic_c/G1"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B2_E",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/B2",
+        "b": "logic_c/H1"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B2_F",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/C2",
+        "b": "logic_c/I1"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_B2_G",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/D2",
+        "b": "logic_c/G2"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "ZERO_A",
+      "kind": "ic_device",
+      "pins": {
+        "gnd": "logic_c/H2",
+        "output": "logic_c/A3",
+        "vcc": "logic_c/G3",
+        "in0": "logic_a/C14",
+        "in1": "logic_a/C18",
+        "in2": "logic_a/G22",
+        "in3": "logic_a/H22",
+        "in4": "logic_a/D18",
+        "in5": "logic_a/D14"
+      },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": {
+          "gnd": "ground",
+          "output": "output",
+          "vcc": "supply",
+          "in0": "input",
+          "in1": "input",
+          "in2": "input",
+          "in3": "input",
+          "in4": "input",
+          "in5": "input"
+        },
+        "behavior": {
+          "behavior": "logic",
+          "inputs": [
+            "in0",
+            "in1",
+            "in2",
+            "in3",
+            "in4",
+            "in5"
+          ],
+          "output": "output",
+          "reference": "gnd",
+          "supply": "vcc",
+          "operation": "and",
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "ZERO_B",
+      "kind": "ic_device",
+      "pins": {
+        "gnd": "logic_c/I2",
+        "output": "logic_c/A4",
+        "vcc": "logic_c/H3",
+        "in0": "logic_a/H26",
+        "in1": "logic_a/H30",
+        "in2": "logic_b/G4",
+        "in3": "logic_b/H4",
+        "in4": "logic_a/I30",
+        "in5": "logic_a/I26"
+      },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": {
+          "gnd": "ground",
+          "output": "output",
+          "vcc": "supply",
+          "in0": "input",
+          "in1": "input",
+          "in2": "input",
+          "in3": "input",
+          "in4": "input",
+          "in5": "input"
+        },
+        "behavior": {
+          "behavior": "logic",
+          "inputs": [
+            "in0",
+            "in1",
+            "in2",
+            "in3",
+            "in4",
+            "in5"
+          ],
+          "output": "output",
+          "reference": "gnd",
+          "supply": "vcc",
+          "operation": "and",
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "FLAG_A",
+      "kind": "ic_device",
+      "pins": {
+        "gnd": "logic_c/G4",
+        "output": "logic_c/A5",
+        "vcc": "logic_c/I3",
+        "in0": "logic_c/B3"
+      },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": {
+          "gnd": "ground",
+          "output": "output",
+          "vcc": "supply",
+          "in0": "input"
+        },
+        "behavior": {
+          "behavior": "logic",
+          "inputs": [
+            "in0"
+          ],
+          "output": "output",
+          "reference": "gnd",
+          "supply": "vcc",
+          "operation": "or",
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "FLAG_B",
+      "kind": "ic_device",
+      "pins": {
+        "gnd": "logic_c/H4",
+        "output": "logic_c/F5",
+        "vcc": "logic_c/B6",
+        "in0": "logic_c/B4"
+      },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": {
+          "gnd": "ground",
+          "output": "output",
+          "vcc": "supply",
+          "in0": "input"
+        },
+        "behavior": {
+          "behavior": "logic",
+          "inputs": [
+            "in0"
+          ],
+          "output": "output",
+          "reference": "gnd",
+          "supply": "vcc",
+          "operation": "or",
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "G_ALARM",
+      "kind": "logic_gate",
+      "pins": {
+        "gnd": "logic_c/I4",
+        "input_a": "logic_c/B5",
+        "input_b": "logic_c/G5",
+        "output": "logic_c/F6",
+        "vcc": "logic_c/C6"
+      },
+      "parameters": {
+        "operation": 1,
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "R_FLAG_A",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/C5",
+        "b": "logic_c/A7"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "R_FLAG_B",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/H5",
+        "b": "logic_c/F7"
+      },
+      "parameters": {
+        "resistance": 470
+      }
+    },
+    {
+      "id": "LED_A",
+      "kind": "led",
+      "pins": {
+        "anode": "logic_c/B7",
+        "cathode": "logic_c/B8"
+      },
+      "parameters": {
+        "forward_voltage": 2,
+        "series_resistance": 100
+      }
+    },
+    {
+      "id": "LED_B",
+      "kind": "led",
+      "pins": {
+        "anode": "logic_c/G7",
+        "cathode": "logic_c/C8"
+      },
+      "parameters": {
+        "forward_voltage": 2,
+        "series_resistance": 100
+      }
+    },
+    {
+      "id": "BZ1",
+      "kind": "buzzer",
+      "pins": {
+        "positive": "logic_c/G6",
+        "negative": "logic_c/D8"
+      },
+      "parameters": {
+        "resistance": 1000
+      }
+    }
+  ],
+  "wires": [
+    {
+      "id": "W_RAIL_1",
+      "from": "logic_a/TP+:2",
+      "to": "logic_a/F1"
+    },
+    {
+      "id": "W_RAIL_2",
+      "from": "logic_a/TP-:2",
+      "to": "logic_a/A2"
+    },
+    {
+      "id": "W_RAIL_3",
+      "from": "logic_a/TP-:3",
+      "to": "logic_a/F2"
+    },
+    {
+      "id": "W_RAIL_4",
+      "from": "logic_a/TP+:3",
+      "to": "logic_a/A3"
+    },
+    {
+      "id": "W_RAIL_5",
+      "from": "logic_a/TP-:4",
+      "to": "logic_a/F3"
+    },
+    {
+      "id": "W_RAIL_6",
+      "from": "logic_a/TP+:4",
+      "to": "logic_a/A4"
+    },
+    {
+      "id": "W_RAIL_7",
+      "from": "logic_a/TP-:5",
+      "to": "logic_a/F4"
+    },
+    {
+      "id": "W_RAIL_8",
+      "from": "logic_a/TP+:5",
+      "to": "logic_a/A5"
+    },
+    {
+      "id": "W_RAIL_9",
+      "from": "logic_a/TP-:6",
+      "to": "logic_a/F5"
+    },
+    {
+      "id": "W_RAIL_10",
+      "from": "logic_a/TP+:6",
+      "to": "logic_a/F6"
+    },
+    {
+      "id": "W_RAIL_11",
+      "from": "logic_a/TP-:7",
+      "to": "logic_a/F7"
+    },
+    {
+      "id": "W_RAIL_12",
+      "from": "logic_a/TP-:8",
+      "to": "logic_a/A10"
+    },
+    {
+      "id": "W_RAIL_13",
+      "from": "logic_a/TP+:7",
+      "to": "logic_a/A11"
+    },
+    {
+      "id": "W_NET_14",
+      "from": "logic_a/E1",
+      "to": "logic_a/F11"
+    },
+    {
+      "id": "W_RAIL_15",
+      "from": "logic_a/TP-:9",
+      "to": "logic_a/A13"
+    },
+    {
+      "id": "W_RAIL_16",
+      "from": "logic_a/TP-:10",
+      "to": "logic_a/F13"
+    },
+    {
+      "id": "W_RAIL_17",
+      "from": "logic_a/TP+:8",
+      "to": "logic_a/F14"
+    },
+    {
+      "id": "W_RAIL_18",
+      "from": "logic_a/TP-:11",
+      "to": "logic_a/A17"
+    },
+    {
+      "id": "W_RAIL_19",
+      "from": "logic_a/TP-:12",
+      "to": "logic_a/F17"
+    },
+    {
+      "id": "W_NET_20",
+      "from": "logic_a/E8",
+      "to": "logic_a/F18"
+    },
+    {
+      "id": "W_RAIL_21",
+      "from": "logic_a/TP-:13",
+      "to": "logic_a/A19"
+    },
+    {
+      "id": "W_RAIL_22",
+      "from": "logic_a/TP-:14",
+      "to": "logic_a/F21"
+    },
+    {
+      "id": "W_RAIL_23",
+      "from": "logic_a/TP-:15",
+      "to": "logic_a/A22"
+    },
+    {
+      "id": "W_RAIL_24",
+      "from": "logic_a/TP-:16",
+      "to": "logic_a/A23"
+    },
+    {
+      "id": "W_RAIL_25",
+      "from": "logic_a/TP-:17",
+      "to": "logic_a/F25"
+    },
+    {
+      "id": "W_RAIL_26",
+      "from": "logic_a/TP-:18",
+      "to": "logic_a/A26"
+    },
+    {
+      "id": "W_RAIL_27",
+      "from": "logic_a/TP+:9",
+      "to": "logic_a/A27"
+    },
+    {
+      "id": "W_RAIL_28",
+      "from": "logic_a/TP-:19",
+      "to": "logic_a/F29"
+    },
+    {
+      "id": "W_RAIL_29",
+      "from": "logic_a/TP-:20",
+      "to": "logic_a/A30"
+    },
+    {
+      "id": "W_RAIL_30",
+      "from": "logic_a/TP-:21",
+      "to": "logic_b/A1"
+    },
+    {
+      "id": "W_RAIL_31",
+      "from": "logic_a/TP-:22",
+      "to": "logic_b/F3"
+    },
+    {
+      "id": "W_RAIL_32",
+      "from": "logic_a/TP-:23",
+      "to": "logic_b/A4"
+    },
+    {
+      "id": "W_NET_33",
+      "from": "logic_a/E9",
+      "to": "logic_b/A5"
+    },
+    {
+      "id": "W_RAIL_34",
+      "from": "logic_a/TP-:24",
+      "to": "logic_b/F5"
+    },
+    {
+      "id": "W_RAIL_35",
+      "from": "logic_a/TP-:25",
+      "to": "logic_b/A8"
+    },
+    {
+      "id": "W_RAIL_36",
+      "from": "logic_a/TP-:26",
+      "to": "logic_b/F8"
+    },
+    {
+      "id": "W_RAIL_37",
+      "from": "logic_a/TP-:27",
+      "to": "logic_b/A9"
+    },
+    {
+      "id": "W_RAIL_38",
+      "from": "logic_a/TP-:28",
+      "to": "logic_b/F9"
+    },
+    {
+      "id": "W_RAIL_39",
+      "from": "logic_a/TP-:29",
+      "to": "logic_b/A10"
+    },
+    {
+      "id": "W_RAIL_40",
+      "from": "logic_a/TP+:10",
+      "to": "logic_b/F10"
+    },
+    {
+      "id": "W_RAIL_41",
+      "from": "logic_a/TP+:11",
+      "to": "logic_b/A11"
+    },
+    {
+      "id": "W_RAIL_42",
+      "from": "logic_a/TP-:30",
+      "to": "logic_b/F11"
+    },
+    {
+      "id": "W_RAIL_43",
+      "from": "logic_a/TP+:12",
+      "to": "logic_b/A12"
+    },
+    {
+      "id": "W_RAIL_44",
+      "from": "logic_a/BP-:1",
+      "to": "logic_b/F12"
+    },
+    {
+      "id": "W_RAIL_45",
+      "from": "logic_a/BP-:2",
+      "to": "logic_b/A13"
+    },
+    {
+      "id": "W_RAIL_46",
+      "from": "logic_a/BP-:3",
+      "to": "logic_b/F13"
+    },
+    {
+      "id": "W_RAIL_47",
+      "from": "logic_a/BP-:4",
+      "to": "logic_b/A14"
+    },
+    {
+      "id": "W_RAIL_48",
+      "from": "logic_a/TP+:13",
+      "to": "logic_b/F14"
+    },
+    {
+      "id": "W_RAIL_49",
+      "from": "logic_a/BP-:5",
+      "to": "logic_b/A15"
+    },
+    {
+      "id": "W_RAIL_50",
+      "from": "logic_a/TP+:14",
+      "to": "logic_b/F15"
+    },
+    {
+      "id": "W_RAIL_51",
+      "from": "logic_a/BP-:6",
+      "to": "logic_b/A16"
+    },
+    {
+      "id": "W_RAIL_52",
+      "from": "logic_a/TP+:15",
+      "to": "logic_b/F16"
+    },
+    {
+      "id": "W_RAIL_53",
+      "from": "logic_a/BP-:7",
+      "to": "logic_b/A17"
+    },
+    {
+      "id": "W_RAIL_54",
+      "from": "logic_a/BP-:8",
+      "to": "logic_b/F17"
+    },
+    {
+      "id": "W_RAIL_55",
+      "from": "logic_a/BP-:9",
+      "to": "logic_b/A18"
+    },
+    {
+      "id": "W_RAIL_56",
+      "from": "logic_a/BP-:10",
+      "to": "logic_b/F18"
+    },
+    {
+      "id": "W_RAIL_57",
+      "from": "logic_a/TP+:16",
+      "to": "logic_b/A19"
+    },
+    {
+      "id": "W_RAIL_58",
+      "from": "logic_a/BP-:11",
+      "to": "logic_b/F19"
+    },
+    {
+      "id": "W_RAIL_59",
+      "from": "logic_a/TP+:17",
+      "to": "logic_b/A20"
+    },
+    {
+      "id": "W_RAIL_60",
+      "from": "logic_a/BP-:12",
+      "to": "logic_b/F20"
+    },
+    {
+      "id": "W_RAIL_61",
+      "from": "logic_a/BP-:13",
+      "to": "logic_b/A21"
+    },
+    {
+      "id": "W_RAIL_62",
+      "from": "logic_a/BP-:14",
+      "to": "logic_b/F21"
+    },
+    {
+      "id": "W_RAIL_63",
+      "from": "logic_a/BP-:15",
+      "to": "logic_b/A22"
+    },
+    {
+      "id": "W_RAIL_64",
+      "from": "logic_a/TP+:18",
+      "to": "logic_b/F22"
+    },
+    {
+      "id": "W_RAIL_65",
+      "from": "logic_a/TP+:19",
+      "to": "logic_b/A23"
+    },
+    {
+      "id": "W_RAIL_66",
+      "from": "logic_a/BP-:16",
+      "to": "logic_b/F23"
+    },
+    {
+      "id": "W_RAIL_67",
+      "from": "logic_a/TP+:20",
+      "to": "logic_b/A24"
+    },
+    {
+      "id": "W_RAIL_68",
+      "from": "logic_a/BP-:17",
+      "to": "logic_b/F24"
+    },
+    {
+      "id": "W_RAIL_69",
+      "from": "logic_a/BP-:18",
+      "to": "logic_b/A25"
+    },
+    {
+      "id": "W_RAIL_70",
+      "from": "logic_a/BP-:19",
+      "to": "logic_b/F25"
+    },
+    {
+      "id": "W_RAIL_71",
+      "from": "logic_a/BP-:20",
+      "to": "logic_b/A26"
+    },
+    {
+      "id": "W_RAIL_72",
+      "from": "logic_a/TP+:21",
+      "to": "logic_b/F26"
+    },
+    {
+      "id": "W_RAIL_73",
+      "from": "logic_a/BP-:21",
+      "to": "logic_b/A27"
+    },
+    {
+      "id": "W_RAIL_74",
+      "from": "logic_a/TP+:22",
+      "to": "logic_b/F27"
+    },
+    {
+      "id": "W_RAIL_75",
+      "from": "logic_a/BP-:22",
+      "to": "logic_b/A28"
+    },
+    {
+      "id": "W_RAIL_76",
+      "from": "logic_a/TP+:23",
+      "to": "logic_b/F28"
+    },
+    {
+      "id": "W_RAIL_77",
+      "from": "logic_a/BP-:23",
+      "to": "logic_b/A29"
+    },
+    {
+      "id": "W_RAIL_78",
+      "from": "logic_a/BP-:24",
+      "to": "logic_b/F29"
+    },
+    {
+      "id": "W_RAIL_79",
+      "from": "logic_a/BP-:25",
+      "to": "logic_b/A30"
+    },
+    {
+      "id": "W_RAIL_80",
+      "from": "logic_a/BP-:26",
+      "to": "logic_b/F30"
+    },
+    {
+      "id": "W_RAIL_81",
+      "from": "logic_a/TP+:24",
+      "to": "logic_c/A1"
+    },
+    {
+      "id": "W_RAIL_82",
+      "from": "logic_a/BP-:27",
+      "to": "logic_c/F1"
+    },
+    {
+      "id": "W_RAIL_83",
+      "from": "logic_a/TP+:25",
+      "to": "logic_c/A2"
+    },
+    {
+      "id": "W_RAIL_84",
+      "from": "logic_a/BP-:28",
+      "to": "logic_c/F2"
+    },
+    {
+      "id": "W_RAIL_85",
+      "from": "logic_a/TP+:26",
+      "to": "logic_c/F3"
+    },
+    {
+      "id": "W_RAIL_86",
+      "from": "logic_a/BP-:29",
+      "to": "logic_c/F4"
+    },
+    {
+      "id": "W_RAIL_87",
+      "from": "logic_a/TP+:27",
+      "to": "logic_c/A6"
+    },
+    {
+      "id": "W_RAIL_88",
+      "from": "logic_a/BP-:30",
+      "to": "logic_c/A8"
+    }
+  ],
+  "initial_conditions": {
+    "controls": {
+      "B1": "button_released",
+      "B2": "button_released"
+    },
+    "digital_states": {
+      "U_A0": 0,
+      "U_A1": 0,
+      "U_A2": 5,
+      "U_B0": 0,
+      "U_B1": 0,
+      "U_B2": 5,
+      "U_DIV": 0,
+      "U_TURN": 0
+    }
+  }
+}

@@ -48,7 +48,9 @@ pub const SOUNDING_CURRENT: f64 = 0.001;
 /// Version of the core crate used by applications and workspace tools.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const PROJECT_FORMAT_VERSION: u32 = 1;
-pub const MAX_COMPONENTS: usize = 64;
+/// Dense catalog fixtures can represent a complete logic module BOM rather
+/// than a single classroom subcircuit.
+pub const MAX_COMPONENTS: usize = 128;
 pub const MAX_NODES: usize = 128;
 pub const MAX_WIRES: usize = 256;
 pub const MAX_BOARDS: usize = 8;
@@ -132,6 +134,10 @@ pub struct InitialConditions {
     /// continuous ratio instead of a discrete `ControlState`.
     #[serde(default)]
     pub control_ratios: BTreeMap<ComponentId, f64>,
+    /// Initial low-bit values for stateful digital components. Clock-history
+    /// bits are always initialized by the simulator and are not serialized.
+    #[serde(default)]
+    pub digital_states: BTreeMap<ComponentId, u32>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -296,6 +302,9 @@ pub enum ComponentKind {
     DFlipFlop,
     /// Bounded binary or one-hot digital counter advanced by rising clock edges.
     DigitalCounter,
+    /// Fixed-step square-wave source used for crystal/timebase contracts.
+    /// Its phase is derived from simulation steps, never wall-clock time.
+    ClockSource,
     /// Eight-step rising-edge sequencer with calculated analog control selection.
     StepSequencer,
     /// Bounded two-word, eight-bit SRAM with calculated read and write behavior.
@@ -839,6 +848,41 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                 "invalid_initial_control_ratio",
                 format!("initial_conditions.control_ratios.{}", id.0),
                 "control ratio must refer to a variable-resistor component",
+            )),
+        }
+    }
+    for (id, state) in &project.initial_conditions.digital_states {
+        match project.components.iter().find(|c| &c.id == id) {
+            Some(c)
+                if matches!(
+                    c.kind,
+                    ComponentKind::DFlipFlop
+                        | ComponentKind::DigitalCounter
+                        | ComponentKind::ShiftRegister
+                        | ComponentKind::StepSequencer
+                        | ComponentKind::Sram
+                ) =>
+            {
+                if c.kind == ComponentKind::DigitalCounter {
+                    let modulus = c.parameters.get("modulus").copied().unwrap_or(0.0) as u32;
+                    if *state >= modulus {
+                        errors.push(Diagnostic::new(
+                            "digital_state_out_of_range",
+                            format!("initial_conditions.digital_states.{id}", id = id.0),
+                            format!("counter state must be less than modulus {modulus}"),
+                        ));
+                    }
+                }
+            }
+            Some(_) => errors.push(Diagnostic::new(
+                "invalid_initial_digital_state",
+                format!("initial_conditions.digital_states.{id}", id = id.0),
+                "digital state must refer to a stateful digital component",
+            )),
+            None => errors.push(Diagnostic::new(
+                "invalid_initial_digital_state",
+                format!("initial_conditions.digital_states.{id}", id = id.0),
+                "digital state refers to an unknown component",
             )),
         }
     }
@@ -1886,6 +1930,7 @@ fn pins_for(k: ComponentKind) -> &'static [&'static str] {
             "clock", "carry", "enable", "gnd", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7",
             "q8", "q9", "reset", "vcc",
         ],
+        ComponentKind::ClockSource => &["gnd", "output", "vcc"],
         ComponentKind::StepSequencer => &[
             "clock", "control0", "control1", "control2", "control3", "control4", "control5",
             "control6", "control7", "gnd", "output", "step0", "step1", "step2", "step3", "step4",
@@ -1966,6 +2011,7 @@ fn required_parameters(k: ComponentKind) -> &'static [&'static str] {
         ComponentKind::Timer555 => &["output_resistance", "discharge_resistance"],
         ComponentKind::DFlipFlop => &["output_resistance"],
         ComponentKind::DigitalCounter => &["modulus", "output_mode", "output_resistance"],
+        ComponentKind::ClockSource => &["frequency_hz", "output_resistance"],
         ComponentKind::StepSequencer => &["output_resistance"],
         ComponentKind::Sram => &["output_resistance"],
         ComponentKind::ShiftRegister => &["output_resistance"],
@@ -1988,7 +2034,7 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         (ComponentKind::Led | ComponentKind::Diode, "series_resistance") => {
             Some((DIODE_MIN_SERIES_RESISTANCE, DIODE_MAX_SERIES_RESISTANCE))
         }
-        (ComponentKind::Capacitor, "capacitance") => Some((1e-10, 1e-2)),
+        (ComponentKind::Capacitor, "capacitance") => Some((1e-12, 1e-2)),
         (ComponentKind::NpnTransistor | ComponentKind::PnpTransistor, "beta") => {
             Some((10.0, 1000.0))
         }
@@ -2033,7 +2079,10 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         (ComponentKind::Timer555, "discharge_resistance") => Some((1.0, 1e7)),
         (ComponentKind::DigitalCounter, "modulus") => Some((2.0, 10.0)),
         (ComponentKind::DigitalCounter, "output_mode") => Some((0.0, 2.0)),
+        (ComponentKind::DigitalCounter, "count_direction") => Some((-1.0, 1.0)),
         (ComponentKind::DigitalCounter, "output_resistance") => Some((1.0, 1e7)),
+        (ComponentKind::ClockSource, "frequency_hz") => Some((0.01, 1_000.0)),
+        (ComponentKind::ClockSource, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::StepSequencer, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::Sram, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::ShiftRegister, "output_resistance") => Some((1.0, 1e7)),
@@ -2397,7 +2446,7 @@ mod tests {
         let mut rc: Project =
             serde_json::from_str(include_str!("../../../fixtures/projects/rc-charging.json"))
                 .unwrap();
-        for value in [1e-10, 1e-2] {
+        for value in [1e-12, 1e-2] {
             rc.components
                 .iter_mut()
                 .find(|component| component.id.0 == "C1")
@@ -2406,7 +2455,7 @@ mod tests {
                 .insert("capacitance".into(), value);
             assert!(compile_topology(&rc).is_ok());
         }
-        for value in [0.999e-10, 1.001e-2] {
+        for value in [0.999e-12, 1.001e-2] {
             rc.components
                 .iter_mut()
                 .find(|component| component.id.0 == "C1")

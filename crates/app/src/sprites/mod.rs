@@ -101,6 +101,7 @@ pub fn art_for(kind: ComponentKind) -> Option<&'static dyn PartArt> {
         | ComponentKind::Timer555
         | ComponentKind::DFlipFlop
         | ComponentKind::DigitalCounter
+        | ComponentKind::ClockSource
         | ComponentKind::ShiftRegister
         | ComponentKind::SevenSegmentDisplay
         | ComponentKind::FourBitAdder

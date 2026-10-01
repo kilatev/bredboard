@@ -38,8 +38,13 @@ The source record is
   the existing seven-segment display model. The source package boundaries
   (74HC20, 74HC148, and CD4511) are an explicit model-level discrepancy; a
   simultaneous same-step button press is resolved by stable simulation order.
-- S09-10 needs a crystal timebase, six countdown counters, six displays, and
-  chess-clock state; keep it blocked.
+- S09-10 is admitted as a calculated chess-clock fixture: a fixed-step clock
+  source and D flip-flop divide stage provide a deterministic 1 Hz tick; six
+  reversible BCD counters drive two three-digit countdown readouts; button
+  pulses transfer the active turn; and calculated zero detectors drive the
+  timeout LEDs and buzzer. The source's 32,768 Hz crystal, CD4060/CD4013/
+  CD4510/CD4511/CD4011 package internals, 9 V adapter, and exact display
+  segment-current wiring remain explicit model or layout discrepancies.
 - S09-11 needs four reversible BCD counters, four displays, and score-control
   semantics; keep it blocked.
 - S09-12 needs paired RF modules, L293D, two motors, and chassis motion; keep
@@ -136,10 +141,39 @@ calculated cross-board resistor path are covered by fixed-seed core tests.
 S09-19 remains blocked because its logic packages, controller behavior, and
 three-board fixture/layout are not implemented.
 
+The CAT-S09-10 slice adds
+`fixtures/projects/c07-s09-10-chess-clock.json` and registers it in the app
+menu. It contains 88 components, 88 explicit wires, and 50 derived nodes on
+three named half-size boards. The clock source is a fixed-step 2 Hz proxy,
+the divide stage produces the calculated 1 Hz counter clock, and the six
+reversible counters start at 5:00 for each player. The active-turn gates keep
+one player's counters enabled; button pulses clock the turn flip-flop. The
+source's 44 segment resistors are all retained, but 42 are explicit VCC–GND
+loads because the current placement does not couple them to display segment
+pins; this is recorded in the ledger instead of being presented as a complete
+display-current path.
+
+Focused evidence for the slice:
+
+```text
+cargo run -q -p bredboard-tools --locked -- validate fixtures/projects/c07-s09-10-chess-clock.json — passed; 88 components, 88 wires, 50 derived nodes
+cargo run -q -p bredboard-tools --locked -- simulate fixtures/projects/c07-s09-10-chess-clock.json 10 — passed; step 10 at 0.001000 s without diagnostics
+cargo test -p bredboard-core --locked c07_s09_10_clock_fixture_counts_down_and_transfers_turn -- --nocapture — passed
+cargo test -p bredboard-app --locked c07_s09_10_counts_down_and_transfers_the_active_turn -- --nocapture — passed
+cargo test -p bredboard-app --locked all_embedded_boards_have_unique_lead_and_wire_holes -- --nocapture — passed
+```
+
+The full automated gate passed on 2026-10-02: `cargo fmt --all -- --check`,
+Clippy with `-D warnings`, `cargo test --workspace --locked` (60 app, 149
+core, 3 tools, 0 doc-test failures), native Linux and WASM app builds, and
+`git diff --check`. Manual browser and real-breadboard evidence remain
+pending.
+
 ## Current blockers
 
 - Logic packages, module I/O contracts, RF/audio/IR/gas/PIR/ultrasonic sensor
-  contracts, relay behavior, crystal timebases, displays, motor drivers,
+  contracts, relay behavior, exact crystal timebases and package-level
+  displays, motor drivers,
   chassis/elevator mechanics, and S09-19's fixture-specific multi-board scene
   semantics are not yet available.
 - Manual interaction and real-breadboard evidence are pending for any new

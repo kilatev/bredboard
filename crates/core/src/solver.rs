@@ -234,8 +234,17 @@ enum NonlinearElement {
         gnd: usize,
         mode: u8,
         modulus: u8,
+        count_direction: f64,
         resistance: f64,
         state: u32,
+    },
+    ClockSource {
+        output: usize,
+        vcc: usize,
+        gnd: usize,
+        frequency_hz: f64,
+        resistance: f64,
+        step: u64,
     },
     StepSequencer {
         clock: usize,
@@ -646,6 +655,11 @@ fn solve_internal(
                 ];
                 pairs.extend(outputs.windows(2).map(|pair| (pair[0], pair[1])));
                 pairs
+            }
+            NonlinearElement::ClockSource {
+                output, vcc, gnd, ..
+            } => {
+                vec![(*output, *vcc), (*output, *gnd)]
             }
             NonlinearElement::StepSequencer {
                 clock,
@@ -1151,6 +1165,7 @@ fn solve_internal(
             | NonlinearElement::Timer555 { .. }
             | NonlinearElement::DFlipFlop { .. }
             | NonlinearElement::DigitalCounter { .. }
+            | NonlinearElement::ClockSource { .. }
             | NonlinearElement::StepSequencer { .. }
             | NonlinearElement::Sram { .. }
             | NonlinearElement::ShiftRegister { .. }
@@ -1764,11 +1779,31 @@ fn make_branches(
                     gnd,
                     mode: component.parameters["output_mode"] as u8,
                     modulus: component.parameters["modulus"] as u8,
+                    count_direction: component
+                        .parameters
+                        .get("count_direction")
+                        .copied()
+                        .unwrap_or(1.0),
                     resistance: component.parameters["output_resistance"],
                     state: digital_states
                         .get(&component.id)
                         .copied()
                         .unwrap_or_default(),
+                });
+                continue;
+            }
+            ComponentKind::ClockSource => {
+                let output = node("output")?;
+                let vcc = node("vcc")?;
+                let gnd = node("gnd")?;
+                active.extend([output, vcc, gnd]);
+                nonlinear.push(NonlinearElement::ClockSource {
+                    output,
+                    vcc,
+                    gnd,
+                    frequency_hz: component.parameters["frequency_hz"],
+                    resistance: component.parameters["output_resistance"],
+                    step: options.step,
                 });
                 continue;
             }
@@ -3006,6 +3041,7 @@ fn stamp_element(
             gnd,
             mode,
             modulus,
+            count_direction,
             resistance,
             state,
             ..
@@ -3036,7 +3072,33 @@ fn stamp_element(
                 *carry,
                 *vcc,
                 *gnd,
-                !reset_high && value + 1 >= u32::from(*modulus),
+                !reset_high
+                    && if *count_direction < 0.0 {
+                        value == 0
+                    } else {
+                        value + 1 >= u32::from(*modulus)
+                    },
+                *resistance,
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
+        NonlinearElement::ClockSource {
+            output,
+            vcc,
+            gnd,
+            frequency_hz,
+            resistance,
+            step,
+        } => {
+            let high = ((*step as f64) * FIXED_STEP_SECONDS * *frequency_hz).fract() >= 0.5;
+            stamp_logic_output(
+                *output,
+                *vcc,
+                *gnd,
+                high,
                 *resistance,
                 guess,
                 vars,

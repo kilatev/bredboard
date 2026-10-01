@@ -166,6 +166,8 @@ const C07_S09_01_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-01-hot-wire-button-counter.json");
 const C07_S09_09_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-09-quiz-buttons.json");
+const C07_S09_10_JSON: &str =
+    include_str!("../../../fixtures/projects/c07-s09-10-chess-clock.json");
 const C08_S17_03_JSON: &str =
     include_str!("../../../fixtures/projects/c08-s17-03-optocoupler.json");
 const C08_S14_01_JSON: &str =
@@ -298,6 +300,7 @@ enum Circuit {
     C07S09_01,
     C07S09_03,
     C07S09_09,
+    C07S09_10,
     C08S17_03,
     C08S14_01,
     C09S15_01,
@@ -332,7 +335,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 113] {
+    fn all() -> [Self; 115] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -398,6 +401,7 @@ impl Circuit {
             Self::C07S09_01,
             Self::C07S09_03,
             Self::C07S09_09,
+            Self::C07S09_10,
             Self::C08S17_03,
             Self::C08S14_01,
             Self::C09S15_01,
@@ -549,6 +553,7 @@ impl Circuit {
             Self::C07S09_01 => C07_S09_01_JSON,
             Self::C07S09_03 => C07_S09_03_JSON,
             Self::C07S09_09 => C07_S09_09_JSON,
+            Self::C07S09_10 => C07_S09_10_JSON,
             Self::C08S17_03 => C08_S17_03_JSON,
             Self::C08S14_01 => C08_S14_01_JSON,
             Self::C09S15_01 => C09_S15_01_JSON,
@@ -667,6 +672,7 @@ impl Circuit {
             Self::C07S09_01 => "C07-S09-01: HOT-WIRE COUNTER",
             Self::C07S09_03 => "C07-S09-03: TWO-STATION TELEGRAPH",
             Self::C07S09_09 => "C07-S09-09: QUIZ BUTTONS",
+            Self::C07S09_10 => "C07-S09-10: CHESS CLOCK",
             Self::C08S17_03 => "C08-S17-03: OPTOCOUPLER",
             Self::C08S14_01 => "C08-S14-01: CANDLE FLICKER",
             Self::C09S15_01 => "C09-S15-01: RELAY SWITCH",
@@ -948,6 +954,10 @@ impl Circuit {
             Self::C07S09_09 => (
                 "Four calculated D flip-flops latch the first player input, a gate chain blocks later inputs, and the winner's BCD value drives a current-limited seven-segment display, four LEDs, and a buzzer. The source's 74HC20, 74HC148, and CD4511 package internals are represented by these existing pin-level digital primitives.",
                 "Task: press one player button, run one or more fixed steps, press another player button to confirm it is blocked, then press RESET and verify the display and indicators clear.",
+            ),
+            Self::C07S09_10 => (
+                "A fixed-step 2 Hz source and calculated D flip-flop divide stage provide a deterministic 1 Hz chess-clock tick. Six reversible BCD counters count down the two m:ss displays; gated buttons transfer the active turn, and calculated zero detectors drive the timeout LEDs and buzzer.",
+                "Task: run the clock, press the active player's button to transfer the turn, and inspect the calculated countdown, timeout flags, and buzzer current.",
             ),
             Self::C08S17_03 => (
                 "A calculated optocoupler transfers current from a 9 V button domain into an isolated 4.5 V LED domain. The two source rails remain electrically separate; the PC817 package is represented by the bounded optical-transfer contract.",
@@ -1641,6 +1651,18 @@ impl Circuit {
                 ControlSpec {
                     label: "RESET: HOST",
                     component: "RESET",
+                    is_switch: false,
+                },
+            ],
+            Self::C07S09_10 => &[
+                ControlSpec {
+                    label: "B1: PLAYER A / PASS",
+                    component: "B1",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B2: PLAYER B / PASS",
+                    component: "B2",
                     is_switch: false,
                 },
             ],
@@ -2436,7 +2458,15 @@ const TOP_ROW_Y: f32 = 255.0;
 
 /// Horizontal position of a board column (A–J) or rail (TP+/TP-/BP+/BP-).
 /// Strips and rails are separated by two-pitch gaps, as on a real breadboard.
-fn column_x(column: &str) -> Option<f32> {
+fn board_center(board: Option<&str>) -> f32 {
+    match board {
+        Some("logic_b") => -40.0,
+        Some("logic_c") => 305.0,
+        _ => BOARD_CENTER_X,
+    }
+}
+
+fn column_x_at(column: &str, center: f32) -> Option<f32> {
     let pitches = match column {
         "TP+" => -8.0,
         "TP-" => -7.0,
@@ -2455,7 +2485,11 @@ fn column_x(column: &str) -> Option<f32> {
             }
         }
     };
-    Some(BOARD_CENTER_X + pitches * PITCH)
+    Some(center + pitches * PITCH)
+}
+
+fn column_x(column: &str) -> Option<f32> {
+    column_x_at(column, BOARD_CENTER_X)
 }
 
 fn row_y(row: u32) -> f32 {
@@ -2463,15 +2497,22 @@ fn row_y(row: u32) -> f32 {
 }
 
 fn hole_position(id: &str) -> Option<Vec2> {
-    let (column, row) = match id.split_once(':') {
+    let (board, local) = match id.split_once('/') {
+        Some((board, local)) => (Some(board), local),
+        None => (None, id),
+    };
+    let (column, row) = match local.split_once(':') {
         Some((rail, row)) => (rail, row),
-        None => id.split_at_checked(1)?,
+        None => local.split_at_checked(1)?,
     };
     let row: u32 = row.parse().ok()?;
-    if !(1..=30).contains(&row) || id.contains(':') != (column.len() == 3) {
+    if !(1..=30).contains(&row) || local.contains(':') != (column.len() == 3) {
         return None;
     }
-    Some(Vec2::new(column_x(column)?, row_y(row)))
+    Some(Vec2::new(
+        column_x_at(column, board_center(board))?,
+        row_y(row),
+    ))
 }
 
 fn srgb(color: sprites::palette::Rgb) -> Color {
@@ -2479,31 +2520,70 @@ fn srgb(color: sprites::palette::Rgb) -> Color {
 }
 
 fn spawn_board(commands: &mut Commands, images: &mut Assets<Image>, bench: &Bench) {
+    match &bench.project.board.model {
+        bredboard_core::BoardModel::HalfSizeSolderless => {
+            spawn_board_surface(commands, images, bench, None)
+        }
+        bredboard_core::BoardModel::MultiBoard { boards } => {
+            for board in boards {
+                spawn_board_surface(commands, images, bench, Some(&board.id.0));
+            }
+        }
+    }
+    for wire in &bench.project.wires {
+        let a = hole_position(&wire.from.0).unwrap();
+        let b = hole_position(&wire.to.0).unwrap();
+        draw_wire(
+            commands,
+            a,
+            b,
+            srgb(sprites::palette::WIRE),
+            srgb(sprites::palette::WIRE_SHADE),
+        );
+    }
+    for (index, component) in bench.project.components.iter().enumerate() {
+        if component.kind == ComponentKind::DcVoltageSource {
+            spawn_source(commands, images, component);
+            continue;
+        }
+        let art = sprites::art_for(component.kind).expect("every component kind has sprite art");
+        spawn_part(commands, images, component, art, index);
+    }
+}
+
+fn spawn_board_surface(
+    commands: &mut Commands,
+    _images: &mut Assets<Image>,
+    _bench: &Bench,
+    board: Option<&str>,
+) {
     use sprites::palette;
+    let board_center = board_center(board);
+    let qualified = |local: String| board.map_or(local.clone(), |board| format!("{board}/{local}"));
     let width = 17.0 * PITCH + 34.0;
     rect(
         commands,
-        Vec2::new(BOARD_CENTER_X, 20.0),
+        Vec2::new(board_center, 20.0),
         Vec2::new(width + 18.0, 525.0),
         Color::srgb(0.16, 0.31, 0.28),
         0.0,
     );
     rect(
         commands,
-        Vec2::new(BOARD_CENTER_X, 20.0),
+        Vec2::new(board_center, 20.0),
         Vec2::new(width, 509.0),
         srgb(palette::BOARD),
         0.1,
     );
     rect(
         commands,
-        Vec2::new(BOARD_CENTER_X, 20.0),
+        Vec2::new(board_center, 20.0),
         Vec2::new(12.0, 480.0),
         srgb(palette::BOARD_GROOVE),
         0.2,
     );
     for rail in ["TP+", "TP-", "BP+", "BP-"] {
-        let x = column_x(rail).unwrap();
+        let x = column_x_at(rail, board_center).unwrap();
         let color = srgb(if rail.ends_with('+') {
             palette::RAIL_RED
         } else {
@@ -2530,7 +2610,7 @@ fn spawn_board(commands: &mut Commands, images: &mut Assets<Image>, bench: &Benc
         label(
             commands,
             col.to_string(),
-            Vec2::new(column_x(&col.to_string()).unwrap(), 278.0),
+            Vec2::new(column_x_at(&col.to_string(), board_center).unwrap(), 278.0),
             12.0,
             Color::srgb(0.25, 0.26, 0.22),
         );
@@ -2540,14 +2620,14 @@ fn spawn_board(commands: &mut Commands, images: &mut Assets<Image>, bench: &Benc
             label(
                 commands,
                 row.to_string(),
-                Vec2::new(BOARD_CENTER_X - 1.0, row_y(row)),
+                Vec2::new(board_center - 1.0, row_y(row)),
                 11.0,
                 Color::srgb(0.25, 0.26, 0.22),
             );
         }
         let holes = ('A'..='J')
-            .map(|col| format!("{col}{row}"))
-            .chain(["TP+", "TP-", "BP+", "BP-"].map(|rail| format!("{rail}:{row}")));
+            .map(|col| qualified(format!("{col}{row}")))
+            .chain(["TP+", "TP-", "BP+", "BP-"].map(|rail| qualified(format!("{rail}:{row}"))));
         for id in holes {
             rect(
                 commands,
@@ -2557,25 +2637,6 @@ fn spawn_board(commands: &mut Commands, images: &mut Assets<Image>, bench: &Benc
                 0.4,
             );
         }
-    }
-    for wire in &bench.project.wires {
-        let a = hole_position(&wire.from.0).unwrap();
-        let b = hole_position(&wire.to.0).unwrap();
-        draw_wire(
-            commands,
-            a,
-            b,
-            srgb(palette::WIRE),
-            srgb(palette::WIRE_SHADE),
-        );
-    }
-    for (index, component) in bench.project.components.iter().enumerate() {
-        if component.kind == ComponentKind::DcVoltageSource {
-            spawn_source(commands, images, component);
-            continue;
-        }
-        let art = sprites::art_for(component.kind).expect("every component kind has sprite art");
-        spawn_part(commands, images, component, art, index);
     }
 }
 
@@ -2800,6 +2861,11 @@ fn component_summary(component: &Component) -> String {
             component.pins[&bredboard_core::PinId("q".into())].0
         ),
         ComponentKind::DigitalCounter => format!("{id}  digital counter  Q0–Q9/CARRY"),
+        ComponentKind::ClockSource => format!(
+            "{id}  fixed-step clock {:.2} Hz  OUT {}",
+            component.parameters["frequency_hz"],
+            component.pins[&bredboard_core::PinId("output".into())].0
+        ),
         ComponentKind::ShiftRegister => format!("{id}  8-bit shift register  Q0–Q7"),
         ComponentKind::SevenSegmentDisplay => {
             format!("{id}  seven-segment display  A–G/common cathode")
@@ -3655,6 +3721,60 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C07S09_10 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Chess clock: run to measure".into(),
+                        |result| {
+                            let digit = |id: &str| {
+                                bench
+                                    .simulation
+                                    .digital_states
+                                    .get(&ComponentId(id.into()))
+                                    .copied()
+                                    .unwrap_or(0)
+                                    & 0x3ff
+                            };
+                            let turn = if bench
+                                .simulation
+                                .digital_states
+                                .get(&ComponentId("U_TURN".into()))
+                                .copied()
+                                .unwrap_or(0)
+                                & 1
+                                == 0
+                            {
+                                "A"
+                            } else {
+                                "B"
+                            };
+                            format!(
+                                "A {}:{:02}  B {}:{:02}  TURN {turn}  FLAG A {:.1} mA / B {:.1} mA  BZ {:.1} mA",
+                                digit("U_A2"),
+                                digit("U_A1") * 10 + digit("U_A0"),
+                                digit("U_B2"),
+                                digit("U_B1") * 10 + digit("U_B0"),
+                                1000.0
+                                    * result
+                                        .led_currents
+                                        .get(&ComponentId("LED_A".into()))
+                                        .copied()
+                                        .unwrap_or(0.0),
+                                1000.0
+                                    * result
+                                        .led_currents
+                                        .get(&ComponentId("LED_B".into()))
+                                        .copied()
+                                        .unwrap_or(0.0),
+                                1000.0
+                                    * result
+                                        .resistor_currents
+                                        .get(&ComponentId("BZ1".into()))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                                        .abs()
+                            )
+                        },
+                    )
                 } else if bench.circuit == Circuit::C04S06_13 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "Synth envelope and speaker: run to measure".into(),
@@ -4123,6 +4243,53 @@ mod tests {
     }
 
     #[test]
+    fn c07_s09_10_counts_down_and_transfers_the_active_turn() {
+        let mut bench = Bench::new(Circuit::C07S09_10);
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("U_A2".into())] & 0x3ff,
+            5
+        );
+        bench.act(Action::SetParameter {
+            component: ComponentId("XTAL".into()),
+            name: "frequency_hz".into(),
+            value: 1_000.0,
+        });
+        bench.act(Action::Run);
+        advance_steps(&bench.project, &mut bench.simulation, 10);
+        assert!(
+            !bench.simulation.stale,
+            "{:?}",
+            bench.simulation.diagnostics
+        );
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("U_A2".into())] & 0x3ff,
+            4
+        );
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("U_A1".into())] & 0x3ff,
+            5
+        );
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("U_A0".into())] & 0x3ff,
+            9
+        );
+
+        bench.act(Action::SetControl {
+            component: ComponentId("B1".into()),
+            state: ControlState::ButtonPressed,
+        });
+        bench.act(Action::SingleStep);
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("U_TURN".into())] & 1,
+            1
+        );
+        bench.act(Action::SetControl {
+            component: ComponentId("B1".into()),
+            state: ControlState::ButtonReleased,
+        });
+    }
+
+    #[test]
     fn c05_s07_14_fixed_steps_measure_the_selected_range() {
         let measure = |switch_state| {
             let mut project: Project =
@@ -4393,7 +4560,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            113
+            115
         );
         assert!(matches!(
             items[0],
