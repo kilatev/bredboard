@@ -150,6 +150,8 @@ const C05_S07_06_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-06-adjustable-power-supply.json");
 const C05_S07_05_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-05-usb-5v-supply.json");
+const C05_S07_14_JSON: &str =
+    include_str!("../../../fixtures/projects/c05-s07-14-capacitance-meter.json");
 const C06_S08_01_JSON: &str =
     include_str!("../../../fixtures/projects/c06-s08-01-motor-with-switch.json");
 const C06_S08_05_JSON: &str =
@@ -282,6 +284,7 @@ enum Circuit {
     C05S07_08,
     C05S07_06,
     C05S07_05,
+    C05S07_14,
     C06S08_01,
     C06S08_05,
     C07S09_01,
@@ -320,7 +323,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 110] {
+    fn all() -> [Self; 111] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -374,6 +377,7 @@ impl Circuit {
             Self::C05S07_02,
             Self::C05S07_04,
             Self::C05S07_05,
+            Self::C05S07_14,
             Self::C05S07_09,
             Self::C05S07_10,
             Self::C05S07_08,
@@ -525,6 +529,7 @@ impl Circuit {
             Self::C05S07_08 => C05_S07_08_JSON,
             Self::C05S07_06 => C05_S07_06_JSON,
             Self::C05S07_05 => C05_S07_05_JSON,
+            Self::C05S07_14 => C05_S07_14_JSON,
             Self::C06S08_01 => C06_S08_01_JSON,
             Self::C06S08_05 => C06_S08_05_JSON,
             Self::C07S09_01 => C07_S09_01_JSON,
@@ -639,6 +644,7 @@ impl Circuit {
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
             Self::C05S07_06 => "C05-S07-06: ADJUSTABLE POWER SUPPLY",
             Self::C05S07_05 => "C05-S07-05: BATTERY 5 V USB SUPPLY",
+            Self::C05S07_14 => "C05-S07-14: CAPACITANCE METER",
             Self::C06S08_01 => "C06-S08-01: MOTOR WITH SWITCH",
             Self::C06S08_05 => "C06-S08-05: VIBRATION BOT",
             Self::C07S09_01 => "C07-S09-01: HOT-WIRE COUNTER",
@@ -892,6 +898,10 @@ impl Circuit {
             Self::C05S07_05 => (
                 "A calculated L7805-style regulator holds a bounded 5 V output from the 9 V battery while the three capacitors and 330 ohm LED branch remain part of the solved topology. The USB-A adapter is a high-impedance two-terminal output connector; attached-device charging and USB protocol are outside the fixture contract.",
                 "Task: run the supply and compare the calculated regulated output with the LED current and USB connector readout.",
+            ),
+            Self::C05S07_14 => (
+                "A calculated monostable measures the selected capacitor's charge time with a fixed-step reference oscillator. An AND gate windows the reference pulses, three decimal counters advance on those calculated edges, and their BCD outputs drive current-limited seven-segment displays. The source's physical unknown-capacitor socket and exact CD4026/NE555 package behavior remain explicit discrepancies.",
+                "Task: press MEASURE, toggle RANGE between the unknown and 10 µF reference, run the fixture, and compare the calculated counter value.",
             ),
             Self::C06S08_01 => (
                 "A calculated 3 V source drives a two-terminal DC motor through an SPDT switch. Motor current and signed no-load speed are derived from terminal voltage; the source propeller remains a presentation discrepancy.",
@@ -1535,6 +1545,18 @@ impl Circuit {
                 component: "S1",
                 is_switch: false,
             }],
+            Self::C05S07_14 => &[
+                ControlSpec {
+                    label: "S1: MEASURE",
+                    component: "S1",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "SW1: RANGE",
+                    component: "SW1",
+                    is_switch: true,
+                },
+            ],
             Self::C05S07_05 | Self::C05S07_06 | Self::C05S07_08 => &[],
             Self::C06S08_01 => &[ControlSpec {
                 label: "S1: MOTOR POWER",
@@ -3591,6 +3613,28 @@ fn update_view(
                             format!("VOUT {output:.2} V   METER {meter:.2} V")
                         },
                     )
+                } else if bench.circuit == Circuit::C05S07_14 {
+                    let digit = |component: &str| {
+                        bench
+                            .simulation
+                            .digital_states
+                            .get(&ComponentId(component.into()))
+                            .copied()
+                            .unwrap_or_default()
+                            & 0x3ff
+                    };
+                    let count = digit("U4") + 10 * digit("U5") + 100 * digit("U6");
+                    let range = if bench.simulation.controls.get(&ComponentId("SW1".into()))
+                        == Some(&ControlState::SwitchNormallyOpen)
+                    {
+                        "100 kΩ"
+                    } else {
+                        "10 kΩ"
+                    };
+                    format!(
+                        "CX {:.3} V   RANGE {range}   COUNT {count:03}",
+                        bench.simulation.capacitor_voltages[&ComponentId("CX".into())]
+                    )
                 } else if bench.circuit == Circuit::C10S18_07 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "Diode OR output: run to measure".into(),
@@ -3847,6 +3891,42 @@ mod tests {
     }
 
     #[test]
+    fn c05_s07_14_fixed_steps_measure_the_selected_range() {
+        let measure = |switch_state| {
+            let mut project: Project =
+                serde_json::from_str(C05_S07_14_JSON).expect("capacitance-meter fixture");
+            let initial = project.clone();
+            let mut simulation = SimulationState::new(&project);
+            apply_actions(
+                &mut project,
+                &initial,
+                &mut simulation,
+                &[
+                    Action::SetControl {
+                        component: ComponentId("SW1".into()),
+                        state: switch_state,
+                    },
+                    Action::Run,
+                ],
+            );
+            advance_steps(&project, &mut simulation, 128);
+            assert!(
+                !simulation.stale,
+                "diagnostics: {:?}",
+                simulation.diagnostics
+            );
+            simulation.capacitor_voltages[&ComponentId("CX".into())]
+        };
+
+        let fast_range_voltage = measure(ControlState::SwitchNormallyClosed);
+        let slow_range_voltage = measure(ControlState::SwitchNormallyOpen);
+        assert!(
+            fast_range_voltage > slow_range_voltage + 0.01,
+            "fast={fast_range_voltage} slow={slow_range_voltage}"
+        );
+    }
+
+    #[test]
     fn c05_s07_04_transistor_sockets_drive_the_matching_led_channels() {
         let mut bench = Bench::new(Circuit::C05S07_04);
         bench.act(Action::Run);
@@ -4081,7 +4161,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            110
+            111
         );
         assert!(matches!(
             items[0],

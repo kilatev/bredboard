@@ -164,7 +164,40 @@ cargo test -p bredboard-app c05_s07_05_regulates_five_volts_and_keeps_usb_connec
 cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
 ```
 
-The full workspace gate passed on 2026-10-01 after this slice: `cargo fmt
+The CAT-S07-14 slice admits
+`fixtures/projects/c05-s07-14-capacitance-meter.json` through the existing
+calculated timer, logic-gate, decimal-counter, and seven-segment contracts.
+The SPDT selects the 10 kΩ or 100 kΩ monostable timing resistor around an
+explicit 100 µF test-capacitor specimen; the second 555 provides a calculated
+fixed-step reference pulse train, and the three counters feed BCD-driven,
+current-limited display loads. The source BOM does not specify the unknown Cx
+specimen and its listed four 100 nF capacitors leave no explicit test socket;
+the fourth 100 nF line is therefore recorded as an unrepresented decoupling
+discrepancy in the ledger. Physical capacitor insertion, exact CD4026/NE555
+package behavior, adapter current limiting, and manual evidence remain
+pending.
+
+Focused CAT-S07-14 evidence on 2026-10-01:
+
+```text
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c05-s07-14-capacitance-meter.json — passed; 42 components, 3 wires, 51 derived nodes
+cargo test -p bredboard-app c05_s07_14_fixed_steps_measure_the_selected_range --locked — passed; fixed-step 10 kΩ/100 kΩ range response
+cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
+```
+
+The 128-step transient simulation also passed; the 4,000-step run is
+computationally expensive for this 51-node nonlinear fixture and remains a
+pending verification item until it completes without interruption.
+
+The post-slice workspace gate also passed on 2026-10-01: `cargo fmt --all
+--check`, Clippy with `-D warnings`, `cargo test --workspace --locked` (58
+app, 145 core, 3 tools, 0 doc-test failures), native Linux and WASM app
+builds, `validate-catalog` (20 sections, 212 schematics), and
+`git diff --check`. The fixture itself passed 128-step simulation; the
+4,000-step fixture run and manual evidence remain pending.
+
+The preceding workspace gate passed on 2026-10-01 before the CAT-S07-14
+slice: `cargo fmt
 --all --check`, Clippy, workspace tests (57 app, 145 core, 3 tools, 0
 doc-test failures), native Linux and WASM app builds, catalog validation, and
 `git diff --check` all passed. The required Cargo commands used the exported
