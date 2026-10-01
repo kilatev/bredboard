@@ -1,0 +1,84 @@
+{
+  "format_version": 1,
+  "title": "C05-S07-05: Battery 5 V USB supply",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    {
+      "id": "V1",
+      "kind": "dc_voltage_source",
+      "pins": { "positive": "TP+:1", "negative": "TP-:1" },
+      "parameters": { "voltage": 9.0 }
+    },
+    {
+      "id": "U1",
+      "kind": "module",
+      "pins": { "gnd": "TP-:2", "in": "TP+:2", "out": "F5" },
+      "parameters": {},
+      "module": {
+        "pin_roles": {
+          "gnd": "ground",
+          "in": "supply",
+          "out": "power_output"
+        },
+        "behavior": {
+          "behavior": "regulated_supply",
+          "input_positive": "in",
+          "input_negative": "gnd",
+          "output_positive": "out",
+          "output_negative": "gnd",
+          "target_voltage": 5.0,
+          "dropout_voltage": 2.0,
+          "input_resistance": 10000.0,
+          "output_resistance": 1.0
+        }
+      }
+    },
+    {
+      "id": "C1",
+      "kind": "capacitor",
+      "pins": { "negative": "TP-:3", "positive": "TP+:3" },
+      "parameters": { "capacitance": 0.00000033 }
+    },
+    {
+      "id": "C2",
+      "kind": "capacitor",
+      "pins": { "negative": "TP-:4", "positive": "G5" },
+      "parameters": { "capacitance": 0.0000001 }
+    },
+    {
+      "id": "C3",
+      "kind": "capacitor",
+      "pins": { "negative": "TP-:5", "positive": "H5" },
+      "parameters": { "capacitance": 0.00001 }
+    },
+    {
+      "id": "R1",
+      "kind": "resistor",
+      "pins": { "a": "I5", "b": "F7" },
+      "parameters": { "resistance": 330.0 }
+    },
+    {
+      "id": "LED1",
+      "kind": "led",
+      "pins": { "anode": "G7", "cathode": "H8" },
+      "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 }
+    },
+    {
+      "id": "USB1",
+      "kind": "other",
+      "pins": { "negative": "TP-:6", "positive": "J5" },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": { "negative": "ground", "positive": "terminal" },
+        "behavior": {
+          "behavior": "resistive",
+          "positive": "positive",
+          "negative": "negative",
+          "resistance": 1000000000.0
+        }
+      }
+    }
+  ],
+  "wires": [{ "id": "W1", "from": "I8", "to": "TP-:7" }],
+  "initial_conditions": {}
+}

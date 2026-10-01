@@ -148,6 +148,8 @@ const C05_S07_08_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-08-pulse-generator.json");
 const C05_S07_06_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-06-adjustable-power-supply.json");
+const C05_S07_05_JSON: &str =
+    include_str!("../../../fixtures/projects/c05-s07-05-usb-5v-supply.json");
 const C06_S08_01_JSON: &str =
     include_str!("../../../fixtures/projects/c06-s08-01-motor-with-switch.json");
 const C06_S08_05_JSON: &str =
@@ -279,6 +281,7 @@ enum Circuit {
     C05S07_10,
     C05S07_08,
     C05S07_06,
+    C05S07_05,
     C06S08_01,
     C06S08_05,
     C07S09_01,
@@ -317,7 +320,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 109] {
+    fn all() -> [Self; 110] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -370,6 +373,7 @@ impl Circuit {
             Self::C04S06_13,
             Self::C05S07_02,
             Self::C05S07_04,
+            Self::C05S07_05,
             Self::C05S07_09,
             Self::C05S07_10,
             Self::C05S07_08,
@@ -520,6 +524,7 @@ impl Circuit {
             Self::C05S07_10 => C05_S07_10_JSON,
             Self::C05S07_08 => C05_S07_08_JSON,
             Self::C05S07_06 => C05_S07_06_JSON,
+            Self::C05S07_05 => C05_S07_05_JSON,
             Self::C06S08_01 => C06_S08_01_JSON,
             Self::C06S08_05 => C06_S08_05_JSON,
             Self::C07S09_01 => C07_S09_01_JSON,
@@ -633,6 +638,7 @@ impl Circuit {
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
             Self::C05S07_06 => "C05-S07-06: ADJUSTABLE POWER SUPPLY",
+            Self::C05S07_05 => "C05-S07-05: BATTERY 5 V USB SUPPLY",
             Self::C06S08_01 => "C06-S08-01: MOTOR WITH SWITCH",
             Self::C06S08_05 => "C06-S08-05: VIBRATION BOT",
             Self::C07S09_01 => "C07-S09-01: HOT-WIRE COUNTER",
@@ -882,6 +888,10 @@ impl Circuit {
             Self::C05S07_06 => (
                 "A calculated LM317-style adjustable regulator follows the ADJ feedback voltage through the 240 ohm resistor and potentiometer. The 12 V source, 2 V dropout limit, 10 V safety clamp, reverse-protection diodes, and calculated voltmeter are explicit electrical contracts.",
                 "Task: drag RV1 and compare the calculated VOUT and voltmeter readings; confirm the output stays within the safe 1.25–10 V range.",
+            ),
+            Self::C05S07_05 => (
+                "A calculated L7805-style regulator holds a bounded 5 V output from the 9 V battery while the three capacitors and 330 ohm LED branch remain part of the solved topology. The USB-A adapter is a high-impedance two-terminal output connector; attached-device charging and USB protocol are outside the fixture contract.",
+                "Task: run the supply and compare the calculated regulated output with the LED current and USB connector readout.",
             ),
             Self::C06S08_01 => (
                 "A calculated 3 V source drives a two-terminal DC motor through an SPDT switch. Motor current and signed no-load speed are derived from terminal voltage; the source propeller remains a presentation discrepancy.",
@@ -1525,7 +1535,7 @@ impl Circuit {
                 component: "S1",
                 is_switch: false,
             }],
-            Self::C05S07_06 | Self::C05S07_08 => &[],
+            Self::C05S07_05 | Self::C05S07_06 | Self::C05S07_08 => &[],
             Self::C06S08_01 => &[ControlSpec {
                 label: "S1: MOTOR POWER",
                 component: "S1",
@@ -3534,6 +3544,34 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C05S07_05 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "5 V output and USB adapter: run to measure".into(),
+                        |result| {
+                            let output = result
+                                .module_output_voltages
+                                .get(&ComponentId("U1".into()))
+                                .and_then(|pins| pins.get(&PinId("out".into())))
+                                .copied()
+                                .unwrap_or(0.0);
+                            let led = result
+                                .led_currents
+                                .get(&ComponentId("LED1".into()))
+                                .copied()
+                                .unwrap_or(0.0);
+                            let usb = result
+                                .other_terminal_currents
+                                .get(&ComponentId("USB1".into()))
+                                .and_then(|pins| pins.get(&PinId("positive".into())))
+                                .copied()
+                                .unwrap_or(0.0);
+                            format!(
+                                "VOUT {output:.2} V   LED {:.2} mA   USB {:.3} mA",
+                                1000.0 * led,
+                                1000.0 * usb.abs()
+                            )
+                        },
+                    )
                 } else if bench.circuit == Circuit::C05S07_06 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "VOUT and voltmeter: run to measure".into(),
@@ -3874,6 +3912,23 @@ mod tests {
     }
 
     #[test]
+    fn c05_s07_05_regulates_five_volts_and_keeps_usb_connector_high_impedance() {
+        let mut bench = Bench::new(Circuit::C05S07_05);
+        bench.act(Action::Run);
+        advance_steps(&bench.project, &mut bench.simulation, 64);
+        let result = bench.simulation.last_valid.as_ref().unwrap();
+        let output = result.module_output_voltages[&ComponentId("U1".into())][&PinId("out".into())];
+        let led_current = result.led_currents[&ComponentId("LED1".into())];
+        let usb_current = result.other_terminal_currents[&ComponentId("USB1".into())]
+            [&PinId("positive".into())]
+            .abs();
+        assert!(!bench.simulation.stale);
+        assert!((4.9..=5.1).contains(&output), "output={output}");
+        assert!(led_current > 0.005, "led_current={led_current}");
+        assert!(usb_current < 1e-6, "usb_current={usb_current}");
+    }
+
+    #[test]
     fn c04_s06_01_keeps_equal_dc_loads_and_passive_piezo_silent() {
         let mut bench = Bench::new(Circuit::C04S06_01);
         bench.act(Action::Run);
@@ -4026,7 +4081,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            109
+            110
         );
         assert!(matches!(
             items[0],
