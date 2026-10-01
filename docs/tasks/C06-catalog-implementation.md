@@ -99,12 +99,33 @@ cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c06-s08-05-v
 cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
 ```
 
+The CAT-S08-08 slice adds
+`fixtures/projects/c06-s08-08-thermostatic-fan.json` and registers it in the
+app menu. It maps the source's LM393/NTC threshold circuit to the existing
+comparator and thermistor kinds, uses a calculated voltage-controlled
+resistance contract for the IRLZ44N MOSFET terminals, a bounded 35 ohm fan
+load, and the shared reverse diode model. Temperature and threshold are
+explicit control ratios; no fan airflow or closed-loop thermal scene is
+scripted.
+
+Focused evidence for the slice:
+
+```text
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c06-s08-08-thermostatic-fan.json — passed; 10 components, 7 wires, 6 derived nodes
+cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c06-s08-08-thermostatic-fan.json 4000 — passed; step 4000 at 0.400000 s without diagnostics
+cargo test -p bredboard-core c06_ --locked — passed; cold/hot switching regression and 64-case threshold property regression
+cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
+cargo test -p bredboard-app exercise_catalog_keeps_search_groups_and_circuits_separate --locked — passed; 111 catalog circuits
+cargo run -p bredboard-tools --locked -- validate-catalog breadboard-circuits/spec/catalog.json breadboard-circuits/spec/catalog.schema.json — passed; 20 sections, 212 schematics
+```
+
 ## Current blockers
 
 - Motor-generator input, DPDT polarity switching, PWM/MOSFET/flyback behavior,
-  servo angle, fan and thermal input, mechanical position, H-bridge safety,
-  L293D, stepper/ULN2003, chassis motion, optical/reflectance sensors, solar
-  energy storage, and display/measurement contracts are not yet available.
+  servo angle, physical fan airflow/closed-loop thermal scene, mechanical
+  position, H-bridge safety, L293D, stepper/ULN2003, chassis motion,
+  optical/reflectance sensors, solar energy storage, and display/measurement
+  contracts are not yet available.
 - Manual interaction and real-breadboard evidence are pending for any new
   fixture.
 
