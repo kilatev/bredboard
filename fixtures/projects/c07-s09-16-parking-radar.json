@@ -1,0 +1,81 @@
+{
+  "format_version": 1,
+  "title": "C07-S09-16: Parking radar",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+
+    { "id": "U_TRIG", "kind": "timer_555", "pins": { "control": "A1", "discharge": "A2", "gnd": "TP-:2", "output": "A3", "reset": "TP+:2", "threshold": "A4", "trigger": "A5", "vcc": "TP+:3" }, "parameters": { "output_resistance": 50.0, "discharge_resistance": 100.0 } },
+    { "id": "R_TRIG_A", "kind": "resistor", "pins": { "a": "TP+:4", "b": "A2" }, "parameters": { "resistance": 1000.0 } },
+    { "id": "R_TRIG_B", "kind": "resistor", "pins": { "a": "A3", "b": "A4" }, "parameters": { "resistance": 100000.0 } },
+    { "id": "C_TRIG", "kind": "capacitor", "pins": { "positive": "A4", "negative": "TP-:4" }, "parameters": { "capacitance": 0.00000001 } },
+    { "id": "C_CONTROL", "kind": "capacitor", "pins": { "positive": "A15", "negative": "TP-:5" }, "parameters": { "capacitance": 0.00001 } },
+
+    {
+      "id": "HC_SR04",
+      "kind": "module",
+      "pins": { "vcc": "TP+:5", "gnd": "TP-:6", "trig": "A6", "echo": "A7", "distance": "A8" },
+      "parameters": {},
+      "module": {
+        "pin_roles": { "distance": "input", "echo": "output", "gnd": "ground", "trig": "input", "vcc": "supply" },
+        "behavior": {
+          "behavior": "analog_transfer",
+          "output": "echo",
+          "reference": "gnd",
+          "inputs": [ { "pin": "distance", "gain": -0.8 }, { "pin": "trig", "gain": 0.0 } ],
+          "offset": 4.5,
+          "min_output": 0.5,
+          "max_output": 4.5,
+          "input_resistance": 1000000000.0,
+          "output_resistance": 1000.0
+        }
+      }
+    },
+    { "id": "DISTANCE", "kind": "potentiometer", "pins": { "a": "TP+:6", "b": "A9" }, "parameters": { "min_resistance": 1.0, "max_resistance": 100000.0 } },
+    { "id": "R_DISTANCE", "kind": "resistor", "pins": { "a": "A9", "b": "TP-:7" }, "parameters": { "resistance": 100000.0 } },
+    { "id": "C_ECHO", "kind": "capacitor", "pins": { "positive": "A7", "negative": "TP-:8" }, "parameters": { "capacitance": 0.000001 } },
+
+    {
+      "id": "LM358",
+      "kind": "ic_device",
+      "pins": { "gnd": "TP-:9", "input": "A10", "output": "A11", "vcc": "TP+:7" },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": { "gnd": "ground", "input": "input", "output": "output", "vcc": "supply" },
+        "behavior": { "behavior": "linear", "output": "output", "reference": "gnd", "inputs": [ { "pin": "input", "gain": -1.0 } ], "offset": 6.0, "min_output": 2.1, "max_output": 4.0, "input_resistance": 1000000000.0, "output_resistance": 100.0 }
+      }
+    },
+    {
+      "id": "LM3914",
+      "kind": "ic_device",
+      "pins": { "gnd": "TP-:10", "input": "A12", "output": "A13", "vcc": "TP+:8" },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": { "gnd": "ground", "input": "input", "output": "output", "vcc": "supply" },
+        "behavior": { "behavior": "linear", "output": "output", "reference": "gnd", "inputs": [ { "pin": "input", "gain": 1.0 } ], "offset": 0.0, "min_output": 0.0, "max_output": 5.0, "input_resistance": 1000000000.0, "output_resistance": 100.0 }
+      }
+    },
+    { "id": "BAR1", "kind": "bargraph_display", "pins": { "gnd": "TP-:11", "input": "A14", "seg0": "B20", "seg1": "B21", "seg2": "B22", "seg3": "B23", "seg4": "B24", "seg5": "B25", "seg6": "B26", "seg7": "B27", "seg8": "B28", "seg9": "B29", "vcc": "TP+:9" }, "parameters": { "output_resistance": 100.0 } },
+
+    { "id": "U_TONE", "kind": "timer_555", "pins": { "control": "A15", "discharge": "A16", "gnd": "TP-:12", "output": "A17", "reset": "TP+:10", "threshold": "A18", "trigger": "A19", "vcc": "TP+:11" }, "parameters": { "output_resistance": 50.0, "discharge_resistance": 100.0 } },
+    { "id": "R_TONE_A", "kind": "resistor", "pins": { "a": "TP+:12", "b": "A16" }, "parameters": { "resistance": 100000.0 } },
+    { "id": "R_TONE_B", "kind": "resistor", "pins": { "a": "A16", "b": "A18" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "C_TONE", "kind": "capacitor", "pins": { "positive": "A18", "negative": "TP-:13" }, "parameters": { "capacitance": 0.000001 } },
+    { "id": "BZ1", "kind": "buzzer", "pins": { "positive": "A17", "negative": "TP-:14" }, "parameters": { "resistance": 100.0 } },
+    { "id": "R_LED", "kind": "resistor", "pins": { "a": "A17", "b": "A20" }, "parameters": { "resistance": 1200.0 } },
+    { "id": "LED1", "kind": "led", "pins": { "anode": "A21", "cathode": "TP-:15" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "C_DECOUPLE", "kind": "capacitor", "pins": { "positive": "TP+:13", "negative": "TP-:16" }, "parameters": { "capacitance": 0.00001 } }
+  ],
+  "wires": [
+    { "id": "W_TRIG_TO_SENSOR", "from": "A3", "to": "A6" },
+    { "id": "W_TRIG_TIMING", "from": "A5", "to": "A4" },
+    { "id": "W_TRIG_CONTROL_GND", "from": "A1", "to": "TP-:5" },
+    { "id": "W_ECHO_TO_AMP", "from": "A7", "to": "A10" },
+    { "id": "W_ECHO_TO_LM3914", "from": "A7", "to": "A12" },
+    { "id": "W_LM3914_TO_BAR", "from": "A13", "to": "A14" },
+    { "id": "W_LM3914_TO_TONE", "from": "A11", "to": "A15" },
+    { "id": "W_TONE_TIMING", "from": "A19", "to": "A18" },
+    { "id": "W_LED_LIMITER", "from": "A20", "to": "A21" }
+  ],
+  "initial_conditions": { "control_ratios": { "DISTANCE": 0.5 } }
+}
