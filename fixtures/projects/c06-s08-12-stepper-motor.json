@@ -1,0 +1,154 @@
+{
+  "format_version": 1,
+  "title": "C06-S08-12: Four-phase stepper motor",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    {
+      "id": "V1",
+      "kind": "dc_voltage_source",
+      "pins": { "positive": "TP+:1", "negative": "TP-:1" },
+      "parameters": { "voltage": 5.0 }
+    },
+    {
+      "id": "U1",
+      "kind": "timer_555",
+      "pins": {
+        "control": "C20",
+        "discharge": "A7",
+        "gnd": "TP-:2",
+        "output": "F5",
+        "reset": "TP+:3",
+        "threshold": "A10",
+        "trigger": "B10",
+        "vcc": "TP+:4"
+      },
+      "parameters": { "output_resistance": 50.0, "discharge_resistance": 100.0 }
+    },
+    {
+      "id": "U2",
+      "kind": "digital_counter",
+      "pins": {
+        "carry": "F19",
+        "clock": "F10",
+        "enable": "TP-:3",
+        "gnd": "TP-:4",
+        "q0": "A15",
+        "q1": "A16",
+        "q2": "A17",
+        "q3": "A18",
+        "q4": "A19",
+        "q5": "C21",
+        "q6": "C22",
+        "q7": "C23",
+        "q8": "C24",
+        "q9": "C25",
+        "reset": "B19",
+        "vcc": "TP+:5"
+      },
+      "parameters": { "modulus": 5.0, "output_mode": 1.0, "output_resistance": 100.0 }
+    },
+    {
+      "id": "U3",
+      "kind": "module",
+      "pins": {
+        "vcc": "TP+:6",
+        "gnd": "TP-:6",
+        "in1": "B15",
+        "in2": "B16",
+        "in3": "B17",
+        "in4": "B18",
+        "out1": "F15",
+        "out2": "F16",
+        "out3": "F17",
+        "out4": "F18"
+      },
+      "parameters": {},
+      "module": {
+        "pin_roles": {
+          "gnd": "ground",
+          "in1": "input",
+          "in2": "input",
+          "in3": "input",
+          "in4": "input",
+          "out1": "output",
+          "out2": "output",
+          "out3": "output",
+          "out4": "output",
+          "vcc": "supply"
+        },
+        "behavior": {
+          "behavior": "open_collector",
+          "supply": "vcc",
+          "ground": "gnd",
+          "channels": [
+            { "input": "in1", "output": "out1" },
+            { "input": "in2", "output": "out2" },
+            { "input": "in3", "output": "out3" },
+            { "input": "in4", "output": "out4" }
+          ],
+          "input_resistance": 1000000.0,
+          "on_resistance": 15.0,
+          "off_resistance": 1000000000.0
+        }
+      }
+    },
+    {
+      "id": "X1",
+      "kind": "other",
+      "pins": {
+        "common": "TP+:7",
+        "phase_a": "G15",
+        "phase_b": "G16",
+        "phase_c": "G17",
+        "phase_d": "G18"
+      },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": {
+          "common": "supply",
+          "phase_a": "terminal",
+          "phase_b": "terminal",
+          "phase_c": "terminal",
+          "phase_d": "terminal"
+        },
+        "behavior": {
+          "behavior": "stepper_load",
+          "common": "common",
+          "phases": ["phase_a", "phase_b", "phase_c", "phase_d"],
+          "coil_resistance": 50.0,
+          "rated_voltage": 5.0,
+          "steps_per_revolution": 2048.0
+        }
+      }
+    },
+    {
+      "id": "R1",
+      "kind": "resistor",
+      "pins": { "a": "TP+:8", "b": "C7" },
+      "parameters": { "resistance": 10000.0 }
+    },
+    {
+      "id": "RV1",
+      "kind": "potentiometer",
+      "pins": { "a": "D7", "b": "E10" },
+      "parameters": { "min_resistance": 1.0, "max_resistance": 100000.0 }
+    },
+    {
+      "id": "C1",
+      "kind": "capacitor",
+      "pins": { "negative": "TP-:7", "positive": "C10" },
+      "parameters": { "capacitance": 0.00001 }
+    },
+    {
+      "id": "C2",
+      "kind": "capacitor",
+      "pins": { "negative": "TP-:8", "positive": "D20" },
+      "parameters": { "capacitance": 0.00000001 }
+    }
+  ],
+  "wires": [
+    { "id": "W1", "from": "G5", "to": "G10" },
+    { "id": "W2", "from": "G19", "to": "TP-:9" }
+  ],
+  "initial_conditions": { "control_ratios": { "RV1": 0.05 } }
+}

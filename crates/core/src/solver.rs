@@ -313,6 +313,11 @@ enum NonlinearElement {
         voltage: f64,
         resistance: f64,
     },
+    OtherStepperLoad {
+        common: usize,
+        phases: [usize; 4],
+        coil_resistance: f64,
+    },
     OtherLinearTransfer {
         pin_nodes: BTreeMap<PinId, usize>,
         output: PinId,
@@ -762,6 +767,9 @@ fn solve_internal(
             NonlinearElement::OtherSource {
                 positive, negative, ..
             } => vec![(*positive, *negative)],
+            NonlinearElement::OtherStepperLoad { common, phases, .. } => {
+                phases.iter().map(|phase| (*common, *phase)).collect()
+            }
             NonlinearElement::OtherLinearTransfer { pin_nodes, .. } => {
                 let mut nodes = pin_nodes.values().copied();
                 let Some(first) = nodes.next() else { continue };
@@ -1130,6 +1138,7 @@ fn solve_internal(
                 module_output_voltages.insert(id.clone(), outputs.collect());
             }
             NonlinearElement::OtherSource { .. }
+            | NonlinearElement::OtherStepperLoad { .. }
             | NonlinearElement::OtherBjtSocket { .. }
             | NonlinearElement::OtherDiodeSocket { .. }
             | NonlinearElement::OtherLinearTransfer { .. }
@@ -1228,6 +1237,21 @@ fn solve_internal(
                     (voltage_at(positive)? - voltage_at(negative)? - target) / internal_resistance;
                 currents.insert(positive.clone(), current);
                 currents.insert(negative.clone(), -current);
+            }
+            OtherDeviceBehavior::StepperLoad {
+                common,
+                phases,
+                coil_resistance,
+                ..
+            } => {
+                let common_voltage = voltage_at(common)?;
+                let mut common_current = 0.0;
+                for phase in phases {
+                    let current = (common_voltage - voltage_at(phase)?) / coil_resistance;
+                    currents.insert(phase.clone(), current);
+                    common_current -= current;
+                }
+                currents.insert(common.clone(), common_current);
             }
             OtherDeviceBehavior::BjtTestSocket { socket } => {
                 let base_voltage = voltage_at(&socket.base)?;
@@ -2024,6 +2048,27 @@ fn make_branches(
                             negative,
                             voltage: *voltage,
                             resistance: *internal_resistance,
+                        });
+                    }
+                    OtherDeviceBehavior::StepperLoad {
+                        common,
+                        phases,
+                        coil_resistance,
+                        ..
+                    } => {
+                        let common = node(&common.0)?;
+                        let phases: [usize; 4] = phases
+                            .iter()
+                            .map(|phase| node(&phase.0))
+                            .collect::<Result<Vec<_>, _>>()?
+                            .try_into()
+                            .expect("validated four stepper phases");
+                        active.extend([common]);
+                        active.extend(phases);
+                        nonlinear.push(NonlinearElement::OtherStepperLoad {
+                            common,
+                            phases,
+                            coil_resistance: *coil_resistance,
                         });
                     }
                     OtherDeviceBehavior::BjtTestSocket { socket } => {
@@ -3264,6 +3309,17 @@ fn stamp_element(
                 matrix,
                 rhs,
             );
+        }
+        NonlinearElement::OtherStepperLoad {
+            common,
+            phases,
+            coil_resistance,
+            ..
+        } => {
+            let conductance = 1.0 / *coil_resistance;
+            for phase in phases {
+                stamp_conductance(matrix, vars, *common, *phase, conductance);
+            }
         }
         NonlinearElement::OtherLinearTransfer {
             pin_nodes,
@@ -4929,6 +4985,66 @@ mod tests {
         assert!((on.switch_currents[&ComponentId("S1".into())].abs() - 0.375).abs() < 1e-12);
         assert!((on.motor_currents[&ComponentId("M1".into())] - 0.375).abs() < 1e-12);
         assert!((on.motor_speeds[&ComponentId("M1".into())] - 10_000.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn c06_stepper_fixture_calculates_four_phase_load_and_driver_mapping() {
+        let project: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c06-s08-12-stepper-motor.json"
+        ))
+        .unwrap();
+        let topology = compile_topology(&project).expect("stepper fixture topology");
+        assert_eq!(topology.len(), 20);
+
+        let result = solve_transient(
+            &project,
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &BTreeMap::from([(ComponentId("RV1".into()), 0.05)]),
+        )
+        .expect("stepper fixture should solve");
+        let phases = &result.other_terminal_currents[&ComponentId("X1".into())];
+        assert!(phases[&PinId("phase_a".into())] > 0.05);
+        assert!(phases[&PinId("phase_b".into())].abs() < 1e-6);
+        assert!(phases[&PinId("phase_c".into())].abs() < 1e-6);
+        assert!(phases[&PinId("phase_d".into())].abs() < 1e-6);
+        let balance: f64 = ["phase_a", "phase_b", "phase_c", "phase_d"]
+            .iter()
+            .map(|pin| phases[&PinId((*pin).into())])
+            .sum::<f64>()
+            + phases[&PinId("common".into())];
+        assert!(balance.abs() < 1e-12, "phase current balance={balance}");
+
+        for (state, active_pin) in [
+            (0, "phase_a"),
+            (1, "phase_b"),
+            (2, "phase_c"),
+            (3, "phase_d"),
+        ] {
+            let result = solve_transient_with_digital_states(
+                &project,
+                &BTreeMap::new(),
+                &BTreeMap::new(),
+                &BTreeMap::from([(ComponentId("RV1".into()), 0.05)]),
+                &BTreeMap::from([(ComponentId("U2".into()), state)]),
+                0,
+                MAX_NONLINEAR_ITERATIONS,
+            )
+            .expect("each counter phase should drive a solvable stepper state");
+            let phase_currents = &result.other_terminal_currents[&ComponentId("X1".into())];
+            assert!(
+                phase_currents[&PinId(active_pin.into())] > 0.05,
+                "state={state}"
+            );
+            for pin in ["phase_a", "phase_b", "phase_c", "phase_d"] {
+                if pin != active_pin {
+                    assert!(
+                        phase_currents[&PinId(pin.into())].abs() < 1e-6,
+                        "state={state}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]

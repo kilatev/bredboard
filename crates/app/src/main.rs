@@ -158,6 +158,8 @@ const C06_S08_05_JSON: &str =
     include_str!("../../../fixtures/projects/c06-s08-05-vibration-bot.json");
 const C06_S08_08_JSON: &str =
     include_str!("../../../fixtures/projects/c06-s08-08-thermostatic-fan.json");
+const C06_S08_12_JSON: &str =
+    include_str!("../../../fixtures/projects/c06-s08-12-stepper-motor.json");
 const C07_S09_03_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-03-two-station-telegraph.json");
 const C07_S09_01_JSON: &str =
@@ -290,6 +292,7 @@ enum Circuit {
     C06S08_01,
     C06S08_05,
     C06S08_08,
+    C06S08_12,
     C07S09_01,
     C07S09_03,
     C08S17_03,
@@ -326,7 +329,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 111] {
+    fn all() -> [Self; 113] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -388,6 +391,7 @@ impl Circuit {
             Self::C06S08_01,
             Self::C06S08_05,
             Self::C06S08_08,
+            Self::C06S08_12,
             Self::C07S09_01,
             Self::C07S09_03,
             Self::C08S17_03,
@@ -537,6 +541,7 @@ impl Circuit {
             Self::C06S08_01 => C06_S08_01_JSON,
             Self::C06S08_05 => C06_S08_05_JSON,
             Self::C06S08_08 => C06_S08_08_JSON,
+            Self::C06S08_12 => C06_S08_12_JSON,
             Self::C07S09_01 => C07_S09_01_JSON,
             Self::C07S09_03 => C07_S09_03_JSON,
             Self::C08S17_03 => C08_S17_03_JSON,
@@ -653,6 +658,7 @@ impl Circuit {
             Self::C06S08_01 => "C06-S08-01: MOTOR WITH SWITCH",
             Self::C06S08_05 => "C06-S08-05: VIBRATION BOT",
             Self::C06S08_08 => "C06-S08-08: THERMOSTATIC FAN",
+            Self::C06S08_12 => "C06-S08-12: FOUR-PHASE STEPPER MOTOR",
             Self::C07S09_01 => "C07-S09-01: HOT-WIRE COUNTER",
             Self::C07S09_03 => "C07-S09-03: TWO-STATION TELEGRAPH",
             Self::C08S17_03 => "C08-S17-03: OPTOCOUPLER",
@@ -920,6 +926,10 @@ impl Circuit {
             Self::C06S08_08 => (
                 "A calculated LM393-style comparator compares an NTC divider with an adjustable threshold. Its output drives a bounded MOSFET resistance contract and a 35 ohm fan load; the fan's airflow and the source's physical thermal feedback remain presentation discrepancies.",
                 "Task: drag TH1 from cold to hot, adjust RV1, and compare the calculated fan current at the switching threshold.",
+            ),
+            Self::C06S08_12 => (
+                "A calculated NE555 oscillator clocks a modulo-five CD4017. Q0–Q3 form the four-phase sequence, Q4 resets the counter, and a calculated ULN2003 open-collector module sinks the selected 28BYJ-48 coil.",
+                "Task: drag the speed dial, run the fixture, and follow the calculated active coil currents in phase order.",
             ),
             Self::C07S09_01 => (
                 "A calculated button contact feeds a Schmitt inverter and bounded decimal counter. The counter drives a seven-segment display through current-limited resistors; the source wire-ring prop is represented by the explicit button control.",
@@ -1579,6 +1589,7 @@ impl Circuit {
                 is_switch: true,
             }],
             Self::C06S08_08 => &[],
+            Self::C06S08_12 => &[],
             Self::C07S09_01 => &[ControlSpec {
                 label: "S1: CONTACT",
                 component: "S1",
@@ -1887,6 +1898,10 @@ impl Circuit {
                     component: "RV1",
                 },
             ],
+            Self::C06S08_12 => &[DialSpec {
+                label: "RV1: STEP SPEED - drag left/right",
+                component: "RV1",
+            }],
             Self::E27 => &[DialSpec {
                 label: "RV1: SHARED BRIGHTNESS - drag left/right",
                 component: "RV1",
@@ -3495,6 +3510,44 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C06S08_12 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Stepper phase currents: run to measure".into(),
+                        |result| {
+                            let phases = result
+                                .other_terminal_currents
+                                .get(&ComponentId("X1".into()));
+                            let current = |pin: &str| {
+                                1000.0
+                                    * phases
+                                        .and_then(|pins| pins.get(&PinId(pin.into())))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                                        .max(0.0)
+                            };
+                            let values = [
+                                current("phase_a"),
+                                current("phase_b"),
+                                current("phase_c"),
+                                current("phase_d"),
+                            ];
+                            let active = values
+                                .iter()
+                                .enumerate()
+                                .max_by(|left, right| left.1.total_cmp(right.1))
+                                .map_or("none", |(index, value)| {
+                                    if *value > 1.0 {
+                                        ["A", "B", "C", "D"][index]
+                                    } else {
+                                        "none"
+                                    }
+                                });
+                            format!(
+                                "A {:.1} mA  B {:.1} mA  C {:.1} mA  D {:.1} mA  ACTIVE {active}",
+                                values[0], values[1], values[2], values[3]
+                            )
+                        },
+                    )
                 } else if bench.circuit == Circuit::C07S09_03 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "Station currents: run to measure".into(),
@@ -4209,7 +4262,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            111
+            113
         );
         assert!(matches!(
             items[0],

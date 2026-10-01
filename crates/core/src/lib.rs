@@ -1402,8 +1402,8 @@ fn validate_module_resistance(c: &Component, errors: &mut Vec<Diagnostic>, path:
 fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec<Diagnostic>) {
     use OtherDeviceBehavior::{
         BjtTestSocket as BjtTestSocketBehavior, DiodeTestSocket as DiodeTestSocketBehavior,
-        LinearTransfer, Resistive, RingModulator, Transformer, VoltageControlledResistance,
-        VoltageSource,
+        LinearTransfer, Resistive, RingModulator, StepperLoad, Transformer,
+        VoltageControlledResistance, VoltageSource,
     };
     use OtherDevicePinRole::{Control, Ground, Input, Output, Reference, Supply, Terminal};
 
@@ -1453,6 +1453,59 @@ fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec
                 ));
             }
             validate_other_resistance(c, errors, "resistance", *value);
+        }
+        StepperLoad {
+            common,
+            phases,
+            coil_resistance,
+            rated_voltage,
+            steps_per_revolution,
+        } => {
+            if !role_is(common, |role| matches!(role, Supply | Terminal))
+                || phases
+                    .iter()
+                    .any(|phase| !role_is(phase, |role| matches!(role, Terminal | Input)))
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_stepper_pin_roles",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "stepper loads require a supply common pin and four terminal/input phase pins",
+                ));
+            }
+            if phases.iter().any(|phase| phase == common)
+                || phases
+                    .iter()
+                    .enumerate()
+                    .any(|(index, phase)| phases[..index].contains(phase))
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_stepper_duplicate_pins",
+                    format!("components.{}.other_device.behavior.phases", c.id.0),
+                    "stepper common and phase pins must be distinct",
+                ));
+            }
+            validate_other_resistance(c, errors, "coil_resistance", *coil_resistance);
+            validate_other_finite(c, errors, "rated_voltage", *rated_voltage);
+            validate_other_finite(c, errors, "steps_per_revolution", *steps_per_revolution);
+            if !rated_voltage.is_finite() || !(0.1..=12.0).contains(rated_voltage) {
+                errors.push(Diagnostic::new(
+                    "other_device_stepper_voltage_range",
+                    format!("components.{}.other_device.behavior.rated_voltage", c.id.0),
+                    "stepper rated_voltage must be in 0.1..=12.0 V",
+                ));
+            }
+            if !steps_per_revolution.is_finite()
+                || !(1.0..=100_000.0).contains(steps_per_revolution)
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_stepper_steps_range",
+                    format!(
+                        "components.{}.other_device.behavior.steps_per_revolution",
+                        c.id.0
+                    ),
+                    "stepper steps_per_revolution must be in 1..=100000",
+                ));
+            }
         }
         VoltageSource {
             positive,
