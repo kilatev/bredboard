@@ -1,0 +1,91 @@
+{
+  "format_version": 1,
+  "title": "C07-S09-09: Quiz buttons",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+
+    { "id": "B1", "kind": "momentary_button", "pins": { "a": "TP+:2", "b": "A1" }, "parameters": {} },
+    { "id": "B2", "kind": "momentary_button", "pins": { "a": "TP+:3", "b": "A2" }, "parameters": {} },
+    { "id": "B3", "kind": "momentary_button", "pins": { "a": "TP+:4", "b": "A3" }, "parameters": {} },
+    { "id": "B4", "kind": "momentary_button", "pins": { "a": "TP+:5", "b": "A4" }, "parameters": {} },
+    { "id": "RESET", "kind": "momentary_button", "pins": { "a": "TP+:6", "b": "A5" }, "parameters": {} },
+
+    { "id": "R_B1", "kind": "resistor", "pins": { "a": "B1", "b": "TP-:14" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_B2", "kind": "resistor", "pins": { "a": "B2", "b": "TP-:15" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_B3", "kind": "resistor", "pins": { "a": "B3", "b": "TP-:16" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_B4", "kind": "resistor", "pins": { "a": "B4", "b": "TP-:17" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_RESET", "kind": "resistor", "pins": { "a": "B6", "b": "TP-:18" }, "parameters": { "resistance": 10000.0 } },
+
+    { "id": "C1", "kind": "capacitor", "pins": { "positive": "TP+:7", "negative": "TP-:2" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "C2", "kind": "capacitor", "pins": { "positive": "TP+:8", "negative": "TP-:3" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "C3", "kind": "capacitor", "pins": { "positive": "TP+:9", "negative": "TP-:4" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "C4", "kind": "capacitor", "pins": { "positive": "TP+:10", "negative": "TP-:5" }, "parameters": { "capacitance": 0.0000001 } },
+    { "id": "C5", "kind": "capacitor", "pins": { "positive": "TP+:11", "negative": "TP-:6" }, "parameters": { "capacitance": 0.0000001 } },
+
+    { "id": "U1", "kind": "d_flip_flop", "pins": { "clock": "C1", "data": "A20", "gnd": "A28", "not_q": "A14", "q": "A10", "reset": "B5", "set": "A29", "vcc": "TP+:12" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "U2", "kind": "d_flip_flop", "pins": { "clock": "C2", "data": "B20", "gnd": "B28", "not_q": "B14", "q": "A11", "reset": "C5", "set": "B29", "vcc": "TP+:13" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "U3", "kind": "d_flip_flop", "pins": { "clock": "C3", "data": "C20", "gnd": "C28", "not_q": "C14", "q": "A18", "reset": "D5", "set": "C29", "vcc": "TP+:14" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "U4", "kind": "d_flip_flop", "pins": { "clock": "C4", "data": "D20", "gnd": "D28", "not_q": "D14", "q": "A13", "reset": "A6", "set": "D29", "vcc": "TP+:15" }, "parameters": { "output_resistance": 100.0 } },
+
+    { "id": "BCD0", "kind": "logic_gate", "pins": { "gnd": "TP-:22", "input_a": "D10", "input_b": "C18", "output": "F24", "vcc": "TP+:20" }, "parameters": { "operation": 1.0, "output_resistance": 100.0 } },
+    { "id": "BCD1", "kind": "logic_gate", "pins": { "gnd": "TP-:23", "input_a": "D11", "input_b": "D18", "output": "F26", "vcc": "TP+:21" }, "parameters": { "operation": 1.0, "output_resistance": 100.0 } },
+    {
+      "id": "WINNER_OR",
+      "kind": "ic_device",
+      "pins": { "gnd": "A30", "q1": "E10", "q2": "E11", "q3": "F18", "q4": "E13", "output": "E23", "vcc": "TP+:16" },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": { "gnd": "ground", "q1": "input", "q2": "input", "q3": "input", "q4": "input", "output": "output", "vcc": "supply" },
+        "behavior": { "behavior": "logic", "inputs": ["q1", "q2", "q3", "q4"], "output": "output", "reference": "gnd", "supply": "vcc", "operation": "or", "output_resistance": 100.0 }
+      }
+    },
+    {
+      "id": "ALLOW",
+      "kind": "ic_device",
+      "pins": { "gnd": "C30", "q1": "B10", "q2": "B11", "q3": "G18", "q4": "B13", "output": "E20", "vcc": "TP+:19" },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": { "gnd": "ground", "q1": "input", "q2": "input", "q3": "input", "q4": "input", "output": "output", "vcc": "supply" },
+        "behavior": { "behavior": "logic", "inputs": ["q1", "q2", "q3", "q4"], "output": "output", "reference": "gnd", "supply": "vcc", "operation": "nor", "output_resistance": 100.0 }
+      }
+    },
+
+    { "id": "DISP1", "kind": "seven_segment_display", "pins": { "a": "C26", "b": "C27", "c": "F28", "common": "TP-:25", "d": "F29", "e": "C25", "f": "C24", "g": "F27", "gnd": "TP-:26", "input_b0": "G24", "input_b1": "G26", "input_b2": "D13", "input_b3": "TP-:24", "vcc": "TP+:22" }, "parameters": { "output_resistance": 100.0 } },
+
+    { "id": "R_SEG_A", "kind": "resistor", "pins": { "a": "D26", "b": "TP-:7" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R_SEG_B", "kind": "resistor", "pins": { "a": "D27", "b": "TP-:8" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R_SEG_C", "kind": "resistor", "pins": { "a": "G28", "b": "TP-:9" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R_SEG_D", "kind": "resistor", "pins": { "a": "G29", "b": "TP-:10" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R_SEG_E", "kind": "resistor", "pins": { "a": "D25", "b": "TP-:11" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R_SEG_F", "kind": "resistor", "pins": { "a": "D24", "b": "TP-:12" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R_SEG_G", "kind": "resistor", "pins": { "a": "G27", "b": "TP-:13" }, "parameters": { "resistance": 470.0 } },
+
+    { "id": "R_LED1", "kind": "resistor", "pins": { "a": "C10", "b": "F10" }, "parameters": { "resistance": 330.0 } },
+    { "id": "R_LED2", "kind": "resistor", "pins": { "a": "C11", "b": "F11" }, "parameters": { "resistance": 330.0 } },
+    { "id": "R_LED3", "kind": "resistor", "pins": { "a": "B18", "b": "F12" }, "parameters": { "resistance": 330.0 } },
+    { "id": "R_LED4", "kind": "resistor", "pins": { "a": "C13", "b": "F13" }, "parameters": { "resistance": 330.0 } },
+    { "id": "LED1", "kind": "led", "pins": { "anode": "G10", "cathode": "TP-:28" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "LED2", "kind": "led", "pins": { "anode": "G11", "cathode": "TP-:29" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "LED3", "kind": "led", "pins": { "anode": "G12", "cathode": "TP-:30" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "LED4", "kind": "led", "pins": { "anode": "G13", "cathode": "G30" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+
+    { "id": "BZ1", "kind": "buzzer", "pins": { "positive": "D23", "negative": "TP-:27" }, "parameters": { "resistance": 100.0 } }
+  ],
+  "wires": [
+    { "id": "W_RESET", "from": "E5", "to": "C6" },
+    { "id": "W_Q3", "from": "E18", "to": "H18" },
+    { "id": "W_DFF_GROUND", "from": "E28", "to": "TP-:19" },
+    { "id": "W_DFF_SET_GROUND", "from": "E29", "to": "TP-:20" },
+    { "id": "W_LOGIC_GROUND", "from": "B30", "to": "TP-:21" }
+  ],
+  "initial_conditions": {
+    "controls": {
+      "B1": "button_released",
+      "B2": "button_released",
+      "B3": "button_released",
+      "B4": "button_released",
+      "RESET": "button_released"
+    }
+  }
+}

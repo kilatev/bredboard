@@ -33,8 +33,11 @@ The source record is
   address jumpers; keep it blocked.
 - S09-08 needs an MQ-2 gas module, warm-up/analog sensor contract, and a
   comparator-driven alarm path; keep it blocked.
-- S09-09 needs priority encoding, multiple flip-flops, a seven-segment
-  display, and five-player arbitration; keep it blocked.
+- S09-09 is admitted with four calculated D flip-flops, a calculated NOR
+  allow gate, a calculated multi-input winner OR, two BCD bit OR gates, and
+  the existing seven-segment display model. The source package boundaries
+  (74HC20, 74HC148, and CD4511) are an explicit model-level discrepancy; a
+  simultaneous same-step button press is resolved by stable simulation order.
 - S09-10 needs a crystal timebase, six countdown counters, six displays, and
   chess-clock state; keep it blocked.
 - S09-11 needs four reversible BCD counters, four displays, and score-control
@@ -83,6 +86,31 @@ The C07-S09-03 full gate passed on 2026-09-29 with `cargo fmt --all --check`,
 failures), native and WASM app builds, fixture validation (`9 components, 4
 wires, 6 derived nodes`), 4,000-step simulation, `validate-catalog`
 (`20 sections, 212 schematics`), and `git diff --check`. Manual browser and
+real-breadboard evidence remain pending.
+
+The CAT-S09-09 slice adds
+`fixtures/projects/c07-s09-09-quiz-buttons.json` and registers it in the app
+menu. It preserves the source BOM counts for buttons, LEDs, resistors,
+capacitors, buzzer, and source. Four D flip-flops latch player inputs; the
+calculated NOR allow path blocks later inputs, the multi-input OR drives the
+buzzer, and calculated BCD outputs drive the seven-segment display. The
+source's package-level 74HC20/74HC148/CD4511 behavior is represented by the
+existing bounded pin-level primitives, with the discrepancy recorded in the
+ledger.
+
+Focused evidence for the slice:
+
+```text
+cargo run -q -p bredboard-tools --locked -- validate fixtures/projects/c07-s09-09-quiz-buttons.json — passed; 41 components, 5 wires, 28 derived nodes
+cargo test -p bredboard-app --locked c07_s09_09_latches_first_player_blocks_later_inputs_and_resets -- --nocapture — passed
+cargo test -p bredboard-app --locked all_embedded_boards_have_unique_lead_and_wire_holes -- --nocapture — passed
+```
+
+The CAT-S09-09 full automated gate passed on 2026-10-02: the 4,000-step
+simulation completed, `validate-catalog` reported 20 sections and 212
+schematics, `cargo fmt --all --check`, Clippy, `cargo test --workspace
+--locked` (59 app, 147 core, 3 tools, 0 doc-test failures), native Linux and
+WASM app builds, and `git diff --check` all passed. Manual browser and
 real-breadboard evidence remain pending.
 
 The parallel C07-S09-01 slice adds

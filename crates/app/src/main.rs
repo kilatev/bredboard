@@ -164,6 +164,8 @@ const C07_S09_03_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-03-two-station-telegraph.json");
 const C07_S09_01_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-01-hot-wire-button-counter.json");
+const C07_S09_09_JSON: &str =
+    include_str!("../../../fixtures/projects/c07-s09-09-quiz-buttons.json");
 const C08_S17_03_JSON: &str =
     include_str!("../../../fixtures/projects/c08-s17-03-optocoupler.json");
 const C08_S14_01_JSON: &str =
@@ -295,6 +297,7 @@ enum Circuit {
     C06S08_12,
     C07S09_01,
     C07S09_03,
+    C07S09_09,
     C08S17_03,
     C08S14_01,
     C09S15_01,
@@ -394,6 +397,7 @@ impl Circuit {
             Self::C06S08_12,
             Self::C07S09_01,
             Self::C07S09_03,
+            Self::C07S09_09,
             Self::C08S17_03,
             Self::C08S14_01,
             Self::C09S15_01,
@@ -544,6 +548,7 @@ impl Circuit {
             Self::C06S08_12 => C06_S08_12_JSON,
             Self::C07S09_01 => C07_S09_01_JSON,
             Self::C07S09_03 => C07_S09_03_JSON,
+            Self::C07S09_09 => C07_S09_09_JSON,
             Self::C08S17_03 => C08_S17_03_JSON,
             Self::C08S14_01 => C08_S14_01_JSON,
             Self::C09S15_01 => C09_S15_01_JSON,
@@ -661,6 +666,7 @@ impl Circuit {
             Self::C06S08_12 => "C06-S08-12: FOUR-PHASE STEPPER MOTOR",
             Self::C07S09_01 => "C07-S09-01: HOT-WIRE COUNTER",
             Self::C07S09_03 => "C07-S09-03: TWO-STATION TELEGRAPH",
+            Self::C07S09_09 => "C07-S09-09: QUIZ BUTTONS",
             Self::C08S17_03 => "C08-S17-03: OPTOCOUPLER",
             Self::C08S14_01 => "C08-S14-01: CANDLE FLICKER",
             Self::C09S15_01 => "C09-S15-01: RELAY SWITCH",
@@ -938,6 +944,10 @@ impl Circuit {
             Self::C07S09_03 => (
                 "Two calculated button stations drive independent LED and active-buzzer branches. The source's long cable is represented by board wiring and remains an explicit presentation discrepancy.",
                 "Task: press B1 or B2, run the fixture, and compare the calculated LED and buzzer currents for each station.",
+            ),
+            Self::C07S09_09 => (
+                "Four calculated D flip-flops latch the first player input, a gate chain blocks later inputs, and the winner's BCD value drives a current-limited seven-segment display, four LEDs, and a buzzer. The source's 74HC20, 74HC148, and CD4511 package internals are represented by these existing pin-level digital primitives.",
+                "Task: press one player button, run one or more fixed steps, press another player button to confirm it is blocked, then press RESET and verify the display and indicators clear.",
             ),
             Self::C08S17_03 => (
                 "A calculated optocoupler transfers current from a 9 V button domain into an isolated 4.5 V LED domain. The two source rails remain electrically separate; the PC817 package is represented by the bounded optical-transfer contract.",
@@ -1604,6 +1614,33 @@ impl Circuit {
                 ControlSpec {
                     label: "B2: STATION 2",
                     component: "B2",
+                    is_switch: false,
+                },
+            ],
+            Self::C07S09_09 => &[
+                ControlSpec {
+                    label: "B1: PLAYER 1",
+                    component: "B1",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B2: PLAYER 2",
+                    component: "B2",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B3: PLAYER 3",
+                    component: "B3",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B4: PLAYER 4",
+                    component: "B4",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "RESET: HOST",
+                    component: "RESET",
                     is_switch: false,
                 },
             ],
@@ -3583,6 +3620,41 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C07S09_09 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Winner: press a player button and run to measure".into(),
+                        |result| {
+                            let winner = ["U1", "U2", "U3", "U4"]
+                                .iter()
+                                .enumerate()
+                                .find_map(|(index, id)| {
+                                    result
+                                        .node_voltages
+                                        .iter()
+                                        .find(|node| {
+                                            node.contacts.contains(
+                                                &bredboard_core::Contact::ComponentPin(
+                                                    ComponentId((*id).into()),
+                                                    bredboard_core::PinId("q".into()),
+                                                ),
+                                            )
+                                        })
+                                        .filter(|node| node.voltage > 2.5)
+                                        .map(|_| index + 1)
+                                })
+                                .unwrap_or(0);
+                            format!(
+                                "Winner player {winner}   buzzer {:.2} mA",
+                                1000.0
+                                    * result
+                                        .resistor_currents
+                                        .get(&ComponentId("BZ1".into()))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                                        .abs()
+                            )
+                        },
+                    )
                 } else if bench.circuit == Circuit::C04S06_13 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "Synth envelope and speaker: run to measure".into(),
@@ -3989,6 +4061,65 @@ mod tests {
             );
             assert!(all.iter().all(|hole| hole_position(hole).is_some()));
         }
+    }
+
+    #[test]
+    fn c07_s09_09_latches_first_player_blocks_later_inputs_and_resets() {
+        let mut bench = Bench::new(Circuit::C07S09_09);
+        bench.act(Action::SetControl {
+            component: ComponentId("B2".into()),
+            state: ControlState::ButtonPressed,
+        });
+        bench.act(Action::SingleStep);
+        assert!(
+            !bench.simulation.stale,
+            "{:?}",
+            bench.simulation.diagnostics
+        );
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("U2".into())] & 1,
+            1
+        );
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("U1".into())] & 1,
+            0
+        );
+        let winner = bench.simulation.last_valid.as_ref().unwrap();
+        assert!(winner.led_currents[&ComponentId("LED2".into())] > 0.001);
+        assert!(winner.led_currents[&ComponentId("LED1".into())] < 1e-6);
+        assert!(winner.resistor_currents[&ComponentId("BZ1".into())].abs() > 0.005);
+
+        bench.act(Action::SetControl {
+            component: ComponentId("B1".into()),
+            state: ControlState::ButtonPressed,
+        });
+        bench.act(Action::SingleStep);
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("U1".into())] & 1,
+            0
+        );
+
+        bench.act(Action::SetControl {
+            component: ComponentId("RESET".into()),
+            state: ControlState::ButtonPressed,
+        });
+        bench.act(Action::SingleStep);
+        for id in ["U1", "U2", "U3", "U4"] {
+            assert_eq!(
+                bench.simulation.digital_states[&ComponentId(id.into())] & 1,
+                0
+            );
+        }
+        assert!(
+            bench
+                .simulation
+                .last_valid
+                .as_ref()
+                .unwrap()
+                .led_currents
+                .values()
+                .all(|current| *current < 1e-6)
+        );
     }
 
     #[test]
