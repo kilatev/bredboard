@@ -1,0 +1,112 @@
+{
+  "format_version": 1,
+  "title": "C05-S07-06: Adjustable regulated power supply",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    {
+      "id": "V1",
+      "kind": "dc_voltage_source",
+      "pins": { "positive": "TP+:1", "negative": "TP-:1" },
+      "parameters": { "voltage": 12.0 }
+    },
+    {
+      "id": "U1",
+      "kind": "module",
+      "pins": { "adjust": "F10", "gnd": "TP-:3", "in": "TP+:3", "out": "F5" },
+      "parameters": {},
+      "module": {
+        "pin_roles": {
+          "adjust": "reference",
+          "gnd": "ground",
+          "in": "supply",
+          "out": "power_output"
+        },
+        "behavior": {
+          "behavior": "adjustable_regulated_supply",
+          "input_positive": "in",
+          "input_negative": "gnd",
+          "output_positive": "out",
+          "output_negative": "gnd",
+          "adjust": "adjust",
+          "reference_voltage": 1.25,
+          "min_output_voltage": 0.0,
+          "max_output_voltage": 10.0,
+          "dropout_voltage": 2.0,
+          "input_resistance": 10000.0,
+          "output_resistance": 1.0
+        }
+      }
+    },
+    {
+      "id": "R1",
+      "kind": "resistor",
+      "pins": { "a": "G5", "b": "G10" },
+      "parameters": { "resistance": 240.0 }
+    },
+    {
+      "id": "RV1",
+      "kind": "potentiometer",
+      "pins": { "a": "H10", "b": "TP-:4" },
+      "parameters": { "min_resistance": 1.0, "max_resistance": 5000.0 }
+    },
+    {
+      "id": "C1",
+      "kind": "capacitor",
+      "pins": { "negative": "TP-:5", "positive": "TP+:4" },
+      "parameters": { "capacitance": 0.0000001 }
+    },
+    {
+      "id": "C2",
+      "kind": "capacitor",
+      "pins": { "negative": "TP-:6", "positive": "H5" },
+      "parameters": { "capacitance": 0.000001 }
+    },
+    {
+      "id": "C3",
+      "kind": "capacitor",
+      "pins": { "negative": "TP-:7", "positive": "I10" },
+      "parameters": { "capacitance": 0.00001 }
+    },
+    {
+      "id": "D1",
+      "kind": "diode",
+      "pins": { "anode": "F6", "cathode": "TP+:5" },
+      "parameters": { "forward_voltage": 0.7, "series_resistance": 10.0 }
+    },
+    {
+      "id": "D2",
+      "kind": "diode",
+      "pins": { "anode": "J10", "cathode": "G6" },
+      "parameters": { "forward_voltage": 0.7, "series_resistance": 10.0 }
+    },
+    {
+      "id": "M1",
+      "kind": "module",
+      "pins": { "display": "I6", "gnd": "TP-:8", "sense": "H6", "vcc": "TP+:6" },
+      "parameters": {},
+      "module": {
+        "pin_roles": {
+          "display": "output",
+          "gnd": "ground",
+          "sense": "input",
+          "vcc": "supply"
+        },
+        "behavior": {
+          "behavior": "analog_transfer",
+          "output": "display",
+          "reference": "gnd",
+          "inputs": [{ "pin": "sense", "gain": 1.0 }],
+          "offset": 0.0,
+          "min_output": 0.0,
+          "max_output": 12.0,
+          "input_resistance": 1000000000.0,
+          "output_resistance": 1000000000.0
+        }
+      }
+    }
+  ],
+  "wires": [
+    { "id": "W1", "from": "J6", "to": "I5" }
+  ],
+  "initial_conditions": { "control_ratios": { "RV1": 0.0 } }
+}

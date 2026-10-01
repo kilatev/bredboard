@@ -1,3 +1,4 @@
+use crate::module::adjustable_output_target;
 use crate::{
     BjtPolarity, BjtTestState, Component, ComponentId, ComponentKind, Contact, ControlState,
     Diagnostic, DiodeModel, DiodeSpec, IcDeviceBehavior, IcLogicOperation, ModuleBehavior, Node,
@@ -3699,6 +3700,77 @@ fn stamp_module(
                 rhs,
             );
         }
+        ModuleBehavior::AdjustableRegulatedSupply {
+            input_positive,
+            input_negative,
+            output_positive,
+            output_negative,
+            adjust,
+            reference_voltage,
+            min_output_voltage,
+            max_output_voltage,
+            dropout_voltage,
+            input_resistance,
+            output_resistance,
+        } => {
+            let input_positive = node(input_positive);
+            let input_negative = node(input_negative);
+            let output_positive = node(output_positive);
+            let output_negative = node(output_negative);
+            let adjust = node(adjust);
+            stamp_conductance(
+                matrix,
+                vars,
+                input_positive,
+                input_negative,
+                1.0 / input_resistance,
+            );
+            let input_voltage =
+                voltage(guess, vars, input_positive) - voltage(guess, vars, input_negative);
+            let adjust_voltage =
+                voltage(guess, vars, adjust) - voltage(guess, vars, input_negative);
+            let available = (input_voltage - dropout_voltage).max(0.0);
+            let requested = (adjust_voltage + reference_voltage)
+                .clamp(*min_output_voltage, *max_output_voltage);
+            let target = adjustable_output_target(
+                input_voltage,
+                adjust_voltage,
+                *reference_voltage,
+                *min_output_voltage,
+                *max_output_voltage,
+                *dropout_voltage,
+            );
+            let target_is_input_limited = available < requested;
+            let target_follows_adjust = !target_is_input_limited
+                && (*min_output_voltage..=*max_output_voltage)
+                    .contains(&(adjust_voltage + reference_voltage));
+            let conductance = 1.0 / output_resistance;
+            let current = conductance
+                * (voltage(guess, vars, output_positive)
+                    - voltage(guess, vars, output_negative)
+                    - target);
+            let mut derivatives = vec![
+                (output_positive, conductance),
+                (output_negative, -conductance),
+            ];
+            if target_is_input_limited {
+                derivatives.extend([
+                    (input_positive, -conductance),
+                    (input_negative, conductance),
+                ]);
+            } else if target_follows_adjust {
+                derivatives.extend([(adjust, -conductance), (input_negative, conductance)]);
+            }
+            stamp_current(
+                (output_positive, output_negative),
+                current,
+                &derivatives,
+                guess,
+                vars,
+                matrix,
+                rhs,
+            );
+        }
     }
 }
 
@@ -5036,6 +5108,7 @@ mod tests {
         fixture_json!(C02_S03_02, "c02-s03-02-555-monostable.json");
         fixture_json!(C02_S03_07, "c02-s03-07-light-theremin.json");
         fixture_json!(C04_S06_11, "c04-s06-11-robot-voice.json");
+        fixture_json!(C05_S07_06, "c05-s07-06-adjustable-power-supply.json");
 
         #[test]
         fn all_embedded_exercise_fixtures_have_valid_solvable_topology() {
@@ -5721,6 +5794,44 @@ mod tests {
             let output =
                 result.module_output_voltages[&ComponentId("M1".into())][&PinId("out".into())];
             assert!((output - 3.2967).abs() < 0.01, "output={output}");
+        }
+
+        #[test]
+        // Regression for the catalog's adjustable LM317-style feedback fixture.
+        fn c05_adjustable_supply_tracks_feedback_and_meter() {
+            let project = fixture(C05_S07_06);
+            let mut dc_project = project.clone();
+            dc_project
+                .components
+                .retain(|component| component.kind != ComponentKind::Capacitor);
+            let topology = compile_topology(&dc_project).expect("adjustable supply topology");
+            assert_eq!(topology.len(), 4);
+
+            let readings = [0.0, 0.25, 0.5, 0.75, 1.0]
+                .into_iter()
+                .map(|ratio| {
+                    let ratios = BTreeMap::from([(ComponentId("RV1".into()), ratio)]);
+                    let result = solve_dc(&dc_project, &BTreeMap::new(), &ratios)
+                        .expect("adjustable supply should solve");
+                    let output = result.module_output_voltages[&ComponentId("U1".into())]
+                        [&PinId("out".into())];
+                    let meter = result.module_output_voltages[&ComponentId("M1".into())]
+                        [&PinId("display".into())];
+                    (output, meter)
+                })
+                .collect::<Vec<_>>();
+
+            for pair in readings.windows(2) {
+                assert!(pair[1].0 + 1e-9 >= pair[0].0, "readings={readings:?}");
+            }
+            assert!(
+                readings[0].0 >= 1.24 && readings[0].0 <= 1.27,
+                "readings={readings:?}"
+            );
+            assert!(readings.iter().all(|(output, meter)| {
+                (0.0..=10.0 + 1e-9).contains(output) && (output - meter).abs() < 1e-6
+            }));
+            assert!(readings.last().unwrap().0 >= 9.99);
         }
 
         proptest! {

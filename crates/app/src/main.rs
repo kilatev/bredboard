@@ -144,6 +144,8 @@ const C05_S07_09_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-09-refrigerator-guard.json");
 const C05_S07_08_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-08-pulse-generator.json");
+const C05_S07_06_JSON: &str =
+    include_str!("../../../fixtures/projects/c05-s07-06-adjustable-power-supply.json");
 const C06_S08_01_JSON: &str =
     include_str!("../../../fixtures/projects/c06-s08-01-motor-with-switch.json");
 const C06_S08_05_JSON: &str =
@@ -273,6 +275,7 @@ enum Circuit {
     C05S07_09,
     C05S07_10,
     C05S07_08,
+    C05S07_06,
     C06S08_01,
     C06S08_05,
     C07S09_01,
@@ -366,6 +369,7 @@ impl Circuit {
             Self::C05S07_09,
             Self::C05S07_10,
             Self::C05S07_08,
+            Self::C05S07_06,
             Self::C06S08_01,
             Self::C06S08_05,
             Self::C07S09_01,
@@ -510,6 +514,7 @@ impl Circuit {
             Self::C05S07_09 => C05_S07_09_JSON,
             Self::C05S07_10 => C05_S07_10_JSON,
             Self::C05S07_08 => C05_S07_08_JSON,
+            Self::C05S07_06 => C05_S07_06_JSON,
             Self::C06S08_01 => C06_S08_01_JSON,
             Self::C06S08_05 => C06_S08_05_JSON,
             Self::C07S09_01 => C07_S09_01_JSON,
@@ -621,6 +626,7 @@ impl Circuit {
             Self::C05S07_09 => "C05-S07-09: REFRIGERATOR-DOOR GUARD",
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
+            Self::C05S07_06 => "C05-S07-06: ADJUSTABLE POWER SUPPLY",
             Self::C06S08_01 => "C06-S08-01: MOTOR WITH SWITCH",
             Self::C06S08_05 => "C06-S08-05: VIBRATION BOT",
             Self::C07S09_01 => "C07-S09-01: HOT-WIRE COUNTER",
@@ -862,6 +868,10 @@ impl Circuit {
             Self::C05S07_08 => (
                 "A calculated 555 astable produces fixed-step pulses through an adjustable RC path and current-limited LED. The source's rotary output selector and external output terminals remain explicit discrepancies.",
                 "Task: drag RV1, run the fixture, and compare the calculated timing capacitor with the LED pulse activity.",
+            ),
+            Self::C05S07_06 => (
+                "A calculated LM317-style adjustable regulator follows the ADJ feedback voltage through the 240 ohm resistor and potentiometer. The 12 V source, 2 V dropout limit, 10 V safety clamp, reverse-protection diodes, and calculated voltmeter are explicit electrical contracts.",
+                "Task: drag RV1 and compare the calculated VOUT and voltmeter readings; confirm the output stays within the safe 1.25–10 V range.",
             ),
             Self::C06S08_01 => (
                 "A calculated 3 V source drives a two-terminal DC motor through an SPDT switch. Motor current and signed no-load speed are derived from terminal voltage; the source propeller remains a presentation discrepancy.",
@@ -1504,7 +1514,7 @@ impl Circuit {
                 component: "S1",
                 is_switch: false,
             }],
-            Self::C05S07_08 => &[],
+            Self::C05S07_06 | Self::C05S07_08 => &[],
             Self::C06S08_01 => &[ControlSpec {
                 label: "S1: MOTOR POWER",
                 component: "S1",
@@ -1807,6 +1817,10 @@ impl Circuit {
             }],
             Self::C05S07_08 => &[DialSpec {
                 label: "RV1: PULSE RATE - drag left/right",
+                component: "RV1",
+            }],
+            Self::C05S07_06 => &[DialSpec {
+                label: "RV1: OUTPUT VOLTAGE - drag left/right",
                 component: "RV1",
             }],
             Self::E27 => &[DialSpec {
@@ -3494,6 +3508,25 @@ fn update_view(
                                         .copied()
                                         .unwrap_or(0.0)
                             )
+                        },
+                    )
+                } else if bench.circuit == Circuit::C05S07_06 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "VOUT and voltmeter: run to measure".into(),
+                        |result| {
+                            let output = result
+                                .module_output_voltages
+                                .get(&ComponentId("U1".into()))
+                                .and_then(|pins| pins.get(&PinId("out".into())))
+                                .copied()
+                                .unwrap_or(0.0);
+                            let meter = result
+                                .module_output_voltages
+                                .get(&ComponentId("M1".into()))
+                                .and_then(|pins| pins.get(&PinId("display".into())))
+                                .copied()
+                                .unwrap_or(0.0);
+                            format!("VOUT {output:.2} V   METER {meter:.2} V")
                         },
                     )
                 } else if bench.circuit == Circuit::C10S18_07 {

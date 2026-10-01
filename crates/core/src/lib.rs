@@ -1125,7 +1125,9 @@ fn validate_ic_device_resistance(
 }
 
 fn validate_module(c: &Component, spec: &ModuleSpec, errors: &mut Vec<Diagnostic>) {
-    use ModuleBehavior::{AnalogTransfer, OpenCollector, RegulatedSupply, ThresholdOutput};
+    use ModuleBehavior::{
+        AdjustableRegulatedSupply, AnalogTransfer, OpenCollector, RegulatedSupply, ThresholdOutput,
+    };
     use ModulePinRole::{Ground, Input, Output, PowerOutput, Reference, Supply};
 
     if spec.pin_roles.len() < 2 || spec.pin_roles.len() > MAX_MODULE_PINS {
@@ -1311,6 +1313,60 @@ fn validate_module(c: &Component, spec: &ModuleSpec, errors: &mut Vec<Diagnostic
                     "module_regulator_range",
                     format!("components.{}.module.behavior", c.id.0),
                     "target_voltage and dropout_voltage must be non-negative",
+                ));
+            }
+            validate_module_resistance(c, errors, "input_resistance", *input_resistance);
+            validate_module_resistance(c, errors, "output_resistance", *output_resistance);
+        }
+        AdjustableRegulatedSupply {
+            input_positive,
+            input_negative,
+            output_positive,
+            output_negative,
+            adjust,
+            reference_voltage,
+            min_output_voltage,
+            max_output_voltage,
+            dropout_voltage,
+            input_resistance,
+            output_resistance,
+        } => {
+            if !role_is(input_positive, |role| matches!(role, Supply))
+                || !role_is(input_negative, |role| matches!(role, Ground | Reference))
+                || !role_is(output_positive, |role| matches!(role, Output | PowerOutput))
+                || !role_is(output_negative, |role| matches!(role, Ground | Reference))
+                || !role_is(adjust, |role| matches!(role, Input | Reference))
+            {
+                errors.push(Diagnostic::new(
+                    "module_adjustable_regulator_roles",
+                    format!("components.{}.module.behavior", c.id.0),
+                    "adjustable-regulator pin roles do not match the contract",
+                ));
+            }
+            for (name, value) in [
+                ("reference_voltage", *reference_voltage),
+                ("min_output_voltage", *min_output_voltage),
+                ("max_output_voltage", *max_output_voltage),
+                ("dropout_voltage", *dropout_voltage),
+            ] {
+                validate_module_finite(c, errors, name, value);
+            }
+            if *reference_voltage < 0.0
+                || *min_output_voltage < 0.0
+                || *max_output_voltage < 0.0
+                || *dropout_voltage < 0.0
+            {
+                errors.push(Diagnostic::new(
+                    "module_adjustable_regulator_range",
+                    format!("components.{}.module.behavior", c.id.0),
+                    "reference, output, and dropout voltages must be non-negative",
+                ));
+            }
+            if min_output_voltage > max_output_voltage {
+                errors.push(Diagnostic::new(
+                    "module_adjustable_regulator_output_range",
+                    format!("components.{}.module.behavior", c.id.0),
+                    "min_output_voltage must not exceed max_output_voltage",
                 ));
             }
             validate_module_resistance(c, errors, "input_resistance", *input_resistance);

@@ -17,6 +17,11 @@ bounded calculated behavior:
   driver modules such as a multi-channel coil driver;
 - `regulated_supply` provides a finite-resistance output target limited by the
   input voltage after dropout and by the configured target voltage.
+- `adjustable_regulated_supply` provides a finite-resistance output target
+  derived from an adjust-pin voltage plus a reference voltage, bounded by
+  declared minimum/maximum output and dropout limits. This is the contract for
+  LM317-style feedback fixtures; the resistor and potentiometer that drive the
+  adjust pin remain ordinary board components.
 
 All resistances are finite and validated. Outputs are stamped into the common
 MNA/nonlinear solver on every DC or fixed-step transient solve, and calculated
