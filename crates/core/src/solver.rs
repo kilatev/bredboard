@@ -228,8 +228,9 @@ enum NonlinearElement {
         clock: usize,
         carry: usize,
         enable: usize,
-        outputs: [usize; 10],
+        outputs: Vec<usize>,
         reset: usize,
+        direction: Option<usize>,
         vcc: usize,
         gnd: usize,
         mode: u8,
@@ -1792,19 +1793,33 @@ fn make_branches(
                 let enable = node("enable")?;
                 let gnd = node("gnd")?;
                 let reset = node("reset")?;
+                let direction = component
+                    .pins
+                    .contains_key(&PinId("direction".into()))
+                    .then(|| node("direction"))
+                    .transpose()?;
                 let vcc = node("vcc")?;
-                let outputs: [Result<usize, ElectricalError>; 10] =
-                    ["q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9"].map(node);
-                let outputs = outputs.into_iter().collect::<Result<Vec<_>, _>>()?;
-                let outputs: [usize; 10] = outputs.try_into().expect("ten counter outputs");
+                let output_names = if component.pins.contains_key(&PinId("q4".into())) {
+                    vec!["q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9"]
+                } else {
+                    vec!["q0", "q1", "q2", "q3"]
+                };
+                let outputs = output_names
+                    .into_iter()
+                    .map(node)
+                    .collect::<Result<Vec<_>, _>>()?;
                 active.extend([clock, carry, enable, gnd, reset, vcc]);
-                active.extend(outputs);
+                if let Some(direction) = direction {
+                    active.insert(direction);
+                }
+                active.extend(outputs.iter().copied());
                 nonlinear.push(NonlinearElement::DigitalCounter {
                     clock,
                     carry,
                     enable,
                     outputs,
                     reset,
+                    direction,
                     vcc,
                     gnd,
                     mode: component.parameters["output_mode"] as u8,
@@ -3092,6 +3107,7 @@ fn stamp_element(
             carry,
             outputs,
             reset,
+            direction,
             vcc,
             gnd,
             mode,
@@ -3103,6 +3119,9 @@ fn stamp_element(
         } => {
             let supply = voltage(guess, vars, *vcc);
             let value = *state & 0x3ff;
+            let count_up = direction
+                .map(|direction| voltage(guess, vars, direction) > supply * 0.5)
+                .unwrap_or(*count_direction >= 0.0);
             let reset_high = voltage(guess, vars, *reset) > supply * 0.5;
             for (index, output) in outputs.iter().enumerate() {
                 let high = !reset_high
@@ -3128,10 +3147,10 @@ fn stamp_element(
                 *vcc,
                 *gnd,
                 !reset_high
-                    && if *count_direction < 0.0 {
-                        value == 0
-                    } else {
+                    && if count_up {
                         value + 1 >= u32::from(*modulus)
+                    } else {
+                        value == 0
                     },
                 *resistance,
                 guess,

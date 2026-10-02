@@ -656,10 +656,26 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                     "only other components may carry an other_device contract",
                 ));
             }
-            pins_for(c.kind)
+            let mut pins = pins_for(c.kind)
                 .iter()
                 .map(|pin| (*pin).to_owned())
-                .collect()
+                .collect::<Vec<_>>();
+            // CD4510-style BCD fixtures only expose q0..q3. Keep the
+            // ten-output contract for existing binary counters while allowing
+            // a compact, physically honest BCD pin map.
+            if c.kind == ComponentKind::DigitalCounter && !c.pins.contains_key(&PinId("q4".into()))
+            {
+                pins.retain(|pin| !matches!(pin.as_str(), "q4" | "q5" | "q6" | "q7" | "q8" | "q9"));
+            }
+            // Existing digital-counter fixtures use a fixed count direction.
+            // New reversible counters may opt into an electrical direction
+            // input without changing the legacy JSON contract.
+            if c.kind == ComponentKind::DigitalCounter
+                && c.pins.contains_key(&PinId("direction".into()))
+            {
+                pins.push("direction".into());
+            }
+            pins
         };
         if c.pins.len() != expected.len()
             || expected

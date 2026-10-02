@@ -1,6 +1,6 @@
 use crate::{
     ComponentId, ComponentKind, ControlState, Diagnostic, ElectricalDiagnostic, ElectricalError,
-    FaultRepair, MAX_NONLINEAR_ITERATIONS, OtherDeviceBehavior, Project, SolveResult,
+    FaultRepair, MAX_NONLINEAR_ITERATIONS, OtherDeviceBehavior, PinId, Project, SolveResult,
     compile_topology,
 };
 use schemars::JsonSchema;
@@ -616,18 +616,22 @@ fn update_digital_states(
                 } else if rising && voltage(&component.id, "enable") > supply * 0.5 {
                     let modulus = component.parameters["modulus"] as u32;
                     let value = *entry & 0x3ff;
-                    let next = if component
-                        .parameters
-                        .get("count_direction")
-                        .copied()
-                        .unwrap_or(1.0)
-                        < 0.0
-                    {
-                        if value == 0 { modulus - 1 } else { value - 1 }
-                    } else if value + 1 >= modulus {
-                        0
+                    let count_up = component
+                        .pins
+                        .get(&PinId("direction".into()))
+                        .map(|_| voltage(&component.id, "direction") > supply * 0.5)
+                        .unwrap_or_else(|| {
+                            component
+                                .parameters
+                                .get("count_direction")
+                                .copied()
+                                .unwrap_or(1.0)
+                                >= 0.0
+                        });
+                    let next = if count_up {
+                        if value + 1 >= modulus { 0 } else { value + 1 }
                     } else {
-                        value + 1
+                        if value == 0 { modulus - 1 } else { value - 1 }
                     };
                     *entry = next | (1 << 16);
                 } else {

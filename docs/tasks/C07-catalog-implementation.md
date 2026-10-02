@@ -48,8 +48,12 @@ The source record is
   timeout LEDs and buzzer. The source's 32,768 Hz crystal, CD4060/CD4013/
   CD4510/CD4511/CD4011 package internals, 9 V adapter, and exact display
   segment-current wiring remain explicit model or layout discrepancies.
-- S09-11 needs four reversible BCD counters, four displays, and score-control
-  semantics; keep it blocked.
+- S09-11 is admitted as a calculated score-board fixture: four compact BCD
+  counters drive four displays, electrical direction inputs distinguish the
+  plus and minus controls, and carry/borrow/reset behavior is covered by the
+  app regression. The source's CD4510/CD4511/CD4093 package internals and the
+  exact physical board layout remain explicit model or buildability
+  discrepancies.
 - S09-12 needs paired RF modules, L293D, two motors, and chassis motion; keep
   it blocked.
 - S09-13 needs a VCO/PLL, decade counter, capacitor ramp, and a bounded
@@ -196,6 +200,34 @@ Clippy with `-D warnings`, `cargo test --workspace --locked` (60 app, 149
 core, 3 tools, 0 doc-test failures), native Linux and WASM app builds, and
 `git diff --check`. Manual browser and real-breadboard evidence remain
 pending.
+
+The CAT-S09-11 slice adds
+`fixtures/projects/c07-s09-11-score-board.json` and registers it in the app
+menu. It contains 56 components, 11 explicit wires, and 57 derived nodes on
+two named half-size boards. The four counters use compact q0–q3 BCD outputs;
+their optional direction pins are driven by the calculated plus/minus control
+branches, while calculated carry/borrow and reset behavior feed the four
+seven-segment displays. The two CD4093 packages are bounded by four calculated
+OR/AND gate contracts, so Schmitt-trigger debounce and exact package current
+behavior remain explicit discrepancies. Two boards are required by the
+current contact model: one half-size board cannot provide the 63 distinct
+signal/ground groups needed by this fixture; this is recorded as a
+buildability/layout finding rather than hidden in the schematic mapping.
+
+Focused evidence for the slice:
+
+```text
+cargo run -q -p bredboard-tools --locked -- validate fixtures/projects/c07-s09-11-score-board.json — passed; 56 components, 11 wires, 57 derived nodes
+cargo run -q -p bredboard-tools --locked -- simulate fixtures/projects/c07-s09-11-score-board.json 4000 — passed; step 4000 at 0.400000 s, capacitors C1–C5 at 9.000000000 V, no diagnostics
+cargo test -p bredboard-app --locked c07_s09_11_score_buttons_count_up_down_carry_and_reset -- --nocapture — passed
+cargo test -p bredboard-app --locked all_embedded_boards_have_unique_lead_and_wire_holes -- --nocapture — passed
+```
+
+The CAT-S09-11 automated gate passed on 2026-10-02: `cargo fmt --all --
+--check`, Clippy with `-D warnings`, `cargo test --workspace --locked` (64
+app, 152 core, 3 tools, 0 doc-test failures), native Linux and WASM app
+builds, `validate-catalog` (20 sections, 212 schematics), and `git diff
+--check`. Manual browser and real-breadboard evidence remain pending.
 
 ## Current blockers
 

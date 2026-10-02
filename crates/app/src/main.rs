@@ -174,6 +174,8 @@ const C07_S09_09_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-09-quiz-buttons.json");
 const C07_S09_10_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-10-chess-clock.json");
+const C07_S09_11_JSON: &str =
+    include_str!("../../../fixtures/projects/c07-s09-11-score-board.json");
 const C08_S17_03_JSON: &str =
     include_str!("../../../fixtures/projects/c08-s17-03-optocoupler.json");
 const C08_S14_01_JSON: &str =
@@ -310,6 +312,7 @@ enum Circuit {
     C07S09_03,
     C07S09_09,
     C07S09_10,
+    C07S09_11,
     C08S17_03,
     C08S14_01,
     C09S15_01,
@@ -344,7 +347,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 117] {
+    fn all() -> [Self; 119] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -414,6 +417,7 @@ impl Circuit {
             Self::C07S09_03,
             Self::C07S09_09,
             Self::C07S09_10,
+            Self::C07S09_11,
             Self::C08S17_03,
             Self::C08S14_01,
             Self::C09S15_01,
@@ -569,6 +573,7 @@ impl Circuit {
             Self::C07S09_03 => C07_S09_03_JSON,
             Self::C07S09_09 => C07_S09_09_JSON,
             Self::C07S09_10 => C07_S09_10_JSON,
+            Self::C07S09_11 => C07_S09_11_JSON,
             Self::C08S17_03 => C08_S17_03_JSON,
             Self::C08S14_01 => C08_S14_01_JSON,
             Self::C09S15_01 => C09_S15_01_JSON,
@@ -691,6 +696,7 @@ impl Circuit {
             Self::C07S09_03 => "C07-S09-03: TWO-STATION TELEGRAPH",
             Self::C07S09_09 => "C07-S09-09: QUIZ BUTTONS",
             Self::C07S09_10 => "C07-S09-10: CHESS CLOCK",
+            Self::C07S09_11 => "C07-S09-11: PING-PONG SCORE BOARD",
             Self::C08S17_03 => "C08-S17-03: OPTOCOUPLER",
             Self::C08S14_01 => "C08-S14-01: CANDLE FLICKER",
             Self::C09S15_01 => "C09-S15-01: RELAY SWITCH",
@@ -988,6 +994,10 @@ impl Circuit {
             Self::C07S09_10 => (
                 "A fixed-step 2 Hz source and calculated D flip-flop divide stage provide a deterministic 1 Hz chess-clock tick. Six reversible BCD counters count down the two m:ss displays; gated buttons transfer the active turn, and calculated zero detectors drive the timeout LEDs and buzzer.",
                 "Task: run the clock, press the active player's button to transfer the turn, and inspect the calculated countdown, timeout flags, and buzzer current.",
+            ),
+            Self::C07S09_11 => (
+                "Two calculated two-digit BCD score paths use electrically driven up/down inputs, carry-windowed tens stages, and four current-limited seven-segment displays. The source's CD4093 package-level debounce is represented by bounded OR/AND gate contracts; the 9 V adapter is retained as the source supply.",
+                "Task: press A +1, A −1, B +1, or B −1 and inspect both calculated scores; press RESET to clear them.",
             ),
             Self::C08S17_03 => (
                 "A calculated optocoupler transfers current from a 9 V button domain into an isolated 4.5 V LED domain. The two source rails remain electrically separate; the PC817 package is represented by the bounded optical-transfer contract.",
@@ -1699,6 +1709,33 @@ impl Circuit {
                 ControlSpec {
                     label: "B2: PLAYER B / PASS",
                     component: "B2",
+                    is_switch: false,
+                },
+            ],
+            Self::C07S09_11 => &[
+                ControlSpec {
+                    label: "A +1",
+                    component: "A_PLUS",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "A −1",
+                    component: "A_MINUS",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B +1",
+                    component: "B_PLUS",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "B −1",
+                    component: "B_MINUS",
+                    is_switch: false,
+                },
+                ControlSpec {
+                    label: "RESET",
+                    component: "RESET",
                     is_switch: false,
                 },
             ],
@@ -3899,6 +3936,26 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C07S09_11 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Score board: press a score button and run to measure".into(),
+                        |_| {
+                            let digit = |id: &str| {
+                                bench
+                                    .simulation
+                                    .digital_states
+                                    .get(&ComponentId(id.into()))
+                                    .copied()
+                                    .unwrap_or(0)
+                                    & 0x3ff
+                            };
+                            format!(
+                                "A {:02}   B {:02}",
+                                digit("U_A1") * 10 + digit("U_A0"),
+                                digit("U_B1") * 10 + digit("U_B0")
+                            )
+                        },
+                    )
                 } else if bench.circuit == Circuit::C08S17_03 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "Optocoupler transfer: run to measure".into(),
@@ -4461,6 +4518,67 @@ mod tests {
     }
 
     #[test]
+    fn c07_s09_11_score_buttons_count_up_down_carry_and_reset() {
+        let mut bench = Bench::new(Circuit::C07S09_11);
+        let pulse = |bench: &mut Bench, component: &str| {
+            bench.act(Action::SetControl {
+                component: ComponentId(component.into()),
+                state: ControlState::ButtonPressed,
+            });
+            bench.act(Action::SingleStep);
+            bench.act(Action::SetControl {
+                component: ComponentId(component.into()),
+                state: ControlState::ButtonReleased,
+            });
+            bench.act(Action::SingleStep);
+        };
+
+        for _ in 0..10 {
+            pulse(&mut bench, "A_PLUS");
+        }
+        assert!(
+            !bench.simulation.stale,
+            "{:?}",
+            bench.simulation.diagnostics
+        );
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("U_A0".into())] & 0x3ff,
+            0
+        );
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("U_A1".into())] & 0x3ff,
+            1
+        );
+
+        pulse(&mut bench, "A_MINUS");
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("U_A0".into())] & 0x3ff,
+            9
+        );
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("U_A1".into())] & 0x3ff,
+            0
+        );
+
+        pulse(&mut bench, "B_PLUS");
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("U_B0".into())] & 0x3ff,
+            1
+        );
+        bench.act(Action::SetControl {
+            component: ComponentId("RESET".into()),
+            state: ControlState::ButtonPressed,
+        });
+        bench.act(Action::SingleStep);
+        for id in ["U_A0", "U_A1", "U_B0", "U_B1"] {
+            assert_eq!(
+                bench.simulation.digital_states[&ComponentId(id.into())] & 0x3ff,
+                0
+            );
+        }
+    }
+
+    #[test]
     fn c05_s07_14_fixed_steps_measure_the_selected_range() {
         let measure = |switch_state| {
             let mut project: Project =
@@ -4812,7 +4930,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            117
+            119
         );
         assert!(matches!(
             items[0],
