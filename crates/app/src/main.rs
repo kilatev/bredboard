@@ -6,6 +6,8 @@ use bevy::audio::{AudioPlayer, AudioSink, Pitch, PlaybackSettings};
 use bevy::camera::ScalingMode;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
+use bevy::sprite::Anchor;
+use bevy::text::TextBounds;
 use bredboard_core::{
     Action, Component, ComponentId, ComponentKind, ControlState, PinId, Project, SimulationState,
     advance_steps, apply_actions, compile_topology,
@@ -2469,6 +2471,48 @@ fn label(
         .id()
 }
 
+/// Width the bench's right-hand text column wraps to, in logical pixels.
+/// Keeps long auto-generated descriptions from overflowing past the panel
+/// edge or, growing left from a centered anchor, over the breadboard art.
+const TEXT_WRAP_WIDTH: f32 = 410.0;
+const TEXT_LINE_HEIGHT: f32 = 16.0;
+
+/// A left-anchored label that word-wraps within [`TEXT_WRAP_WIDTH`] instead
+/// of rendering as one unbounded centered line. `point` is the top-left
+/// corner of the text block (growth is right and down).
+fn wrapped_label(
+    commands: &mut Commands,
+    value: impl Into<String>,
+    point: Vec2,
+    size: f32,
+    color: Color,
+) -> Entity {
+    commands
+        .spawn((
+            Text2d::new(value),
+            TextFont::from_font_size(size),
+            TextColor(color),
+            TextLayout::new(Justify::Left, LineBreak::WordBoundary),
+            TextBounds::new(TEXT_WRAP_WIDTH, f32::MAX),
+            Anchor::TOP_LEFT,
+            Transform::from_xyz(point.x, point.y, 2.0),
+            SceneEntity,
+        ))
+        .id()
+}
+
+/// Rough number of visual rows `text` will wrap into at `size` inside
+/// [`TEXT_WRAP_WIDTH`]. Not a pixel-exact match for the text shaper; good
+/// enough to reserve vertical space for the elements stacked below it.
+fn estimate_wrapped_lines(text: &str, size: f32) -> usize {
+    if text.is_empty() {
+        return 0;
+    }
+    let avg_char_width = size * 0.52;
+    let chars_per_line = (TEXT_WRAP_WIDTH / avg_char_width).floor().max(1.0) as usize;
+    text.chars().count().div_ceil(chars_per_line).max(1)
+}
+
 fn button(commands: &mut Commands, value: &str, point: Vec2, size: Vec2, control: Control) {
     let entity = rect(commands, point, size, Color::srgb(0.13, 0.30, 0.35), 1.0);
     commands.entity(entity).insert(ClickTarget(control, size));
@@ -3056,66 +3100,121 @@ fn spawn_bench(commands: &mut Commands, images: &mut Assets<Image>, bench: &Benc
     } else {
         format!("{explanation}\n{task}")
     };
-    label(
+    const SECONDARY_Y: f32 = 264.0;
+    const SECONDARY_SIZE: f32 = 14.0;
+    const BUILD_LIST_GAP_BASE: f32 = 27.0;
+    const ROW_HEIGHT_BASE: f32 = 24.0;
+    const VALUE_GAP_BASE: f32 = 9.0;
+    const STATUS_GAP_BASE: f32 = 46.0;
+    const HOVER_GAP_BASE: f32 = 52.0;
+    const CONTROL_GAP_BASE: f32 = 40.0;
+    // Lowest the RUN/PAUSE-adjacent control readout may sit: clear of the
+    // fixed RUN/PAUSE button row (centered at y=-170, 53 tall).
+    const CONTROL_FLOOR_Y: f32 = -130.0;
+    // However cramped a long description/build list gets, never shrink rows
+    // past this fraction of their normal spacing.
+    const MIN_SCALE: f32 = 0.6;
+
+    // Catalog descriptions vary a lot in length; word-wrap them instead of
+    // rendering one unbounded centered line (which, for long text, grows far
+    // enough left to overlap the breadboard art), then reserve vertical
+    // space below for exactly as many wrapped rows as this entry needs.
+    wrapped_label(
         commands,
-        secondary,
-        Vec2::new(185.0, 264.0),
-        14.0,
+        secondary.clone(),
+        Vec2::new(185.0, SECONDARY_Y),
+        SECONDARY_SIZE,
         Color::srgb(0.58, 0.76, 0.76),
     );
+    let secondary_lines = secondary
+        .split('\n')
+        .map(|line| estimate_wrapped_lines(line, SECONDARY_SIZE))
+        .sum::<usize>();
+    let component_count = bench.project.components.len() as f32;
+    // Everything from the description down to the control readout shares one
+    // fixed vertical budget (down to `CONTROL_FLOOR_Y`). A long description
+    // plus a long build list (more schemes now auto-generate both) can ask
+    // for more room than that budget has; scale every row down together so
+    // the stack always ends at or above the floor instead of sliding under
+    // the RUN/PAUSE button.
+    let base_height = secondary_lines as f32 * TEXT_LINE_HEIGHT
+        + BUILD_LIST_GAP_BASE
+        + component_count * ROW_HEIGHT_BASE
+        + VALUE_GAP_BASE
+        + STATUS_GAP_BASE
+        + HOVER_GAP_BASE
+        + CONTROL_GAP_BASE;
+    let available_height = SECONDARY_Y - CONTROL_FLOOR_Y;
+    let scale = if base_height > available_height {
+        (available_height / base_height).max(MIN_SCALE)
+    } else {
+        1.0
+    };
+    let line_height = TEXT_LINE_HEIGHT * scale;
+    let build_list_gap = BUILD_LIST_GAP_BASE * scale;
+    let row_height = ROW_HEIGHT_BASE * scale;
+
+    let secondary_bottom_y = SECONDARY_Y - secondary_lines as f32 * line_height;
     if let Some(fault) = bench.project.faults.first() {
-        label(
+        wrapped_label(
             commands,
             format!("FAULT {}: {}", fault.id, fault.description),
-            Vec2::new(185.0, 150.0),
+            Vec2::new(185.0, secondary_bottom_y - 82.0 * scale),
             14.0,
             Color::srgb(1.0, 0.62, 0.34),
         );
     }
+    let build_list_label_y = secondary_bottom_y;
     label(
         commands,
         "BUILD LIST",
-        Vec2::new(185.0, 232.0),
+        Vec2::new(185.0, build_list_label_y),
         17.0,
         Color::srgb(0.42, 0.90, 0.76),
     );
+    let component_list_start_y = build_list_label_y - build_list_gap;
     for (index, component) in bench.project.components.iter().enumerate() {
         label(
             commands,
             component_summary(component),
-            Vec2::new(185.0, 205.0 - index as f32 * 24.0),
+            Vec2::new(185.0, component_list_start_y - index as f32 * row_height),
             14.0,
             Color::srgb(0.76, 0.85, 0.82),
         );
     }
+    let component_list_bottom_y = component_list_start_y - component_count * row_height;
+    let value_y = component_list_bottom_y - VALUE_GAP_BASE * scale;
     let value = label(
         commands,
         "",
-        Vec2::new(185.0, 28.0),
+        Vec2::new(185.0, value_y),
         25.0,
         Color::srgb(0.84, 0.95, 0.91),
     );
     commands.entity(value).insert(Readout::Value);
+    let status_y = value_y - STATUS_GAP_BASE * scale;
     let status = label(
         commands,
         "",
-        Vec2::new(185.0, -18.0),
+        Vec2::new(185.0, status_y),
         17.0,
         Color::srgb(0.72, 0.82, 0.83),
     );
     commands.entity(status).insert(Readout::Status);
+    let hover_y = status_y - HOVER_GAP_BASE * scale;
     let hover = label(
         commands,
         "",
-        Vec2::new(185.0, -70.0),
+        Vec2::new(185.0, hover_y),
         16.0,
         Color::srgb(0.65, 0.81, 0.85),
     );
     commands.entity(hover).insert(Readout::Hover);
+    let control_y = hover_y - CONTROL_GAP_BASE * scale;
     let control = label(
         commands,
         "",
-        Vec2::new(185.0, -110.0),
+        Vec2::new(185.0, control_y),
         17.0,
         Color::srgb(0.75, 0.88, 0.89),
     );
