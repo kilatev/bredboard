@@ -316,6 +316,10 @@ pub enum ComponentKind {
     /// Four-bit combinational adder/subtractor with calculated carry output.
     FourBitAdder,
     /// Ten-segment voltage-level display with calculated threshold outputs.
+    ///
+    /// By default the input is normalized to the display supply. A fixture may
+    /// add `input_min_voltage` and `input_max_voltage` parameters to express
+    /// an absolute measurement range, such as a 6–12 V battery gauge.
     BargraphDisplay,
     /// Bounded voltage amplifier used for the LM386-style educational fixture.
     AudioAmplifier,
@@ -765,6 +769,27 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                     "missing_parameter",
                     format!("components.{}.parameters.{key}", c.id.0),
                     "required parameter is missing",
+                ));
+            }
+        }
+        if c.kind == ComponentKind::BargraphDisplay {
+            let min = c.parameters.get("input_min_voltage");
+            let max = c.parameters.get("input_max_voltage");
+            if min.is_some() != max.is_some() {
+                errors.push(Diagnostic::new(
+                    "incomplete_bargraph_range",
+                    format!("components.{}.parameters", c.id.0),
+                    "input_min_voltage and input_max_voltage must be declared together",
+                ));
+            } else if let (Some(min), Some(max)) = (min, max)
+                && min.is_finite()
+                && max.is_finite()
+                && min >= max
+            {
+                errors.push(Diagnostic::new(
+                    "invalid_bargraph_range",
+                    format!("components.{}.parameters.input_max_voltage", c.id.0),
+                    "input_max_voltage must be greater than input_min_voltage",
                 ));
             }
         }
@@ -2089,6 +2114,8 @@ fn parameter_range(k: ComponentKind, p: &str) -> Option<(f64, f64)> {
         (ComponentKind::SevenSegmentDisplay, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::FourBitAdder, "output_resistance") => Some((1.0, 1e7)),
         (ComponentKind::BargraphDisplay, "output_resistance") => Some((1.0, 1e7)),
+        (ComponentKind::BargraphDisplay, "input_min_voltage") => Some((0.0, 12.0)),
+        (ComponentKind::BargraphDisplay, "input_max_voltage") => Some((0.0, 12.0)),
         (ComponentKind::AudioAmplifier, "gain") => Some((1.0, 100.0)),
         (ComponentKind::AudioAmplifier, "output_resistance") => Some((1.0, 1e7)),
         _ => None,

@@ -1,0 +1,111 @@
+{
+  "format_version": 1,
+  "title": "C05-S07-13: Battery charge gauge",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    {
+      "id": "BATT1",
+      "kind": "other",
+      "pins": { "positive": "TP+:1", "negative": "TP-:1" },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": { "positive": "supply", "negative": "ground" },
+        "behavior": {
+          "behavior": "voltage_source",
+          "positive": "positive",
+          "negative": "negative",
+          "voltage": 9.0,
+          "internal_resistance": 0.001
+        }
+      }
+    },
+    {
+      "id": "U1",
+      "kind": "ic_device",
+      "pins": {
+        "gnd": "TP-:2",
+        "vcc": "TP+:2",
+        "input": "B4",
+        "output": "A6",
+        "reference": "TP-:3"
+      },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": {
+          "gnd": "ground",
+          "vcc": "supply",
+          "input": "input",
+          "output": "output",
+          "reference": "reference"
+        },
+        "behavior": {
+          "behavior": "linear",
+          "output": "output",
+          "reference": "reference",
+          "inputs": [{ "pin": "input", "gain": 2.0 }],
+          "offset": 0.0,
+          "min_output": 0.0,
+          "max_output": 12.0,
+          "input_resistance": 1000000000.0,
+          "output_resistance": 1.0
+        }
+      }
+    },
+    {
+      "id": "R1",
+      "kind": "resistor",
+      "pins": { "a": "TP+:3", "b": "C4" },
+      "parameters": { "resistance": 10000.0 }
+    },
+    {
+      "id": "R2",
+      "kind": "resistor",
+      "pins": { "a": "D4", "b": "TP-:4" },
+      "parameters": { "resistance": 10000.0 }
+    },
+    {
+      "id": "R3",
+      "kind": "resistor",
+      "pins": { "a": "B6", "b": "C7" },
+      "parameters": { "resistance": 10000.0 }
+    },
+    {
+      "id": "R4",
+      "kind": "resistor",
+      "pins": { "a": "D7", "b": "TP-:5" },
+      "parameters": { "resistance": 10000.0 }
+    },
+    {
+      "id": "R5",
+      "kind": "resistor",
+      "pins": { "a": "E6", "b": "A8" },
+      "parameters": { "resistance": 1200.0 }
+    },
+    {
+      "id": "BG1",
+      "kind": "bargraph_display",
+      "pins": {
+        "gnd": "TP-:6",
+        "input": "B8",
+        "seg0": "A10",
+        "seg1": "B11",
+        "seg2": "C12",
+        "seg3": "D13",
+        "seg4": "E14",
+        "seg5": "F15",
+        "seg6": "G16",
+        "seg7": "H17",
+        "seg8": "I18",
+        "seg9": "J19",
+        "vcc": "TP+:4"
+      },
+      "parameters": {
+        "output_resistance": 100.0,
+        "input_min_voltage": 6.0,
+        "input_max_voltage": 12.0
+      }
+    }
+  ],
+  "wires": [],
+  "initial_conditions": {}
+}

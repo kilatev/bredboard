@@ -233,6 +233,19 @@ doc-test failures), native Linux and WASM app builds, catalog validation, and
 shared target and temporary directories; no build output was redirected to
 `/tmp`.
 
+The CAT-S07-13 slice admits `fixtures/projects/c05-s07-13-battery-charge-gauge.json`
+through the calculated `Other` voltage-source battery-terminal contract, a
+pin-level LM3914-style linear transfer, and the bargraph's explicit absolute
+6–12 V input range. The five source resistors are represented as a 1.2 kΩ
+limiter, two 10 kΩ sense-divider resistors, and two fixed 10 kΩ calibration
+resistors; the source's adjustable-trimmer behavior remains a bounded ledger
+discrepancy. The solver now anchors an `Other` voltage-source island at its
+declared negative terminal, avoiding common-mode nonconvergence in
+battery-powered fixtures. A focused 6/9/12 V regression produces 0/5/10
+segments, the absolute-range property test passes, and the fixture validates
+with 8 components, 0 wires, and 16 derived nodes. Manual browser/breadboard
+evidence remains pending.
+
 ## Current blockers
 
 - Physical probes, the remaining unknown-device socket (S07-12), AC sources, battery and lemon-cell

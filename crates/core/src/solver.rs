@@ -302,6 +302,8 @@ enum NonlinearElement {
         vcc: usize,
         gnd: usize,
         resistance: f64,
+        input_min_voltage: Option<f64>,
+        input_max_voltage: Option<f64>,
     },
     AudioAmplifier {
         input: usize,
@@ -894,6 +896,19 @@ fn solve_internal(
                 .filter(|b| nodes.contains(&b.a) && matches!(b.kind, BranchKind::VoltageSource))
                 .map(|b| b.b)
                 .min()
+                .or_else(|| {
+                    nonlinear
+                        .iter()
+                        .filter_map(|element| match element {
+                            NonlinearElement::OtherSource { negative, .. }
+                                if nodes.contains(negative) =>
+                            {
+                                Some(*negative)
+                            }
+                            _ => None,
+                        })
+                        .min()
+                })
                 .or_else(|| nodes.iter().min().copied())
         })
         .collect();
@@ -1987,6 +2002,8 @@ fn make_branches(
                     vcc,
                     gnd,
                     resistance: component.parameters["output_resistance"],
+                    input_min_voltage: component.parameters.get("input_min_voltage").copied(),
+                    input_max_voltage: component.parameters.get("input_max_voltage").copied(),
                 });
                 continue;
             }
@@ -3293,11 +3310,16 @@ fn stamp_element(
             vcc,
             gnd,
             resistance,
+            input_min_voltage,
+            input_max_voltage,
         } => {
             let supply = voltage(guess, vars, *vcc);
-            let level = (voltage(guess, vars, *input) / supply.max(1e-6) * 10.0)
-                .floor()
-                .clamp(0.0, 10.0) as usize;
+            let level = bargraph_level(
+                voltage(guess, vars, *input),
+                supply,
+                *input_min_voltage,
+                *input_max_voltage,
+            );
             for (index, segment) in segments.iter().enumerate() {
                 stamp_logic_output(
                     *segment,
@@ -3507,6 +3529,27 @@ fn stamp_element(
             );
         }
     }
+}
+
+/// Convert a sensed voltage to the number of active bargraph segments.
+///
+/// Existing fixtures use the legacy supply-relative behavior. Catalog
+/// measurement fixtures can opt into an absolute bounded range so a gauge
+/// powered by the measured source does not display a constant ratio as that
+/// source changes.
+fn bargraph_level(
+    input: f64,
+    supply: f64,
+    input_min_voltage: Option<f64>,
+    input_max_voltage: Option<f64>,
+) -> usize {
+    let normalized = match (input_min_voltage, input_max_voltage) {
+        (Some(min), Some(max)) if max > min => (input - min) / (max - min),
+        _ => input / supply.max(1e-6),
+    };
+    // The small tolerance prevents a finite source resistance from hiding an
+    // endpoint segment when the requested range boundary is reached.
+    (normalized * 10.0 + 1e-2).floor().clamp(0.0, 10.0) as usize
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -4251,6 +4294,26 @@ mod tests {
     use super::*;
     use crate::{HoleId, ModuleBehavior, ModulePinRole, ModuleSpec};
     use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn absolute_bargraph_measurement_is_bounded_and_monotone(
+            first_bucket in 0u32..=1_200,
+            second_bucket in 0u32..=1_200,
+        ) {
+            let first = f64::from(first_bucket) / 100.0;
+            let second = f64::from(second_bucket) / 100.0;
+            let first_level = bargraph_level(first, 9.0, Some(6.0), Some(12.0));
+            let second_level = bargraph_level(second, 9.0, Some(6.0), Some(12.0));
+            prop_assert!(first_level <= 10);
+            prop_assert!(second_level <= 10);
+            if first <= second {
+                prop_assert!(first_level <= second_level);
+            } else {
+                prop_assert!(second_level <= first_level);
+            }
+        }
+    }
 
     fn divider() -> Project {
         serde_json::from_str(include_str!(

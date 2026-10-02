@@ -154,6 +154,8 @@ const C05_S07_05_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-05-usb-5v-supply.json");
 const C05_S07_14_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-14-capacitance-meter.json");
+const C05_S07_13_JSON: &str =
+    include_str!("../../../fixtures/projects/c05-s07-13-battery-charge-gauge.json");
 const C06_S08_01_JSON: &str =
     include_str!("../../../fixtures/projects/c06-s08-01-motor-with-switch.json");
 const C06_S08_05_JSON: &str =
@@ -295,6 +297,7 @@ enum Circuit {
     C05S07_08,
     C05S07_06,
     C05S07_05,
+    C05S07_13,
     C05S07_14,
     C06S08_01,
     C06S08_05,
@@ -338,7 +341,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 116] {
+    fn all() -> [Self; 117] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -398,6 +401,7 @@ impl Circuit {
             Self::C05S07_10,
             Self::C05S07_08,
             Self::C05S07_06,
+            Self::C05S07_13,
             Self::C06S08_01,
             Self::C06S08_05,
             Self::C06S08_08,
@@ -550,6 +554,7 @@ impl Circuit {
             Self::C05S07_08 => C05_S07_08_JSON,
             Self::C05S07_06 => C05_S07_06_JSON,
             Self::C05S07_05 => C05_S07_05_JSON,
+            Self::C05S07_13 => C05_S07_13_JSON,
             Self::C05S07_14 => C05_S07_14_JSON,
             Self::C06S08_01 => C06_S08_01_JSON,
             Self::C06S08_05 => C06_S08_05_JSON,
@@ -670,6 +675,7 @@ impl Circuit {
             Self::C05S07_08 => "C05-S07-08: PULSE GENERATOR",
             Self::C05S07_06 => "C05-S07-06: ADJUSTABLE POWER SUPPLY",
             Self::C05S07_05 => "C05-S07-05: BATTERY 5 V USB SUPPLY",
+            Self::C05S07_13 => "C05-S07-13: BATTERY CHARGE GAUGE",
             Self::C05S07_14 => "C05-S07-14: CAPACITANCE METER",
             Self::C06S08_01 => "C06-S08-01: MOTOR WITH SWITCH",
             Self::C06S08_05 => "C06-S08-05: VIBRATION BOT",
@@ -932,6 +938,10 @@ impl Circuit {
             Self::C05S07_05 => (
                 "A calculated L7805-style regulator holds a bounded 5 V output from the 9 V battery while the three capacitors and 330 ohm LED branch remain part of the solved topology. The USB-A adapter is a high-impedance two-terminal output connector; attached-device charging and USB protocol are outside the fixture contract.",
                 "Task: run the supply and compare the calculated regulated output with the LED current and USB connector readout.",
+            ),
+            Self::C05S07_13 => (
+                "A bounded battery-terminal source feeds a calculated LM3914-style level path. The ten-segment bargraph uses an explicit absolute 6–12 V measurement range, so the displayed level follows the measured battery voltage rather than the changing supply ratio.",
+                "Task: run the fixture and compare the calculated battery voltage with the number of active bargraph segments; the source voltage can be varied in the fixture for depleted and charged states.",
             ),
             Self::C05S07_14 => (
                 "A calculated monostable measures the selected capacitor's charge time with a fixed-step reference oscillator. An AND gate windows the reference pulses, three decimal counters advance on those calculated edges, and their BCD outputs drive current-limited seven-segment displays. The source's physical unknown-capacitor socket and exact CD4026/NE555 package behavior remain explicit discrepancies.",
@@ -1608,7 +1618,7 @@ impl Circuit {
                     is_switch: true,
                 },
             ],
-            Self::C05S07_05 | Self::C05S07_06 | Self::C05S07_08 => &[],
+            Self::C05S07_05 | Self::C05S07_06 | Self::C05S07_08 | Self::C05S07_13 => &[],
             Self::C06S08_01 => &[ControlSpec {
                 label: "S1: MOTOR POWER",
                 component: "S1",
@@ -3945,6 +3955,36 @@ fn update_view(
                             format!("VOUT {output:.2} V   METER {meter:.2} V")
                         },
                     )
+                } else if bench.circuit == Circuit::C05S07_13 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Battery gauge: run to measure".into(),
+                        |result| {
+                            let pin_voltage = |component: &str, pin: &str| {
+                                result
+                                    .node_voltages
+                                    .iter()
+                                    .find(|node| {
+                                        node.contacts.contains(
+                                            &bredboard_core::Contact::ComponentPin(
+                                                ComponentId(component.into()),
+                                                PinId(pin.into()),
+                                            ),
+                                        )
+                                    })
+                                    .map(|node| node.voltage)
+                                    .unwrap_or(0.0)
+                            };
+                            let vcc = pin_voltage("BG1", "vcc");
+                            let level = (0..10)
+                                .filter(|index| {
+                                    pin_voltage("BG1", &format!("seg{index}")) > vcc * 0.5
+                                })
+                                .count();
+                            let battery =
+                                pin_voltage("BATT1", "positive") - pin_voltage("BATT1", "negative");
+                            format!("BATTERY {battery:.2} V   LEVEL {level}/10")
+                        },
+                    )
                 } else if bench.circuit == Circuit::C05S07_14 {
                     let digit = |component: &str| {
                         bench
@@ -4481,6 +4521,53 @@ mod tests {
     }
 
     #[test]
+    fn c05_s07_13_battery_voltage_drives_absolute_bargraph_level() {
+        let level_at = |battery_voltage: f64| {
+            let mut project: Project =
+                serde_json::from_str(C05_S07_13_JSON).expect("battery-charge-gauge fixture");
+            let battery = project
+                .components
+                .iter_mut()
+                .find(|component| component.id == ComponentId("BATT1".into()))
+                .expect("battery terminal");
+            let spec = battery
+                .other_device
+                .as_mut()
+                .expect("battery terminal contract");
+            let bredboard_core::OtherDeviceBehavior::VoltageSource { voltage, .. } =
+                &mut spec.behavior
+            else {
+                panic!("battery terminal must be a voltage source");
+            };
+            *voltage = battery_voltage;
+            let result = bredboard_core::solve_dc(&project, &BTreeMap::new(), &BTreeMap::new())
+                .expect("battery gauge DC solve");
+            let pin_voltage = |component: &str, pin: &str| {
+                result
+                    .node_voltages
+                    .iter()
+                    .find(|node| {
+                        node.contacts
+                            .contains(&bredboard_core::Contact::ComponentPin(
+                                ComponentId(component.into()),
+                                PinId(pin.into()),
+                            ))
+                    })
+                    .map(|node| node.voltage)
+                    .unwrap_or(0.0)
+            };
+            let vcc = pin_voltage("BG1", "vcc");
+            (0..10)
+                .filter(|index| pin_voltage("BG1", &format!("seg{index}")) > vcc * 0.5)
+                .count()
+        };
+
+        assert_eq!(level_at(6.0), 0);
+        assert_eq!(level_at(9.0), 5);
+        assert_eq!(level_at(12.0), 10);
+    }
+
+    #[test]
     fn c04_s06_01_keeps_equal_dc_loads_and_passive_piezo_silent() {
         let mut bench = Bench::new(Circuit::C04S06_01);
         bench.act(Action::Run);
@@ -4633,7 +4720,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            116
+            117
         );
         assert!(matches!(
             items[0],
