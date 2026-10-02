@@ -358,7 +358,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 122] {
+    fn all() -> [Self; 123] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -5206,7 +5206,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            121
+            123
         );
         assert!(matches!(
             items[0],
