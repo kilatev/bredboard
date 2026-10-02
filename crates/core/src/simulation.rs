@@ -1025,6 +1025,68 @@ mod tests {
     }
 
     #[test]
+    fn c07_s09_15_key_and_reed_drive_deterministic_alarm_sequence() {
+        let baseline: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c07-s09-15-security-alarm.json"
+        ))
+        .unwrap();
+        let mut project = baseline.clone();
+        let mut state = SimulationState::new(&project);
+        let control = |component: &str, state| Action::SetControl {
+            component: ComponentId(component.into()),
+            state,
+        };
+
+        apply_actions(&mut project, &baseline, &mut state, &[Action::SingleStep]);
+        assert!(!state.stale, "diagnostics: {:?}", state.diagnostics);
+        assert_eq!(state.digital_states[&ComponentId("F_ARM".into())] & 1, 0);
+        assert_eq!(state.digital_states[&ComponentId("F_ALARM".into())] & 1, 0);
+        assert!(
+            state.last_valid.as_ref().unwrap().led_currents[&ComponentId("LED_RED".into())] < 1e-6
+        );
+
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                control("S1", ControlState::SwitchNormallyOpen),
+                Action::SingleStep,
+            ],
+        );
+        assert_eq!(state.digital_states[&ComponentId("F_ARM".into())] & 1, 1);
+
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                control("REED1", ControlState::ButtonPressed),
+                Action::SingleStep,
+            ],
+        );
+        assert_eq!(state.digital_states[&ComponentId("F_ALARM".into())] & 1, 1);
+        let alarm = state.last_valid.as_ref().unwrap();
+        assert!(alarm.led_currents[&ComponentId("LED_RED".into())] > 0.0005);
+        assert!(alarm.resistor_currents[&ComponentId("R_SPK".into())] > 0.001);
+
+        apply_actions(
+            &mut project,
+            &baseline,
+            &mut state,
+            &[
+                control("S1", ControlState::SwitchNormallyClosed),
+                Action::SingleStep,
+            ],
+        );
+        assert_eq!(state.digital_states[&ComponentId("F_ARM".into())] & 1, 0);
+        assert_eq!(state.digital_states[&ComponentId("F_ALARM".into())] & 1, 0);
+        assert!(
+            state.last_valid.as_ref().unwrap().led_currents[&ComponentId("LED_RED".into())] < 1e-6
+        );
+    }
+
+    #[test]
     fn d_flip_flop_captures_data_only_on_a_calculated_rising_edge() {
         let baseline = d_flip_flop_project();
         let mut project = baseline.clone();

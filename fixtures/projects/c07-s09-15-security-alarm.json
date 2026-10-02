@@ -7,19 +7,17 @@
     { "id": "S1", "kind": "changeover_switch", "pins": { "common": "TP+:2", "normally_closed": "A1", "normally_open": "A2" }, "parameters": {} },
 
     {
-      "id": "REED1", "kind": "other", "pins": { "input": "C1", "output": "A5", "reference": "G27" }, "parameters": {},
+      "id": "REED1", "kind": "other", "pins": { "a": "TP+:12", "b": "A5" }, "parameters": {},
       "other_device": {
-        "pin_roles": { "input": "input", "output": "output", "reference": "reference" },
+        "pin_roles": { "a": "terminal", "b": "terminal" },
         "behavior": {
-          "behavior": "linear_transfer", "output": "output", "reference": "reference",
-          "inputs": [{ "pin": "input", "gain": 1.0 }], "offset": 0.0,
-          "min_output": 0.0, "max_output": 5.0,
-          "input_resistance": 1000000.0, "output_resistance": 100.0
+          "behavior": "reed_switch", "a": "a", "b": "b",
+          "closed_resistance": 10.0, "open_resistance": 1000000000.0
         }
       }
     },
     {
-      "id": "PIR1", "kind": "module", "pins": { "vcc": "D24", "gnd": "F27", "sense": "D1", "out": "A6" }, "parameters": {},
+      "id": "PIR1", "kind": "module", "pins": { "vcc": "D24", "gnd": "F27", "sense": "C5", "out": "A12" }, "parameters": {},
       "module": {
         "pin_roles": { "vcc": "supply", "gnd": "ground", "sense": "input", "out": "output" },
         "behavior": {
@@ -30,33 +28,38 @@
       }
     },
 
-    { "id": "T_ARM", "kind": "timer_555", "pins": { "control": "F21", "discharge": "G21", "gnd": "H21", "output": "A15", "reset": "B21", "threshold": "I21", "trigger": "E1", "vcc": "A21" }, "parameters": { "output_resistance": 100.0, "discharge_resistance": 100.0 } },
-    { "id": "T_ENTRY", "kind": "timer_555", "pins": { "control": "F22", "discharge": "G22", "gnd": "H22", "output": "A16", "reset": "C21", "threshold": "I22", "trigger": "C8", "vcc": "B22" }, "parameters": { "output_resistance": 100.0, "discharge_resistance": 100.0 } },
-    { "id": "T_SIREN", "kind": "timer_555", "pins": { "control": "F23", "discharge": "G23", "gnd": "H23", "output": "A10", "reset": "D21", "threshold": "I23", "trigger": "B9", "vcc": "A22" }, "parameters": { "output_resistance": 100.0, "discharge_resistance": 100.0 } },
-    { "id": "T_FLASH", "kind": "timer_555", "pins": { "control": "F24", "discharge": "G24", "gnd": "H24", "output": "A17", "reset": "D22", "threshold": "I24", "trigger": "D7", "vcc": "C22" }, "parameters": { "output_resistance": 100.0, "discharge_resistance": 100.0 } },
-    { "id": "F_ARM", "kind": "d_flip_flop", "pins": { "clock": "B1", "data": "A23", "gnd": "F25", "not_q": "A4", "q": "A3", "reset": "TP-:15", "set": "G25", "vcc": "B23" }, "parameters": { "output_resistance": 100.0 } },
-    { "id": "F_ALARM", "kind": "d_flip_flop", "pins": { "clock": "C7", "data": "B8", "gnd": "H25", "not_q": "C4", "q": "A9", "reset": "B4", "set": "I25", "vcc": "C23" }, "parameters": { "output_resistance": 100.0 } },
-    { "id": "G_ARM", "kind": "logic_gate", "pins": { "gnd": "F26", "input_a": "B15", "input_b": "TP-:16", "output": "A18", "vcc": "D23" }, "parameters": { "operation": 0.0, "output_resistance": 100.0 } },
-    { "id": "G_SENSOR", "kind": "logic_gate", "pins": { "gnd": "G26", "input_a": "B5", "input_b": "B6", "output": "A7", "vcc": "A24" }, "parameters": { "operation": 1.0, "output_resistance": 100.0 } },
-    { "id": "G_ALARM", "kind": "logic_gate", "pins": { "gnd": "H26", "input_a": "B3", "input_b": "B7", "output": "A8", "vcc": "B24" }, "parameters": { "operation": 0.0, "output_resistance": 100.0 } },
-    { "id": "G_SIREN", "kind": "logic_gate", "pins": { "gnd": "I26", "input_a": "C9", "input_b": "B10", "output": "A11", "vcc": "C24" }, "parameters": { "operation": 2.0, "output_resistance": 100.0 } },
+    { "id": "T_ARM", "kind": "timer_555", "pins": { "control": "TP-:22", "discharge": "G21", "gnd": "TP-:26", "output": "A15", "reset": "B21", "threshold": "B20", "trigger": "B18", "vcc": "A21" }, "parameters": { "output_resistance": 100.0, "discharge_resistance": 100.0 } },
+    { "id": "T_ENTRY", "kind": "timer_555", "pins": { "control": "TP-:24", "discharge": "G22", "gnd": "TP-:27", "output": "A25", "reset": "C21", "threshold": "B26", "trigger": "D7", "vcc": "B22" }, "parameters": { "output_resistance": 100.0, "discharge_resistance": 100.0 } },
+    { "id": "T_SIREN", "kind": "timer_555", "pins": { "control": "TP-:25", "discharge": "G23", "gnd": "TP-:28", "output": "A10", "reset": "D9", "threshold": "C19", "trigger": "TP-:19", "vcc": "A22" }, "parameters": { "output_resistance": 100.0, "discharge_resistance": 100.0 } },
+    { "id": "T_FLASH", "kind": "timer_555", "pins": { "control": "TP-:23", "discharge": "G24", "gnd": "TP-:15", "output": "C6", "reset": "D22", "threshold": "D17", "trigger": "E17", "vcc": "C22" }, "parameters": { "output_resistance": 100.0, "discharge_resistance": 100.0 } },
+    { "id": "F_ARM", "kind": "d_flip_flop", "pins": { "clock": "E2", "data": "C15", "gnd": "F25", "not_q": "A4", "q": "A3", "reset": "B1", "set": "TP-:17", "vcc": "B23" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "F_ALARM", "kind": "d_flip_flop", "pins": { "clock": "C7", "data": "B8", "gnd": "H25", "not_q": "C4", "q": "A9", "reset": "E1", "set": "TP-:18", "vcc": "C23" }, "parameters": { "output_resistance": 100.0 } },
+    { "id": "G_ARM", "kind": "logic_gate", "pins": { "gnd": "F26", "input_a": "C2", "input_b": "D2", "output": "A18", "vcc": "D23" }, "parameters": { "operation": 2.0, "output_resistance": 100.0 } },
+    { "id": "G_SENSOR", "kind": "logic_gate", "pins": { "gnd": "G26", "input_a": "D5", "input_b": "B12", "output": "A7", "vcc": "A24" }, "parameters": { "operation": 1.0, "output_resistance": 100.0 } },
+    { "id": "G_ALARM", "kind": "logic_gate", "pins": { "gnd": "H26", "input_a": "C3", "input_b": "B7", "output": "A8", "vcc": "B24" }, "parameters": { "operation": 0.0, "output_resistance": 100.0 } },
+    { "id": "G_SIREN", "kind": "logic_gate", "pins": { "gnd": "I26", "input_a": "B10", "input_b": "D6", "output": "A11", "vcc": "C24" }, "parameters": { "operation": 0.0, "output_resistance": 100.0 } },
 
-    { "id": "R_NO", "kind": "resistor", "pins": { "a": "B2", "b": "F28" }, "parameters": { "resistance": 10000.0 } },
-    { "id": "R_GREEN", "kind": "resistor", "pins": { "a": "C3", "b": "A13" }, "parameters": { "resistance": 470.0 } },
-    { "id": "R_RED", "kind": "resistor", "pins": { "a": "D9", "b": "A14" }, "parameters": { "resistance": 470.0 } },
-    { "id": "R_SPK", "kind": "resistor", "pins": { "a": "B11", "b": "A12" }, "parameters": { "resistance": 100.0 } },
-    { "id": "R_STATUS1", "kind": "resistor", "pins": { "a": "C15", "b": "G28" }, "parameters": { "resistance": 10000.0 } },
-    { "id": "R_STATUS2", "kind": "resistor", "pins": { "a": "B16", "b": "H28" }, "parameters": { "resistance": 10000.0 } },
-    { "id": "R_STATUS3", "kind": "resistor", "pins": { "a": "B17", "b": "I28" }, "parameters": { "resistance": 10000.0 } },
-    { "id": "R_STATUS4", "kind": "resistor", "pins": { "a": "B18", "b": "F29" }, "parameters": { "resistance": 10000.0 } },
-    { "id": "R_BIAS1", "kind": "resistor", "pins": { "a": "B25", "b": "G29" }, "parameters": { "resistance": 1000000.0 } },
-    { "id": "R_BIAS2", "kind": "resistor", "pins": { "a": "C25", "b": "H29" }, "parameters": { "resistance": 1000000.0 } },
-    { "id": "R_BIAS3", "kind": "resistor", "pins": { "a": "D25", "b": "I29" }, "parameters": { "resistance": 1000000.0 } },
+    { "id": "R_NO", "kind": "resistor", "pins": { "a": "B5", "b": "TP-:16" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_GREEN", "kind": "resistor", "pins": { "a": "B3", "b": "A13" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R_RED", "kind": "resistor", "pins": { "a": "C11", "b": "B16" }, "parameters": { "resistance": 470.0 } },
+    { "id": "R_SPK", "kind": "resistor", "pins": { "a": "B11", "b": "A14" }, "parameters": { "resistance": 100.0 } },
+    { "id": "R_STATUS1", "kind": "resistor", "pins": { "a": "H21", "b": "D20" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_STATUS2", "kind": "resistor", "pins": { "a": "H22", "b": "C26" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_STATUS3", "kind": "resistor", "pins": { "a": "H23", "b": "A19" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_STATUS4", "kind": "resistor", "pins": { "a": "I24", "b": "A17" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_BIAS1", "kind": "resistor", "pins": { "a": "F24", "b": "TP+:13" }, "parameters": { "resistance": 1000000.0 } },
+    { "id": "R_BIAS2", "kind": "resistor", "pins": { "a": "H24", "b": "B17" }, "parameters": { "resistance": 1000000.0 } },
+    { "id": "R_BIAS3", "kind": "resistor", "pins": { "a": "F23", "b": "E19" }, "parameters": { "resistance": 1000000.0 } },
+    { "id": "R_ARM_TIMING", "kind": "resistor", "pins": { "a": "D1", "b": "TP-:30" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_ENTRY_TIMING", "kind": "resistor", "pins": { "a": "TP+:15", "b": "D26" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_SIREN_TIMING", "kind": "resistor", "pins": { "a": "TP+:16", "b": "D19" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_FLASH_TIMING", "kind": "resistor", "pins": { "a": "TP+:17", "b": "D18" }, "parameters": { "resistance": 10000.0 } },
+    { "id": "R_EXTRA_LOAD", "kind": "resistor", "pins": { "a": "B2", "b": "TP-:29" }, "parameters": { "resistance": 10000.0 } },
 
-    { "id": "C_ARM", "kind": "capacitor", "pins": { "positive": "A27", "negative": "F1" }, "parameters": { "capacitance": 0.0001 } },
-    { "id": "C_ENTRY", "kind": "capacitor", "pins": { "positive": "B27", "negative": "G1" }, "parameters": { "capacitance": 0.0001 } },
-    { "id": "C_SIREN", "kind": "capacitor", "pins": { "positive": "C27", "negative": "H1" }, "parameters": { "capacitance": 0.0001 } },
-    { "id": "C_FLASH", "kind": "capacitor", "pins": { "positive": "D27", "negative": "I1" }, "parameters": { "capacitance": 0.0001 } },
+    { "id": "C_ARM", "kind": "capacitor", "pins": { "positive": "A20", "negative": "F1" }, "parameters": { "capacitance": 0.0001 } },
+    { "id": "C_ENTRY", "kind": "capacitor", "pins": { "positive": "A26", "negative": "G1" }, "parameters": { "capacitance": 0.0001 } },
+    { "id": "C_SIREN", "kind": "capacitor", "pins": { "positive": "B19", "negative": "H1" }, "parameters": { "capacitance": 0.0001 } },
+    { "id": "C_FLASH", "kind": "capacitor", "pins": { "positive": "C17", "negative": "I1" }, "parameters": { "capacitance": 0.0001 } },
     { "id": "C_10N1", "kind": "capacitor", "pins": { "positive": "A28", "negative": "F2" }, "parameters": { "capacitance": 0.00000001 } },
     { "id": "C_10N2", "kind": "capacitor", "pins": { "positive": "B28", "negative": "G2" }, "parameters": { "capacitance": 0.00000001 } },
     { "id": "C_10N3", "kind": "capacitor", "pins": { "positive": "C28", "negative": "H2" }, "parameters": { "capacitance": 0.00000001 } },
@@ -71,8 +74,8 @@
     { "id": "C_100N6", "kind": "capacitor", "pins": { "positive": "D30", "negative": "I4" }, "parameters": { "capacitance": 0.0000001 } },
 
     { "id": "LED_GREEN", "kind": "led", "pins": { "anode": "B13", "cathode": "H27" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
-    { "id": "LED_RED", "kind": "led", "pins": { "anode": "B14", "cathode": "I27" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
-    { "id": "SPK1", "kind": "speaker", "pins": { "positive": "A25", "negative": "B12" }, "parameters": { "resistance": 8.0 } }
+    { "id": "LED_RED", "kind": "led", "pins": { "anode": "C16", "cathode": "TP-:21" }, "parameters": { "forward_voltage": 2.0, "series_resistance": 100.0 } },
+    { "id": "SPK1", "kind": "speaker", "pins": { "positive": "B14", "negative": "TP-:20" }, "parameters": { "resistance": 8.0 } }
   ],
   "wires": [
     { "id": "W_VCC_21", "from": "E21", "to": "TP+:3" },
@@ -98,5 +101,5 @@
     { "id": "W_GND_03", "from": "J3", "to": "TP-:13" },
     { "id": "W_GND_04", "from": "J4", "to": "TP-:14" }
   ],
-  "initial_conditions": { "controls": { "S1": "switch_normally_open" } }
+  "initial_conditions": { "controls": { "S1": "switch_normally_closed", "REED1": "button_released" } }
 }

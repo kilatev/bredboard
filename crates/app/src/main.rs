@@ -176,6 +176,8 @@ const C07_S09_10_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-10-chess-clock.json");
 const C07_S09_11_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-11-score-board.json");
+const C07_S09_15_JSON: &str =
+    include_str!("../../../fixtures/projects/c07-s09-15-security-alarm.json");
 const C08_S17_03_JSON: &str =
     include_str!("../../../fixtures/projects/c08-s17-03-optocoupler.json");
 const C08_S14_01_JSON: &str =
@@ -313,6 +315,7 @@ enum Circuit {
     C07S09_09,
     C07S09_10,
     C07S09_11,
+    C07S09_15,
     C08S17_03,
     C08S14_01,
     C09S15_01,
@@ -347,7 +350,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 119] {
+    fn all() -> [Self; 120] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -418,6 +421,7 @@ impl Circuit {
             Self::C07S09_09,
             Self::C07S09_10,
             Self::C07S09_11,
+            Self::C07S09_15,
             Self::C08S17_03,
             Self::C08S14_01,
             Self::C09S15_01,
@@ -574,6 +578,7 @@ impl Circuit {
             Self::C07S09_09 => C07_S09_09_JSON,
             Self::C07S09_10 => C07_S09_10_JSON,
             Self::C07S09_11 => C07_S09_11_JSON,
+            Self::C07S09_15 => C07_S09_15_JSON,
             Self::C08S17_03 => C08_S17_03_JSON,
             Self::C08S14_01 => C08_S14_01_JSON,
             Self::C09S15_01 => C09_S15_01_JSON,
@@ -697,6 +702,7 @@ impl Circuit {
             Self::C07S09_09 => "C07-S09-09: QUIZ BUTTONS",
             Self::C07S09_10 => "C07-S09-10: CHESS CLOCK",
             Self::C07S09_11 => "C07-S09-11: PING-PONG SCORE BOARD",
+            Self::C07S09_15 => "C07-S09-15: SECURITY ALARM",
             Self::C08S17_03 => "C08-S17-03: OPTOCOUPLER",
             Self::C08S14_01 => "C08-S14-01: CANDLE FLICKER",
             Self::C09S15_01 => "C09-S15-01: RELAY SWITCH",
@@ -998,6 +1004,10 @@ impl Circuit {
             Self::C07S09_11 => (
                 "Two calculated two-digit BCD score paths use electrically driven up/down inputs, carry-windowed tens stages, and four current-limited seven-segment displays. The source's CD4093 package-level debounce is represented by bounded OR/AND gate contracts; the 9 V adapter is retained as the source supply.",
                 "Task: press A +1, A −1, B +1, or B −1 and inspect both calculated scores; press RESET to clear them.",
+            ),
+            Self::C07S09_15 => (
+                "A calculated SPDT key latches an armed state, a finite reed contact and threshold-output PIR module feed the sensor path, and a D flip-flop latches the alarm. Bounded 555 stages drive the entry, siren, and red-status branches; the source's apartment scene, exact package boundaries, and real PIR/magnetic/audio behavior remain explicit discrepancies.",
+                "Task: toggle S1 to ARM, press REED1 to simulate a door opening, run one fixed step, and compare the latched alarm, red LED, and speaker current; toggle S1 back to RESET.",
             ),
             Self::C08S17_03 => (
                 "A calculated optocoupler transfers current from a 9 V button domain into an isolated 4.5 V LED domain. The two source rails remain electrically separate; the PC817 package is represented by the bounded optical-transfer contract.",
@@ -1736,6 +1746,18 @@ impl Circuit {
                 ControlSpec {
                     label: "RESET",
                     component: "RESET",
+                    is_switch: false,
+                },
+            ],
+            Self::C07S09_15 => &[
+                ControlSpec {
+                    label: "S1: ARM / RESET",
+                    component: "S1",
+                    is_switch: true,
+                },
+                ControlSpec {
+                    label: "REED1: DOOR",
+                    component: "REED1",
                     is_switch: false,
                 },
             ],
@@ -3956,6 +3978,62 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C07S09_15 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Security alarm: arm, open REED1, and run to measure".into(),
+                        |result| {
+                            let pin_voltage = |component: &str, pin: &str| {
+                                result
+                                    .node_voltages
+                                    .iter()
+                                    .find(|node| {
+                                        node.contacts.contains(
+                                            &bredboard_core::Contact::ComponentPin(
+                                                ComponentId(component.into()),
+                                                PinId(pin.into()),
+                                            ),
+                                        )
+                                    })
+                                    .map(|node| node.voltage)
+                                    .unwrap_or(0.0)
+                            };
+                            let armed = bench
+                                .simulation
+                                .digital_states
+                                .get(&ComponentId("F_ARM".into()))
+                                .copied()
+                                .unwrap_or(0)
+                                & 1
+                                != 0;
+                            let alarm = bench
+                                .simulation
+                                .digital_states
+                                .get(&ComponentId("F_ALARM".into()))
+                                .copied()
+                                .unwrap_or(0)
+                                & 1
+                                != 0;
+                            format!(
+                                "ARM {}   SENSOR {:.2} V   ALARM {}   RED {:.1} mA   SPK {:.1} mA",
+                                if armed { "ON" } else { "OFF" },
+                                pin_voltage("G_SENSOR", "output"),
+                                if alarm { "ON" } else { "OFF" },
+                                1000.0
+                                    * result
+                                        .led_currents
+                                        .get(&ComponentId("LED_RED".into()))
+                                        .copied()
+                                        .unwrap_or(0.0),
+                                1000.0
+                                    * result
+                                        .resistor_currents
+                                        .get(&ComponentId("R_SPK".into()))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                                        .abs()
+                            )
+                        },
+                    )
                 } else if bench.circuit == Circuit::C08S17_03 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "Optocoupler transfer: run to measure".into(),
@@ -4579,6 +4657,65 @@ mod tests {
     }
 
     #[test]
+    fn c07_s09_15_arms_latches_alarm_and_resets_from_key() {
+        let mut bench = Bench::new(Circuit::C07S09_15);
+        bench.act(Action::SingleStep);
+        assert!(
+            !bench.simulation.stale,
+            "{:?}",
+            bench.simulation.diagnostics
+        );
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("F_ARM".into())] & 1,
+            0
+        );
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("F_ALARM".into())] & 1,
+            0
+        );
+        let initial_red = bench.simulation.last_valid.as_ref().unwrap().led_currents
+            [&ComponentId("LED_RED".into())];
+        assert!(
+            initial_red.abs() < 1e-6,
+            "initial red current: {initial_red}"
+        );
+
+        bench.toggle(0);
+        bench.act(Action::SingleStep);
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("F_ARM".into())] & 1,
+            1
+        );
+
+        bench.toggle(1);
+        bench.act(Action::SingleStep);
+        let result = bench.simulation.last_valid.as_ref().unwrap();
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("F_ALARM".into())] & 1,
+            1
+        );
+        assert!(result.led_currents[&ComponentId("LED_RED".into())] > 0.0005);
+        assert!(result.resistor_currents[&ComponentId("R_SPK".into())].abs() > 0.001);
+
+        bench.toggle(0);
+        bench.act(Action::SingleStep);
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("F_ARM".into())] & 1,
+            0
+        );
+        assert_eq!(
+            bench.simulation.digital_states[&ComponentId("F_ALARM".into())] & 1,
+            0
+        );
+        assert!(
+            bench.simulation.last_valid.as_ref().unwrap().led_currents
+                [&ComponentId("LED_RED".into())]
+                .abs()
+                < 1e-6
+        );
+    }
+
+    #[test]
     fn c05_s07_14_fixed_steps_measure_the_selected_range() {
         let measure = |switch_state| {
             let mut project: Project =
@@ -4930,7 +5067,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            119
+            120
         );
         assert!(matches!(
             items[0],
@@ -5109,6 +5246,7 @@ mod tests {
             Circuit::E28,
             Circuit::E29,
             Circuit::E30,
+            Circuit::C07S09_15,
         ] {
             let mut app = App::new();
             app.init_resource::<Assets<Image>>();
