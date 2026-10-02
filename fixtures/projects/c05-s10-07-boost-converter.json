@@ -1,0 +1,82 @@
+{
+  "format_version": 1,
+  "title": "C05-S10-07: 3 V to 12 V boost converter",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    {
+      "id": "V1",
+      "kind": "dc_voltage_source",
+      "pins": { "positive": "TP+:1", "negative": "TP-:1" },
+      "parameters": { "voltage": 3.0 }
+    },
+    {
+      "id": "U1",
+      "kind": "timer_555",
+      "pins": {
+        "control": "A20",
+        "discharge": "A10",
+        "gnd": "TP-:2",
+        "output": "A5",
+        "reset": "TP+:4",
+        "threshold": "C10",
+        "trigger": "B10",
+        "vcc": "TP+:2"
+      },
+      "parameters": { "output_resistance": 50.0, "discharge_resistance": 100.0 }
+    },
+    {
+      "id": "Q1",
+      "kind": "resistor",
+      "pins": { "a": "B15", "b": "TP-:4" },
+      "parameters": { "resistance": 1.0 }
+    },
+    {
+      "id": "L1",
+      "kind": "resistor",
+      "pins": { "a": "TP+:3", "b": "C15" },
+      "parameters": { "resistance": 100.0 }
+    },
+    {
+      "id": "D1",
+      "kind": "diode",
+      "pins": { "anode": "D15", "cathode": "G20" },
+      "parameters": { "forward_voltage": 0.3, "series_resistance": 2.0 },
+      "diode_model": { "kind": "schottky" }
+    },
+    {
+      "id": "R3",
+      "kind": "resistor",
+      "pins": { "a": "TP+:5", "b": "D10" },
+      "parameters": { "resistance": 10000.0 }
+    },
+    {
+      "id": "C1",
+      "kind": "capacitor",
+      "pins": { "positive": "E10", "negative": "TP-:6" },
+      "parameters": { "capacitance": 0.000000001 }
+    },
+    {
+      "id": "C2",
+      "kind": "capacitor",
+      "pins": { "positive": "F20", "negative": "TP-:7" },
+      "parameters": { "capacitance": 0.0001 }
+    },
+    {
+      "id": "C3",
+      "kind": "capacitor",
+      "pins": { "positive": "I20", "negative": "TP-:8" },
+      "parameters": { "capacitance": 0.0001 }
+    },
+    {
+      "id": "C4",
+      "kind": "capacitor",
+      "pins": { "positive": "E20", "negative": "TP-:9" },
+      "parameters": { "capacitance": 0.00000001 }
+    }
+  ],
+  "wires": [],
+  "initial_conditions": {
+    "capacitor_voltages": { "C1": 0.0, "C2": 0.0, "C3": 0.0, "C4": 0.0 },
+    "coupled_winding_currents": { "L1": [0.0, 0.0] }
+  }
+}
