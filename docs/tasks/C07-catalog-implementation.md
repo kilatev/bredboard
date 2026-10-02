@@ -60,8 +60,13 @@ The source record is
   decelerating animation contract; keep it blocked.
 - S09-14 needs three timer/counter/display chains, comparators, and bounded
   slot-machine state; keep it blocked.
-- S09-15 needs reed/PIR sensor modules, several timer/flip-flop stages, and
-  alarm state sequencing; keep it blocked.
+- S09-15 is admitted as a calculated security-alarm fixture: the SPDT key
+  controls an armed latch, a finite reed contact and threshold-output PIR
+  module feed the sensor path, and a D flip-flop latches the alarm. Bounded
+  555 stages drive the entry, siren, and status branches. The source's exact
+  package/timing behavior, apartment scene, PIR/magnetic mechanics, and audio
+  presentation remain explicit discrepancies; the 5 V source is a low-voltage
+  proxy and the fixture is not a mains safety design.
 - S09-16 needs an HC-SR04 distance/time-of-flight contract, analog scaling,
   bargraph output, and distance-dependent tone; keep it blocked.
 - S09-17 needs floor sensors, multi-stage logic, L293D, motor motion, and a
@@ -228,6 +233,35 @@ The CAT-S09-11 automated gate passed on 2026-10-02: `cargo fmt --all --
 app, 152 core, 3 tools, 0 doc-test failures), native Linux and WASM app
 builds, `validate-catalog` (20 sections, 212 schematics), and `git diff
 --check`. Manual browser and real-breadboard evidence remain pending.
+
+The CAT-S09-15 slice adds
+`fixtures/projects/c07-s09-15-security-alarm.json` and registers it in the
+app menu. It contains 49 components, 22 explicit wires, and 23 derived nodes.
+The SPDT key arms and resets a calculated D flip-flop latch; the finite reed
+contact and threshold-output PIR module feed the calculated sensor path; a
+second D flip-flop latches the alarm; and bounded timer stages drive the entry,
+siren, red LED, and speaker branches. The source's eight IC packages are
+represented by ten bounded logical primitives, and the 5 V supply, exact
+timings, apartment scene, PIR/magnetic mechanics, and audio remain explicit
+discrepancies rather than scripted outcomes.
+
+Focused evidence for the slice:
+
+```text
+cargo run -q -p bredboard-tools --locked -- validate fixtures/projects/c07-s09-15-security-alarm.json — passed; 49 components, 22 wires, 23 derived nodes
+cargo run -q -p bredboard-tools --locked -- simulate fixtures/projects/c07-s09-15-security-alarm.json 4000 — passed; step 4000 at 0.400000 s without diagnostics
+cargo test -p bredboard-core --locked c07_s09_15_key_and_reed_drive_deterministic_alarm_sequence -- --nocapture — passed
+cargo test -p bredboard-app --locked c07_s09_15_arms_latches_alarm_and_resets_from_key -- --nocapture — passed
+cargo test -p bredboard-app --locked all_embedded_boards_have_unique_lead_and_wire_holes -- --nocapture — passed
+```
+
+The CAT-S09-15 automated gate passed on 2026-10-02: `cargo fmt --all
+--check`, Clippy with `-D warnings`, `cargo test --workspace --locked` (65
+app, 153 core, 3 tools, 0 doc-test failures), native Linux and WASM app
+builds, `validate-catalog breadboard-circuits/spec/catalog.json
+breadboard-circuits/spec/catalog.schema.json` (20 sections, 212 schematics),
+and `git diff --check`. Manual browser, real-breadboard, and audio evidence
+remain pending.
 
 ## Current blockers
 
