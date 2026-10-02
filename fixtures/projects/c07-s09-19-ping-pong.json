@@ -1,0 +1,1352 @@
+{
+  "format_version": 1,
+  "title": "C07-S09-19: Processor-free ping-pong",
+  "board": {
+    "model": {
+      "multi_board": {
+        "boards": [
+          {
+            "id": "logic_a",
+            "model": "half_size_solderless"
+          },
+          {
+            "id": "logic_b",
+            "model": "half_size_solderless"
+          },
+          {
+            "id": "logic_c",
+            "model": "half_size_solderless"
+          }
+        ]
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "V1",
+      "kind": "dc_voltage_source",
+      "pins": {
+        "positive": "logic_a/TP+:1",
+        "negative": "logic_a/TP-:1"
+      },
+      "parameters": {
+        "voltage": 5
+      }
+    },
+    {
+      "id": "U_555_X",
+      "kind": "clock_source",
+      "pins": {
+        "gnd": "logic_a/TP-:2",
+        "output": "logic_a/B1",
+        "vcc": "logic_a/BP+:2"
+      },
+      "parameters": {
+        "frequency_hz": 1000,
+        "output_resistance": 50
+      }
+    },
+    {
+      "id": "U_555_Y",
+      "kind": "clock_source",
+      "pins": {
+        "gnd": "logic_b/TP-:2",
+        "output": "logic_b/B2",
+        "vcc": "logic_b/BP+:2"
+      },
+      "parameters": {
+        "frequency_hz": 1000,
+        "output_resistance": 50
+      }
+    },
+    {
+      "id": "U_191_X",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "logic_a/C1",
+        "carry": "logic_a/A9",
+        "enable": "logic_a/TP+:3",
+        "gnd": "logic_a/BP-:2",
+        "q0": "logic_a/A6",
+        "q1": "logic_a/A7",
+        "q2": "logic_a/A8",
+        "q3": "logic_a/B9",
+        "reset": "logic_a/TP-:3",
+        "vcc": "logic_a/BP+:3",
+        "direction": "logic_a/A5"
+      },
+      "parameters": {
+        "modulus": 10,
+        "output_mode": 0,
+        "output_resistance": 100,
+        "count_direction": 1
+      }
+    },
+    {
+      "id": "U_191_Y",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "logic_b/C2",
+        "carry": "logic_b/A9",
+        "enable": "logic_b/TP+:3",
+        "gnd": "logic_b/BP-:2",
+        "q0": "logic_b/A6",
+        "q1": "logic_b/A7",
+        "q2": "logic_b/A8",
+        "q3": "logic_b/B9",
+        "reset": "logic_b/TP-:3",
+        "vcc": "logic_b/BP+:3",
+        "direction": "logic_b/A5"
+      },
+      "parameters": {
+        "modulus": 10,
+        "output_mode": 0,
+        "output_resistance": 100,
+        "count_direction": 1
+      }
+    },
+    {
+      "id": "U_74_X",
+      "kind": "d_flip_flop",
+      "pins": {
+        "clock": "logic_b/G3",
+        "data": "logic_a/F5",
+        "gnd": "logic_a/BP-:3",
+        "not_q": "logic_a/G5",
+        "q": "logic_a/B5",
+        "reset": "logic_a/TP-:4",
+        "set": "logic_a/BP-:4",
+        "vcc": "logic_a/TP+:4"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "U_74_Y",
+      "kind": "d_flip_flop",
+      "pins": {
+        "clock": "logic_a/G3",
+        "data": "logic_b/F5",
+        "gnd": "logic_b/BP-:3",
+        "not_q": "logic_b/G5",
+        "q": "logic_b/B5",
+        "reset": "logic_b/TP-:4",
+        "set": "logic_b/BP-:4",
+        "vcc": "logic_b/TP+:4"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "U_138_X",
+      "kind": "ic_device",
+      "pins": {
+        "vcc": "logic_a/BP+:4",
+        "gnd": "logic_a/TP-:5",
+        "output": "logic_a/F8",
+        "a0": "logic_a/B6",
+        "a1": "logic_a/B7",
+        "a2": "logic_a/B8"
+      },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": {
+          "vcc": "supply",
+          "gnd": "ground",
+          "output": "output",
+          "a0": "input",
+          "a1": "input",
+          "a2": "input"
+        },
+        "behavior": {
+          "behavior": "logic",
+          "inputs": [
+            "a0",
+            "a1",
+            "a2"
+          ],
+          "output": "output",
+          "reference": "gnd",
+          "supply": "vcc",
+          "operation": "or",
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "U_138_Y",
+      "kind": "ic_device",
+      "pins": {
+        "vcc": "logic_b/BP+:4",
+        "gnd": "logic_b/TP-:5",
+        "output": "logic_b/F8",
+        "a0": "logic_b/B6",
+        "a1": "logic_b/B7",
+        "a2": "logic_b/B8"
+      },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": {
+          "vcc": "supply",
+          "gnd": "ground",
+          "output": "output",
+          "a0": "input",
+          "a1": "input",
+          "a2": "input"
+        },
+        "behavior": {
+          "behavior": "logic",
+          "inputs": [
+            "a0",
+            "a1",
+            "a2"
+          ],
+          "output": "output",
+          "reference": "gnd",
+          "supply": "vcc",
+          "operation": "or",
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "U_ADC_X",
+      "kind": "ic_device",
+      "pins": {
+        "vcc": "logic_a/TP+:5",
+        "gnd": "logic_a/BP-:5",
+        "input": "logic_a/F6",
+        "output": "logic_a/F7"
+      },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": {
+          "vcc": "supply",
+          "gnd": "ground",
+          "input": "input",
+          "output": "output"
+        },
+        "behavior": {
+          "behavior": "linear",
+          "output": "output",
+          "reference": "gnd",
+          "inputs": [
+            {
+              "pin": "input",
+              "gain": 1
+            }
+          ],
+          "offset": 0,
+          "min_output": 0,
+          "max_output": 5,
+          "input_resistance": 1000000,
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "U_ADC_Y",
+      "kind": "ic_device",
+      "pins": {
+        "vcc": "logic_b/TP+:5",
+        "gnd": "logic_b/BP-:5",
+        "input": "logic_b/F6",
+        "output": "logic_b/F7"
+      },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": {
+          "vcc": "supply",
+          "gnd": "ground",
+          "input": "input",
+          "output": "output"
+        },
+        "behavior": {
+          "behavior": "linear",
+          "output": "output",
+          "reference": "gnd",
+          "inputs": [
+            {
+              "pin": "input",
+              "gain": 1
+            }
+          ],
+          "offset": 0,
+          "min_output": 0,
+          "max_output": 5,
+          "input_resistance": 1000000,
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "U_85_X",
+      "kind": "ic_device",
+      "pins": {
+        "gnd": "logic_b/TP-:6",
+        "inverting": "logic_a/C9",
+        "non_inverting": "logic_a/G7",
+        "output": "logic_b/H3",
+        "vcc": "logic_b/BP+:5"
+      },
+      "parameters": {
+      },
+      "ic_device": {
+        "pin_roles": {
+          "gnd": "ground",
+          "inverting": "input",
+          "non_inverting": "input",
+          "output": "output",
+          "vcc": "supply"
+        },
+        "behavior": {
+          "behavior": "linear",
+          "output": "output",
+          "reference": "gnd",
+          "inputs": [
+            {"pin": "inverting", "gain": -1},
+            {"pin": "non_inverting", "gain": 1}
+          ],
+          "offset": 2.5,
+          "min_output": 0,
+          "max_output": 5,
+          "input_resistance": 1000000,
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "U_85_Y",
+      "kind": "ic_device",
+      "pins": {
+        "gnd": "logic_a/TP-:6",
+        "inverting": "logic_b/C9",
+        "non_inverting": "logic_b/G7",
+        "output": "logic_a/H3",
+        "vcc": "logic_a/BP+:5"
+      },
+      "parameters": {
+      },
+      "ic_device": {
+        "pin_roles": {
+          "gnd": "ground",
+          "inverting": "input",
+          "non_inverting": "input",
+          "output": "output",
+          "vcc": "supply"
+        },
+        "behavior": {
+          "behavior": "linear",
+          "output": "output",
+          "reference": "gnd",
+          "inputs": [
+            {"pin": "inverting", "gain": -1},
+            {"pin": "non_inverting", "gain": 1}
+          ],
+          "offset": 2.5,
+          "min_output": 0,
+          "max_output": 5,
+          "input_resistance": 1000000,
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "U_08",
+      "kind": "ic_device",
+      "pins": {
+        "gnd": "logic_a/BP-:6",
+        "input_a": "logic_b/I3",
+        "input_b": "logic_a/I3",
+        "output": "logic_a/F9",
+        "vcc": "logic_a/TP+:6"
+      },
+      "parameters": {
+      },
+      "ic_device": {
+        "pin_roles": {"gnd": "ground", "input_a": "input", "input_b": "input", "output": "output", "vcc": "supply"},
+        "behavior": {
+          "behavior": "linear",
+          "output": "output",
+          "reference": "gnd",
+          "inputs": [{"pin": "input_a", "gain": 0.5}, {"pin": "input_b", "gain": 0.5}],
+          "offset": 0,
+          "min_output": 0,
+          "max_output": 5,
+          "input_resistance": 1000000,
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "U_86",
+      "kind": "ic_device",
+      "pins": {
+        "gnd": "logic_a/TP-:7",
+        "input_a": "logic_a/G9",
+        "input_b": "logic_a/C5",
+        "output": "logic_a/F10",
+        "vcc": "logic_a/BP+:6"
+      },
+      "parameters": {
+      },
+      "ic_device": {
+        "pin_roles": {"gnd": "ground", "input_a": "input", "input_b": "input", "output": "output", "vcc": "supply"},
+        "behavior": {
+          "behavior": "linear",
+          "output": "output",
+          "reference": "gnd",
+          "inputs": [{"pin": "input_a", "gain": 0.5}, {"pin": "input_b", "gain": 0.5}],
+          "offset": 0,
+          "min_output": 0,
+          "max_output": 5,
+          "input_resistance": 1000000,
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "U_32",
+      "kind": "ic_device",
+      "pins": {
+        "gnd": "logic_a/BP-:7",
+        "input_a": "logic_a/G10",
+        "input_b": "logic_a/G8",
+        "output": "logic_a/F11",
+        "vcc": "logic_a/TP+:7"
+      },
+      "parameters": {
+      },
+      "ic_device": {
+        "pin_roles": {"gnd": "ground", "input_a": "input", "input_b": "input", "output": "output", "vcc": "supply"},
+        "behavior": {
+          "behavior": "linear",
+          "output": "output",
+          "reference": "gnd",
+          "inputs": [{"pin": "input_a", "gain": 0.5}, {"pin": "input_b", "gain": 0.5}],
+          "offset": 0,
+          "min_output": 0,
+          "max_output": 5,
+          "input_resistance": 1000000,
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "U_390_A",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "logic_c/B1",
+        "carry": "logic_c/A6",
+        "enable": "logic_c/TP+:2",
+        "gnd": "logic_c/TP-:2",
+        "q0": "logic_c/A3",
+        "q1": "logic_c/A4",
+        "q2": "logic_c/A5",
+        "q3": "logic_c/B6",
+        "reset": "logic_c/BP-:2",
+        "vcc": "logic_c/BP+:2"
+      },
+      "parameters": {
+        "modulus": 10,
+        "output_mode": 0,
+        "output_resistance": 100,
+        "count_direction": 1
+      }
+    },
+    {
+      "id": "U_390_B",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "logic_c/B2",
+        "carry": "logic_c/F6",
+        "enable": "logic_c/TP+:3",
+        "gnd": "logic_c/TP-:3",
+        "q0": "logic_c/F3",
+        "q1": "logic_c/F4",
+        "q2": "logic_c/F5",
+        "q3": "logic_c/G6",
+        "reset": "logic_c/BP-:3",
+        "vcc": "logic_c/BP+:3"
+      },
+      "parameters": {
+        "modulus": 10,
+        "output_mode": 0,
+        "output_resistance": 100,
+        "count_direction": 1
+      }
+    },
+    {
+      "id": "U_4511_A",
+      "kind": "ic_device",
+      "pins": {
+        "vcc": "logic_c/TP+:4",
+        "gnd": "logic_c/TP-:4",
+        "output": "logic_c/A7",
+        "b0": "logic_c/B3",
+        "b1": "logic_c/B4",
+        "b2": "logic_c/B5",
+        "b3": "logic_c/C6"
+      },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": {
+          "vcc": "supply",
+          "gnd": "ground",
+          "output": "output",
+          "b0": "input",
+          "b1": "input",
+          "b2": "input",
+          "b3": "input"
+        },
+        "behavior": {
+          "behavior": "logic",
+          "inputs": [
+            "b0",
+            "b1",
+            "b2",
+            "b3"
+          ],
+          "output": "output",
+          "reference": "gnd",
+          "supply": "vcc",
+          "operation": "or",
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "U_4511_B",
+      "kind": "ic_device",
+      "pins": {
+        "vcc": "logic_c/BP+:4",
+        "gnd": "logic_c/BP-:4",
+        "output": "logic_c/F7",
+        "b0": "logic_c/G3",
+        "b1": "logic_c/G4",
+        "b2": "logic_c/G5",
+        "b3": "logic_c/H6"
+      },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": {
+          "vcc": "supply",
+          "gnd": "ground",
+          "output": "output",
+          "b0": "input",
+          "b1": "input",
+          "b2": "input",
+          "b3": "input"
+        },
+        "behavior": {
+          "behavior": "logic",
+          "inputs": [
+            "b0",
+            "b1",
+            "b2",
+            "b3"
+          ],
+          "output": "output",
+          "reference": "gnd",
+          "supply": "vcc",
+          "operation": "or",
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "DISP_A",
+      "kind": "seven_segment_display",
+      "pins": {
+        "a": "logic_c/B7",
+        "b": "logic_c/TP-:5",
+        "c": "logic_c/BP-:5",
+        "common": "logic_c/TP-:6",
+        "d": "logic_c/BP-:6",
+        "e": "logic_c/TP-:7",
+        "f": "logic_c/BP-:7",
+        "g": "logic_c/TP-:8",
+        "gnd": "logic_c/BP-:8",
+        "input_b0": "logic_c/C3",
+        "input_b1": "logic_c/C4",
+        "input_b2": "logic_c/C5",
+        "input_b3": "logic_c/D6",
+        "vcc": "logic_c/TP+:5"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "DISP_B",
+      "kind": "seven_segment_display",
+      "pins": {
+        "a": "logic_c/G7",
+        "b": "logic_c/TP-:9",
+        "c": "logic_c/BP-:9",
+        "common": "logic_c/TP-:10",
+        "d": "logic_c/BP-:10",
+        "e": "logic_c/TP-:11",
+        "f": "logic_c/BP-:11",
+        "g": "logic_c/TP-:12",
+        "gnd": "logic_c/BP-:12",
+        "input_b0": "logic_c/H3",
+        "input_b1": "logic_c/H4",
+        "input_b2": "logic_c/H5",
+        "input_b3": "logic_c/I6",
+        "vcc": "logic_c/BP+:5"
+      },
+      "parameters": {
+        "output_resistance": 100
+      }
+    },
+    {
+      "id": "U_ULN2803",
+      "kind": "ic_device",
+      "pins": {
+        "vcc": "logic_c/TP+:6",
+        "gnd": "logic_c/TP-:13",
+        "output": "logic_c/A8",
+        "in": "logic_a/G11"
+      },
+      "parameters": {},
+      "ic_device": {
+        "pin_roles": {
+          "vcc": "supply",
+          "gnd": "ground",
+          "output": "output",
+          "in": "input"
+        },
+        "behavior": {
+          "behavior": "logic",
+          "inputs": [
+            "in"
+          ],
+          "output": "output",
+          "reference": "gnd",
+          "supply": "vcc",
+          "operation": "or",
+          "output_resistance": 100
+        }
+      }
+    },
+    {
+      "id": "RV_A",
+      "kind": "potentiometer",
+      "pins": {
+        "a": "logic_a/G6",
+        "b": "logic_a/TP-:8"
+      },
+      "parameters": {
+        "min_resistance": 1,
+        "max_resistance": 10000
+      }
+    },
+    {
+      "id": "RV_B",
+      "kind": "potentiometer",
+      "pins": {
+        "a": "logic_b/G6",
+        "b": "logic_b/BP-:6"
+      },
+      "parameters": {
+        "min_resistance": 1,
+        "max_resistance": 10000
+      }
+    },
+    {
+      "id": "D1",
+      "kind": "led",
+      "pins": {
+        "anode": "logic_c/A9",
+        "cathode": "logic_c/BP-:13"
+      },
+      "parameters": {
+        "forward_voltage": 2,
+        "series_resistance": 100
+      }
+    },
+    {
+      "id": "R_TIM_X",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_a/D4",
+        "b": "logic_a/BP+:7"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_TIM_Y",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/D4",
+        "b": "logic_b/TP+:6"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_DIS_X",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_a/G4",
+        "b": "logic_a/BP-:8"
+      },
+      "parameters": {
+        "resistance": 100
+      }
+    },
+    {
+      "id": "R_DIS_Y",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/G4",
+        "b": "logic_b/TP-:7"
+      },
+      "parameters": {
+        "resistance": 100
+      }
+    },
+    {
+      "id": "R_LED",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/B8",
+        "b": "logic_c/B9"
+      },
+      "parameters": {
+        "resistance": 220
+      }
+    },
+    {
+      "id": "C01",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/E4",
+        "negative": "logic_a/TP-:9"
+      },
+      "parameters": {
+        "capacitance": 0.00001
+      }
+    },
+    {
+      "id": "C02",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_b/E4",
+        "negative": "logic_a/BP-:9"
+      },
+      "parameters": {
+        "capacitance": 0.00001
+      }
+    },
+    {
+      "id": "C03",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/TP+:8",
+        "negative": "logic_a/TP-:10"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C04",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/BP+:8",
+        "negative": "logic_a/BP-:10"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C05",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/TP+:9",
+        "negative": "logic_a/TP-:11"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C06",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/BP+:9",
+        "negative": "logic_a/BP-:11"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C07",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/TP+:10",
+        "negative": "logic_a/TP-:12"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C08",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/BP+:10",
+        "negative": "logic_a/BP-:12"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C09",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/TP+:11",
+        "negative": "logic_a/TP-:13"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C10",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_a/BP+:11",
+        "negative": "logic_a/BP-:13"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C11",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_b/BP+:6",
+        "negative": "logic_b/BP-:7"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C12",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_b/TP+:7",
+        "negative": "logic_b/TP-:8"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C13",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_b/BP+:7",
+        "negative": "logic_b/BP-:8"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C14",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_b/TP+:8",
+        "negative": "logic_b/TP-:9"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C15",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_b/BP+:8",
+        "negative": "logic_b/BP-:9"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C16",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_c/BP+:6",
+        "negative": "logic_c/TP-:14"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C17",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_c/TP+:7",
+        "negative": "logic_c/BP-:14"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C18",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_c/BP+:7",
+        "negative": "logic_c/TP-:15"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C19",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_c/TP+:8",
+        "negative": "logic_c/BP-:15"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "C20",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "logic_c/BP+:8",
+        "negative": "logic_c/TP-:16"
+      },
+      "parameters": {
+        "capacitance": 1e-7
+      }
+    },
+    {
+      "id": "R_B01",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_a/TP+:12",
+        "b": "logic_a/TP-:14"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B02",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_a/BP+:12",
+        "b": "logic_a/BP-:14"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B03",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_a/TP+:13",
+        "b": "logic_a/TP-:15"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B04",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_a/BP+:13",
+        "b": "logic_a/BP-:15"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B05",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_a/TP+:14",
+        "b": "logic_a/TP-:16"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B06",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_a/BP+:14",
+        "b": "logic_a/BP-:16"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B07",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_a/TP+:15",
+        "b": "logic_a/TP-:17"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B08",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_a/BP+:15",
+        "b": "logic_a/BP-:17"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B09",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_a/TP+:16",
+        "b": "logic_a/TP-:18"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B10",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_a/BP+:16",
+        "b": "logic_a/BP-:18"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B11",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/TP+:9",
+        "b": "logic_b/TP-:10"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B12",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/BP+:9",
+        "b": "logic_b/BP-:10"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B13",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/TP+:10",
+        "b": "logic_b/TP-:11"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B14",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/BP+:10",
+        "b": "logic_b/BP-:11"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B15",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/TP+:11",
+        "b": "logic_b/TP-:12"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B16",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/BP+:11",
+        "b": "logic_b/BP-:12"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B17",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/TP+:12",
+        "b": "logic_b/TP-:13"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B18",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/BP+:12",
+        "b": "logic_b/BP-:13"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B19",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/TP+:13",
+        "b": "logic_b/TP-:14"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B20",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_b/BP+:13",
+        "b": "logic_b/BP-:14"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B21",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/TP+:9",
+        "b": "logic_c/BP-:16"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B22",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/BP+:9",
+        "b": "logic_c/TP-:17"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B23",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/TP+:10",
+        "b": "logic_c/BP-:17"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B24",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/BP+:10",
+        "b": "logic_c/TP-:18"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B25",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/TP+:11",
+        "b": "logic_c/BP-:18"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B26",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/BP+:11",
+        "b": "logic_c/TP-:19"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B27",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/TP+:12",
+        "b": "logic_c/BP-:19"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B28",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/BP+:12",
+        "b": "logic_c/TP-:20"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    },
+    {
+      "id": "R_B29",
+      "kind": "resistor",
+      "pins": {
+        "a": "logic_c/TP+:13",
+        "b": "logic_c/BP-:20"
+      },
+      "parameters": {
+        "resistance": 10000
+      }
+    }
+  ],
+  "wires": [
+    {
+      "id": "W_logic_a_VCC",
+      "from": "logic_a/TP+:30",
+      "to": "logic_a/BP+:30"
+    },
+    {
+      "id": "W_logic_a_GND",
+      "from": "logic_a/TP-:30",
+      "to": "logic_a/BP-:30"
+    },
+    {
+      "id": "W_logic_b_VCC",
+      "from": "logic_b/TP+:30",
+      "to": "logic_b/BP+:30"
+    },
+    {
+      "id": "W_logic_b_GND",
+      "from": "logic_b/TP-:30",
+      "to": "logic_b/BP-:30"
+    },
+    {
+      "id": "W_logic_c_VCC",
+      "from": "logic_c/TP+:30",
+      "to": "logic_c/BP+:30"
+    },
+    {
+      "id": "W_logic_c_GND",
+      "from": "logic_c/TP-:30",
+      "to": "logic_c/BP-:30"
+    },
+    {
+      "id": "W_POWER_logic_b_VCC",
+      "from": "logic_a/TP+:29",
+      "to": "logic_b/TP+:29"
+    },
+    {
+      "id": "W_POWER_logic_b_GND",
+      "from": "logic_a/TP-:29",
+      "to": "logic_b/TP-:29"
+    },
+    {
+      "id": "W_POWER_logic_c_VCC",
+      "from": "logic_a/TP+:28",
+      "to": "logic_c/TP+:29"
+    },
+    {
+      "id": "W_POWER_logic_c_GND",
+      "from": "logic_a/TP-:28",
+      "to": "logic_c/TP-:29"
+    },
+    {
+      "id": "W_CLOCK_X",
+      "from": "logic_a/A1",
+      "to": "logic_b/A1"
+    },
+    {
+      "id": "W_CLOCK_Y",
+      "from": "logic_b/A2",
+      "to": "logic_a/A2"
+    },
+    {
+      "id": "W_SCORE_A",
+      "from": "logic_b/F3",
+      "to": "logic_c/A1"
+    },
+    {
+      "id": "W_SCORE_B",
+      "from": "logic_a/F3",
+      "to": "logic_c/A2"
+    }
+  ],
+  "initial_conditions": {
+    "control_ratios": {
+      "RV_A": 0.25,
+      "RV_B": 0.75
+    },
+    "digital_states": {
+      "U_191_X": 1,
+      "U_191_Y": 4,
+      "U_74_X": 0,
+      "U_74_Y": 1,
+      "U_390_A": 0,
+      "U_390_B": 0
+    }
+  }
+}

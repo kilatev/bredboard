@@ -178,6 +178,7 @@ const C07_S09_11_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-11-score-board.json");
 const C07_S09_15_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-15-security-alarm.json");
+const C07_S09_19_JSON: &str = include_str!("../../../fixtures/projects/c07-s09-19-ping-pong.json");
 const C08_S17_03_JSON: &str =
     include_str!("../../../fixtures/projects/c08-s17-03-optocoupler.json");
 const C08_S14_01_JSON: &str =
@@ -316,6 +317,7 @@ enum Circuit {
     C07S09_10,
     C07S09_11,
     C07S09_15,
+    C07S09_19,
     C08S17_03,
     C08S14_01,
     C09S15_01,
@@ -350,7 +352,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 120] {
+    fn all() -> [Self; 121] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -422,6 +424,7 @@ impl Circuit {
             Self::C07S09_10,
             Self::C07S09_11,
             Self::C07S09_15,
+            Self::C07S09_19,
             Self::C08S17_03,
             Self::C08S14_01,
             Self::C09S15_01,
@@ -579,6 +582,7 @@ impl Circuit {
             Self::C07S09_10 => C07_S09_10_JSON,
             Self::C07S09_11 => C07_S09_11_JSON,
             Self::C07S09_15 => C07_S09_15_JSON,
+            Self::C07S09_19 => C07_S09_19_JSON,
             Self::C08S17_03 => C08_S17_03_JSON,
             Self::C08S14_01 => C08_S14_01_JSON,
             Self::C09S15_01 => C09_S15_01_JSON,
@@ -703,6 +707,7 @@ impl Circuit {
             Self::C07S09_10 => "C07-S09-10: CHESS CLOCK",
             Self::C07S09_11 => "C07-S09-11: PING-PONG SCORE BOARD",
             Self::C07S09_15 => "C07-S09-15: SECURITY ALARM",
+            Self::C07S09_19 => "C07-S09-19: PROCESSOR-FREE PING-PONG",
             Self::C08S17_03 => "C08-S17-03: OPTOCOUPLER",
             Self::C08S14_01 => "C08-S14-01: CANDLE FLICKER",
             Self::C09S15_01 => "C09-S15-01: RELAY SWITCH",
@@ -1008,6 +1013,10 @@ impl Circuit {
             Self::C07S09_15 => (
                 "A calculated SPDT key latches an armed state, a finite reed contact and threshold-output PIR module feed the sensor path, and a D flip-flop latches the alarm. Bounded 555 stages drive the entry, siren, and red-status branches; the source's apartment scene, exact package boundaries, and real PIR/magnetic/audio behavior remain explicit discrepancies.",
                 "Task: toggle S1 to ARM, press REED1 to simulate a door opening, run one fixed step, and compare the latched alarm, red LED, and speaker current; toggle S1 back to RESET.",
+            ),
+            Self::C07S09_19 => (
+                "Two calculated 555 timing stages clock reversible X/Y counters. D flip-flops change direction at comparator thresholds, bounded decoder and logic contracts drive the matrix/driver branch, and two decimal score counters feed the display contracts across three explicit boards. The source's exact 74HC package pinouts, LED-matrix multiplex current, and physical paddle/matrix presentation remain discrepancies.",
+                "Task: drag RV_A or RV_B, run the fixture, and inspect the calculated X/Y counter states, direction bits, collision flags, score counters, and LED-driver current.",
             ),
             Self::C08S17_03 => (
                 "A calculated optocoupler transfers current from a 9 V button domain into an isolated 4.5 V LED domain. The two source rails remain electrically separate; the PC817 package is represented by the bounded optical-transfer contract.",
@@ -1761,6 +1770,7 @@ impl Circuit {
                     is_switch: false,
                 },
             ],
+            Self::C07S09_19 => &[],
             Self::C08S17_03 => &[ControlSpec {
                 label: "B1: TRANSMIT",
                 component: "B1",
@@ -2056,6 +2066,16 @@ impl Circuit {
                 label: "RV1: STEP SPEED - drag left/right",
                 component: "RV1",
             }],
+            Self::C07S09_19 => &[
+                DialSpec {
+                    label: "RV_A: LEFT PADDLE - drag left/right",
+                    component: "RV_A",
+                },
+                DialSpec {
+                    label: "RV_B: RIGHT PADDLE - drag left/right",
+                    component: "RV_B",
+                },
+            ],
             Self::E27 => &[DialSpec {
                 label: "RV1: SHARED BRIGHTNESS - drag left/right",
                 component: "RV1",
@@ -3978,6 +3998,25 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C07S09_19 {
+                    let value = |id: &str| {
+                        bench
+                            .simulation
+                            .digital_states
+                            .get(&ComponentId(id.into()))
+                            .copied()
+                            .unwrap_or(0)
+                            & 0x3ff
+                    };
+                    format!(
+                        "X {}  Y {}  DIR {} / {}  SCORE {} : {}",
+                        value("U_191_X"),
+                        value("U_191_Y"),
+                        value("U_74_X"),
+                        value("U_74_Y"),
+                        value("U_390_A"),
+                        value("U_390_B")
+                    )
                 } else if bench.circuit == Circuit::C07S09_15 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "Security alarm: arm, open REED1, and run to measure".into(),
@@ -4716,6 +4755,34 @@ mod tests {
     }
 
     #[test]
+    fn c07_s09_19_runs_the_three_board_controller_contract() {
+        let mut bench = Bench::new(Circuit::C07S09_19);
+        assert_eq!(bench.project.board.model.board_count(), 3);
+        assert_eq!(bench.project.components.len(), 80);
+        bench.act(Action::SetControlRatio {
+            component: ComponentId("RV_A".into()),
+            ratio: 0.9,
+        });
+        bench.act(Action::Run);
+        advance_steps(&bench.project, &mut bench.simulation, 12);
+        assert!(
+            !bench.simulation.stale,
+            "{:?}",
+            bench.simulation.diagnostics
+        );
+        assert_eq!(bench.simulation.step, 12);
+        assert_ne!(
+            bench.simulation.digital_states[&ComponentId("U_191_X".into())] & 0x3ff,
+            1
+        );
+        assert_eq!(
+            bench.simulation.control_ratios[&ComponentId("RV_A".into())],
+            0.9
+        );
+        assert!(bench.simulation.last_valid.is_some());
+    }
+
+    #[test]
     fn c05_s07_14_fixed_steps_measure_the_selected_range() {
         let measure = |switch_state| {
             let mut project: Project =
@@ -4975,8 +5042,13 @@ mod tests {
                 bench.toggle(0);
             }
             bench.act(Action::Run);
-            advance_steps(&bench.project, &mut bench.simulation, 100);
-            assert_eq!(bench.simulation.step, 100, "{circuit:?}");
+            let steps = if circuit == Circuit::C07S09_19 {
+                4
+            } else {
+                100
+            };
+            advance_steps(&bench.project, &mut bench.simulation, steps);
+            assert_eq!(bench.simulation.step, steps, "{circuit:?}");
             assert!(!bench.simulation.stale);
             bench.act(Action::Reset);
             assert_eq!(bench.simulation.step, 0);
@@ -5067,7 +5139,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            120
+            121
         );
         assert!(matches!(
             items[0],

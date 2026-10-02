@@ -73,8 +73,11 @@ The source record is
   physical elevator shaft; keep it blocked.
 - S09-18 needs a crystal timebase, counters, six displays, and binary-clock
   presentation; keep it blocked.
-- S09-19 needs three boards, many logic stages, and a multi-state ping-pong
-  controller; keep it blocked.
+- S09-19 is admitted with three named half-size boards, fixed-step clock
+  proxies, calculated X/Y counters, direction flip-flops, bounded comparator/
+  logic/ADC/display/driver contracts, and a calculated multi-state controller.
+  Exact 74HC pinouts, LED-matrix multiplex current, and physical paddle/matrix
+  presentation remain explicit discrepancies.
 
 ## Acceptance criteria
 
@@ -263,13 +266,42 @@ breadboard-circuits/spec/catalog.schema.json` (20 sections, 212 schematics),
 and `git diff --check`. Manual browser, real-breadboard, and audio evidence
 remain pending.
 
+The CAT-S09-19 slice adds
+`fixtures/projects/c07-s09-19-ping-pong.json` and registers it in the app menu.
+It preserves the source BOM counts: 20 capacitors, one LED, two
+potentiometers, 34 resistors, one 5 V source, 22 IC/device entries, and three
+additional half-size boards. The two clock-source contracts are bounded
+fixed-step proxies for the source NE555 stages; four counters, two D
+flip-flops, five bounded linear package contracts for comparator/logic stages,
+two decoder contracts, two linear ADC contracts, two BCD/display contracts,
+and one bounded driver contract provide calculated state and output paths.
+The exact package pinouts and 8×8 matrix multiplex/current path are explicit
+source discrepancies rather than scripted results.
+
+Focused evidence for the slice:
+
+```text
+cargo run -q -p bredboard-tools --locked -- validate fixtures/projects/c07-s09-19-ping-pong.json — passed; 80 components, 14 wires, 43 derived nodes
+cargo run -q -p bredboard-tools --locked -- simulate fixtures/projects/c07-s09-19-ping-pong.json 10 — passed; step 10 at 0.001000 s without diagnostics
+cargo test -p bredboard-app --locked c07_s09_19_runs_the_three_board_controller_contract -- --nocapture — passed; 12-step counter transition and dial action
+cargo test -p bredboard-app --locked all_embedded_boards_have_unique_lead_and_wire_holes -- --nocapture — passed
+```
+
+The full automated gate passed on 2026-10-02: `cargo fmt --all --check`,
+Clippy with `-D warnings`, `cargo test --workspace --locked` (66 app, 153
+core, 3 tools, 0 doc-test failures), native Linux and WASM app builds,
+`validate-catalog` (20 sections, 212 schematics), and `git diff --check`.
+Manual browser and real-breadboard evidence remain pending. The app-wide
+fixed-step/reset regression uses a four-step smoke horizon for this dense
+fixture; the focused test is the CAT-S09-19 acceptance regression.
+
 ## Current blockers
 
 - Logic packages, module I/O contracts, RF/audio/IR/gas/PIR/ultrasonic sensor
   contracts, relay behavior, exact crystal timebases and package-level
   displays, motor drivers,
-  chassis/elevator mechanics, and S09-19's fixture-specific multi-board scene
-  semantics are not yet available.
+  chassis/elevator mechanics, and exact physical scene semantics for the
+  remaining blocked schemes are not yet available.
 - Manual interaction and real-breadboard evidence are pending for any new
   fixture.
 
