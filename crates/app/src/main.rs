@@ -142,6 +142,8 @@ const C05_S07_04_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-04-transistor-tester.json");
 const C05_S07_02_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-02-diode-tester.json");
+const C05_S07_03_JSON: &str =
+    include_str!("../../../fixtures/projects/c05-s07-03-battery-tester.json");
 const C05_S07_09_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-09-refrigerator-guard.json");
 const C05_S07_08_JSON: &str =
@@ -286,6 +288,7 @@ enum Circuit {
     C04S06_12,
     C04S06_13,
     C05S07_02,
+    C05S07_03,
     C05S07_04,
     C05S07_09,
     C05S07_10,
@@ -335,7 +338,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 115] {
+    fn all() -> [Self; 116] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -387,6 +390,7 @@ impl Circuit {
             Self::C04S06_12,
             Self::C04S06_13,
             Self::C05S07_02,
+            Self::C05S07_03,
             Self::C05S07_04,
             Self::C05S07_05,
             Self::C05S07_14,
@@ -539,6 +543,7 @@ impl Circuit {
             Self::C04S06_12 => C04_S06_12_JSON,
             Self::C04S06_13 => C04_S06_13_JSON,
             Self::C05S07_02 => C05_S07_02_JSON,
+            Self::C05S07_03 => C05_S07_03_JSON,
             Self::C05S07_04 => C05_S07_04_JSON,
             Self::C05S07_09 => C05_S07_09_JSON,
             Self::C05S07_10 => C05_S07_10_JSON,
@@ -658,6 +663,7 @@ impl Circuit {
             Self::C04S06_12 => "C04-S06-12: DRUM MACHINE",
             Self::C04S06_13 => "C04-S06-13: MODULAR SYNTHESIZER",
             Self::C05S07_02 => "C05-S07-02: LED / DIODE TESTER",
+            Self::C05S07_03 => "C05-S07-03: BATTERY TESTER",
             Self::C05S07_04 => "C05-S07-04: TRANSISTOR TESTER",
             Self::C05S07_09 => "C05-S07-09: REFRIGERATOR-DOOR GUARD",
             Self::C05S07_10 => "C05-S07-10: TWO-MINUTE TIMER",
@@ -898,6 +904,10 @@ impl Circuit {
             Self::C05S07_02 => (
                 "A calculated two-terminal test socket reuses the diode model with an explicit LED subject, forward polarity, and working state. The source's physical swappable-part operation is represented by a fixture-selected subject variant.",
                 "Task: run the fixture and compare the calculated socket current; the current is derived from the 9 V source, 1 kΩ limiter, and selected diode polarity/state.",
+            ),
+            Self::C05S07_03 => (
+                "A calculated 6.8 V zener reference and BC547 threshold stage sort a tested 9 V battery by electrical state: the green LED current rises when the transistor conducts, while the red LED is isolated by the calculated 1N4148 path.",
+                "Task: run the fixture and compare the green/red LED currents while changing V1 in the fixture between depleted and healthy battery voltages.",
             ),
             Self::C05S07_04 => (
                 "Two calculated BJT test sockets reuse the nonlinear NPN/PNP model with explicit subject polarity and working state. The green NPN and red PNP channels are current-driven; the source's physical swappable-part interaction is represented by two fixture-selected test channels.",
@@ -1563,6 +1573,7 @@ impl Circuit {
                 is_switch: false,
             }],
             Self::C05S07_02 => &[],
+            Self::C05S07_03 => &[],
             Self::C05S07_04 => &[
                 ControlSpec {
                     label: "B1: TEST NPN SOCKET",
@@ -3530,6 +3541,34 @@ fn update_view(
                             format!("X1 socket current {:.2} mA", 1000.0 * current)
                         },
                     )
+                } else if bench.circuit == Circuit::C05S07_03 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Battery voltage / green / red LED current: run to measure".into(),
+                        |result| {
+                            let voltage = bench
+                                .project
+                                .components
+                                .iter()
+                                .find(|component| component.id == ComponentId("V1".into()))
+                                .and_then(|component| component.parameters.get("voltage"))
+                                .copied()
+                                .unwrap_or(0.0);
+                            let current = |component: &str| {
+                                1000.0
+                                    * result
+                                        .led_currents
+                                        .get(&ComponentId(component.into()))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                            };
+                            format!(
+                                "V1 {:.2} V   GREEN {:.2} mA   RED {:.2} mA",
+                                voltage,
+                                current("LED_GREEN"),
+                                current("LED_RED")
+                            )
+                        },
+                    )
                 } else if bench.circuit == Circuit::C05S07_04 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "Transistor sockets: press a test button and run to measure".into(),
@@ -4391,6 +4430,40 @@ mod tests {
     }
 
     #[test]
+    fn c05_s07_03_battery_voltage_switches_calculated_led_indicators() {
+        let measure = |voltage: f64| {
+            let mut bench = Bench::new(Circuit::C05S07_03);
+            bench
+                .project
+                .components
+                .iter_mut()
+                .find(|component| component.id == ComponentId("V1".into()))
+                .unwrap()
+                .parameters
+                .insert("voltage".into(), voltage);
+            let result = bredboard_core::solve_dc(
+                &bench.project,
+                &bench.simulation.controls,
+                &BTreeMap::new(),
+            )
+            .unwrap();
+            (
+                result.led_currents[&ComponentId("LED_GREEN".into())],
+                result.led_currents[&ComponentId("LED_RED".into())],
+                result.diode_currents[&ComponentId("Z1".into())],
+            )
+        };
+
+        let depleted = measure(7.0);
+        let healthy = measure(9.0);
+        assert!(depleted.0 < 1e-6, "depleted green current: {:?}", depleted);
+        assert!(depleted.1 > 0.001, "depleted red current: {:?}", depleted);
+        assert!(healthy.0 > 0.002, "healthy green current: {:?}", healthy);
+        assert!(healthy.1 < depleted.1, "healthy red current: {:?}", healthy);
+        assert!(healthy.2 < 0.0, "healthy zener current: {:?}", healthy);
+    }
+
+    #[test]
     fn c05_s07_05_regulates_five_volts_and_keeps_usb_connector_high_impedance() {
         let mut bench = Bench::new(Circuit::C05S07_05);
         bench.act(Action::Run);
@@ -4560,7 +4633,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            115
+            116
         );
         assert!(matches!(
             items[0],
