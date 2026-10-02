@@ -1,6 +1,7 @@
 use crate::{
     ComponentId, ComponentKind, ControlState, Diagnostic, ElectricalDiagnostic, ElectricalError,
-    FaultRepair, MAX_NONLINEAR_ITERATIONS, Project, SolveResult, compile_topology,
+    FaultRepair, MAX_NONLINEAR_ITERATIONS, OtherDeviceBehavior, Project, SolveResult,
+    compile_topology,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -115,6 +116,21 @@ impl SimulationState {
                             .get(&component.id)
                             .copied()
                             .unwrap_or(ControlState::SwitchNormallyClosed),
+                    );
+                }
+                ComponentKind::Other
+                    if component.other_device.as_ref().is_some_and(|spec| {
+                        matches!(&spec.behavior, OtherDeviceBehavior::ReedSwitch { .. })
+                    }) =>
+                {
+                    controls.insert(
+                        component.id.clone(),
+                        project
+                            .initial_conditions
+                            .controls
+                            .get(&component.id)
+                            .copied()
+                            .unwrap_or(ControlState::ButtonReleased),
                     );
                 }
                 ComponentKind::Potentiometer
@@ -276,6 +292,19 @@ pub fn apply_actions(
                         Some(ComponentKind::ChangeoverSwitch),
                         ControlState::SwitchNormallyClosed | ControlState::SwitchNormallyOpen
                     )
+                ) || matches!(
+                    (
+                        project
+                            .components
+                            .iter()
+                            .find(|c| &c.id == component)
+                            .and_then(|c| c.other_device.as_ref()),
+                        control,
+                    ),
+                    (
+                        Some(spec),
+                        ControlState::ButtonPressed | ControlState::ButtonReleased
+                    ) if matches!(&spec.behavior, OtherDeviceBehavior::ReedSwitch { .. })
                 );
                 if valid {
                     state.controls.insert(component.clone(), *control);
@@ -284,7 +313,8 @@ pub fn apply_actions(
                     state.diagnostics = vec![SimulationDiagnostic {
                         code: "invalid_control_state".into(),
                         path: format!("components.{}", component.0),
-                        message: "control state does not match a button or switch component".into(),
+                        message: "control state does not match a button, switch, or reed component"
+                            .into(),
                     }];
                 }
             }

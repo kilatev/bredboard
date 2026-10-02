@@ -166,6 +166,8 @@ const C07_S09_03_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-03-two-station-telegraph.json");
 const C07_S09_01_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-01-hot-wire-button-counter.json");
+const C07_S09_02_JSON: &str =
+    include_str!("../../../fixtures/projects/c07-s09-02-talking-card.json");
 const C07_S09_09_JSON: &str =
     include_str!("../../../fixtures/projects/c07-s09-09-quiz-buttons.json");
 const C07_S09_10_JSON: &str =
@@ -301,6 +303,7 @@ enum Circuit {
     C06S08_08,
     C06S08_12,
     C07S09_01,
+    C07S09_02,
     C07S09_03,
     C07S09_09,
     C07S09_10,
@@ -338,7 +341,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 116] {
+    fn all() -> [Self; 117] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -403,6 +406,7 @@ impl Circuit {
             Self::C06S08_08,
             Self::C06S08_12,
             Self::C07S09_01,
+            Self::C07S09_02,
             Self::C07S09_03,
             Self::C07S09_09,
             Self::C07S09_10,
@@ -556,6 +560,7 @@ impl Circuit {
             Self::C06S08_08 => C06_S08_08_JSON,
             Self::C06S08_12 => C06_S08_12_JSON,
             Self::C07S09_01 => C07_S09_01_JSON,
+            Self::C07S09_02 => C07_S09_02_JSON,
             Self::C07S09_03 => C07_S09_03_JSON,
             Self::C07S09_09 => C07_S09_09_JSON,
             Self::C07S09_10 => C07_S09_10_JSON,
@@ -676,6 +681,7 @@ impl Circuit {
             Self::C06S08_08 => "C06-S08-08: THERMOSTATIC FAN",
             Self::C06S08_12 => "C06-S08-12: FOUR-PHASE STEPPER MOTOR",
             Self::C07S09_01 => "C07-S09-01: HOT-WIRE COUNTER",
+            Self::C07S09_02 => "C07-S09-02: TALKING CARD",
             Self::C07S09_03 => "C07-S09-03: TWO-STATION TELEGRAPH",
             Self::C07S09_09 => "C07-S09-09: QUIZ BUTTONS",
             Self::C07S09_10 => "C07-S09-10: CHESS CLOCK",
@@ -956,6 +962,10 @@ impl Circuit {
             Self::C07S09_01 => (
                 "A calculated button contact feeds a Schmitt inverter and bounded decimal counter. The counter drives a seven-segment display through current-limited resistors; the source wire-ring prop is represented by the explicit button control.",
                 "Task: press S1 repeatedly and inspect the calculated debounce path, counter state, and display segments.",
+            ),
+            Self::C07S09_02 => (
+                "A calculated reed contact drives an ISD1820-style threshold module contract from a safe 4.5 V source. The module's bounded SPK+ output drives the 8 ohm speaker load; recorded speech, magnetic mechanics, and one-shot playback timing remain explicit source discrepancies.",
+                "Task: press REED to open the card, run one fixed step, and compare the calculated PLAYE voltage and speaker current.",
             ),
             Self::C07S09_03 => (
                 "Two calculated button stations drive independent LED and active-buzzer branches. The source's long cable is represented by board wiring and remains an explicit presentation discrepancy.",
@@ -1624,6 +1634,11 @@ impl Circuit {
             Self::C07S09_01 => &[ControlSpec {
                 label: "S1: CONTACT",
                 component: "S1",
+                is_switch: false,
+            }],
+            Self::C07S09_02 => &[ControlSpec {
+                label: "REED1: OPEN CARD",
+                component: "REED1",
                 is_switch: false,
             }],
             Self::C07S09_03 => &[
@@ -3690,6 +3705,35 @@ fn update_view(
                             )
                         },
                     )
+                } else if bench.circuit == Circuit::C07S09_02 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Talking card: press REED and run to measure".into(),
+                        |result| {
+                            let playe = result
+                                .node_voltages
+                                .iter()
+                                .find(|node| {
+                                    node.contacts
+                                        .contains(&bredboard_core::Contact::ComponentPin(
+                                            ComponentId("U1".into()),
+                                            bredboard_core::PinId("playe".into()),
+                                        ))
+                                })
+                                .map(|node| node.voltage)
+                                .unwrap_or(0.0);
+                            format!(
+                                "PLAYE {:.2} V   speaker {:.1} mA",
+                                playe,
+                                1000.0
+                                    * result
+                                        .resistor_currents
+                                        .get(&ComponentId("SPK1".into()))
+                                        .copied()
+                                        .unwrap_or(0.0)
+                                        .abs()
+                            )
+                        },
+                    )
                 } else if bench.circuit == Circuit::C07S09_03 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "Station currents: run to measure".into(),
@@ -4282,6 +4326,54 @@ mod tests {
     }
 
     #[test]
+    fn c07_s09_02_reed_control_drives_the_talking_card_speaker() {
+        let mut bench = Bench::new(Circuit::C07S09_02);
+        bench.act(Action::SingleStep);
+        assert!(
+            bench
+                .simulation
+                .last_valid
+                .as_ref()
+                .unwrap()
+                .resistor_currents[&ComponentId("SPK1".into())]
+                .abs()
+                < 1e-9
+        );
+
+        bench.act(Action::SetControl {
+            component: ComponentId("REED1".into()),
+            state: ControlState::ButtonPressed,
+        });
+        bench.act(Action::SingleStep);
+        assert!(
+            bench
+                .simulation
+                .last_valid
+                .as_ref()
+                .unwrap()
+                .resistor_currents[&ComponentId("SPK1".into())]
+                .abs()
+                > 0.05
+        );
+
+        bench.act(Action::SetControl {
+            component: ComponentId("REED1".into()),
+            state: ControlState::ButtonReleased,
+        });
+        bench.act(Action::SingleStep);
+        assert!(
+            bench
+                .simulation
+                .last_valid
+                .as_ref()
+                .unwrap()
+                .resistor_currents[&ComponentId("SPK1".into())]
+                .abs()
+                < 1e-9
+        );
+    }
+
+    #[test]
     fn c07_s09_10_counts_down_and_transfers_the_active_turn() {
         let mut bench = Bench::new(Circuit::C07S09_10);
         assert_eq!(
@@ -4633,7 +4725,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            116
+            117
         );
         assert!(matches!(
             items[0],

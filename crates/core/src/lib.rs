@@ -24,7 +24,7 @@ pub use other_device::{
     BjtPolarity, BjtTestSocket, BjtTestState, DiodePolarity, DiodeSubjectKind, DiodeTestSocket,
     DiodeTestState, MAX_OTHER_DEVICE_PINS, OTHER_DEVICE_MAX_RESISTANCE,
     OTHER_DEVICE_MIN_RESISTANCE, OtherDeviceBehavior, OtherDeviceLinearInput, OtherDevicePinRole,
-    OtherDeviceSpec, controlled_resistance, ring_modulator_output,
+    OtherDeviceSpec, controlled_resistance, reed_resistance, ring_modulator_output,
 };
 pub use persistence::{
     ACTION_LOG_FORMAT_VERSION, ActionEvent, ActionLog, MODEL_VERSION, PersistenceError,
@@ -814,13 +814,19 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
                 ComponentKind::ChangeoverSwitch,
                 ControlState::SwitchNormallyClosed | ControlState::SwitchNormallyOpen,
             ) => &c.id == id,
+            (ComponentKind::Other, ControlState::ButtonPressed | ControlState::ButtonReleased) => {
+                &c.id == id
+                    && c.other_device.as_ref().is_some_and(|spec| {
+                        matches!(&spec.behavior, OtherDeviceBehavior::ReedSwitch { .. })
+                    })
+            }
             _ => false,
         });
         if !valid {
             errors.push(Diagnostic::new(
                 "invalid_initial_control",
                 format!("initial_conditions.controls.{}", id.0),
-                "control state must match a button or switch component",
+                "control state must match a button, switch, or reed component",
             ));
         }
     }
@@ -1446,7 +1452,7 @@ fn validate_module_resistance(c: &Component, errors: &mut Vec<Diagnostic>, path:
 fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec<Diagnostic>) {
     use OtherDeviceBehavior::{
         BjtTestSocket as BjtTestSocketBehavior, DiodeTestSocket as DiodeTestSocketBehavior,
-        LinearTransfer, Resistive, RingModulator, StepperLoad, Transformer,
+        LinearTransfer, ReedSwitch, Resistive, RingModulator, StepperLoad, Transformer,
         VoltageControlledResistance, VoltageSource,
     };
     use OtherDevicePinRole::{Control, Ground, Input, Output, Reference, Supply, Terminal};
@@ -1497,6 +1503,31 @@ fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec
                 ));
             }
             validate_other_resistance(c, errors, "resistance", *value);
+        }
+        ReedSwitch {
+            a,
+            b,
+            closed_resistance,
+            open_resistance,
+        } => {
+            if !role_is(a, |role| matches!(role, Terminal | Input | Output))
+                || !role_is(b, |role| matches!(role, Terminal | Reference | Ground))
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_reed_pin_roles",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "reed switch contacts must use terminal/input/output and terminal/reference/ground roles",
+                ));
+            }
+            validate_other_resistance(c, errors, "closed_resistance", *closed_resistance);
+            validate_other_resistance(c, errors, "open_resistance", *open_resistance);
+            if closed_resistance >= open_resistance {
+                errors.push(Diagnostic::new(
+                    "other_device_reed_resistance_range",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "closed_resistance must be below open_resistance",
+                ));
+            }
         }
         StepperLoad {
             common,
