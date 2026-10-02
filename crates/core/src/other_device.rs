@@ -214,6 +214,16 @@ pub enum OtherDeviceBehavior {
         negative: PinId,
         resistance: f64,
     },
+    /// A polarized supercapacitor using the common fixed-step backward-Euler
+    /// transient contract. The persisted capacitor voltage is kept in the
+    /// same state map as native capacitor components, while the rated voltage
+    /// provides a calculated safety bound for the catalog part.
+    Supercapacitor {
+        positive: PinId,
+        negative: PinId,
+        capacitance: f64,
+        rated_voltage: f64,
+    },
     /// A magnetically actuated two-terminal contact. The simulation exposes
     /// its open/closed state through the same ordered control actions as a
     /// momentary button; the magnet and mechanical hysteresis remain outside
@@ -343,6 +353,7 @@ impl OtherDeviceSpec {
             } => vec![secondary_positive],
             OtherDeviceBehavior::RingModulator { output, .. } => vec![output],
             OtherDeviceBehavior::Resistive { .. }
+            | OtherDeviceBehavior::Supercapacitor { .. }
             | OtherDeviceBehavior::ReedSwitch { .. }
             | OtherDeviceBehavior::StepperLoad { .. }
             | OtherDeviceBehavior::VoltageSource { .. }
@@ -363,6 +374,9 @@ impl OtherDeviceSpec {
                 ..
             }
             | OtherDeviceBehavior::VoltageSource {
+                positive, negative, ..
+            } => vec![positive, negative],
+            OtherDeviceBehavior::Supercapacitor {
                 positive, negative, ..
             } => vec![positive, negative],
             OtherDeviceBehavior::StepperLoad { common, phases, .. } => {

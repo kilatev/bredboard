@@ -115,7 +115,12 @@ pub fn restore_snapshot(
         .project
         .components
         .iter()
-        .filter(|c| c.kind == ComponentKind::Capacitor)
+        .filter(|c| {
+            c.kind == ComponentKind::Capacitor
+                || c.other_device.as_ref().is_some_and(|spec| {
+                    matches!(&spec.behavior, OtherDeviceBehavior::Supercapacitor { .. })
+                })
+        })
         .map(|c| c.id.clone())
         .collect();
     let state_cap_ids: BTreeSet<_> = snapshot.state.capacitor_voltages.keys().cloned().collect();

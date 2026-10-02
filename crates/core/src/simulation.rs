@@ -100,6 +100,21 @@ impl SimulationState {
                             .unwrap_or(0.0),
                     );
                 }
+                ComponentKind::Other
+                    if component.other_device.as_ref().is_some_and(|spec| {
+                        matches!(&spec.behavior, OtherDeviceBehavior::Supercapacitor { .. })
+                    }) =>
+                {
+                    capacitor_voltages.insert(
+                        component.id.clone(),
+                        project
+                            .initial_conditions
+                            .capacitor_voltages
+                            .get(&component.id)
+                            .copied()
+                            .unwrap_or(0.0),
+                    );
+                }
                 ComponentKind::MomentaryButton => {
                     controls.insert(
                         component.id.clone(),
