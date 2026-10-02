@@ -1,0 +1,36 @@
+{
+  "format_version": 1,
+  "title": "C05-S10-05: Supercapacitor flashlight",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 5.0 } },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "B7", "b": "A2" }, "parameters": { "resistance": 47.0 } },
+    { "id": "D1", "kind": "diode", "pins": { "anode": "B2", "cathode": "A3" }, "parameters": { "forward_voltage": 0.35, "series_resistance": 1.0 }, "diode_model": { "kind": "schottky" } },
+    {
+      "id": "SC1",
+      "kind": "other",
+      "pins": { "positive": "B4", "negative": "TP-:2" },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": { "positive": "supply", "negative": "ground" },
+        "behavior": {
+          "behavior": "supercapacitor",
+          "positive": "positive",
+          "negative": "negative",
+          "capacitance": 1.0,
+          "rated_voltage": 5.5
+        }
+      }
+    },
+    { "id": "S1", "kind": "changeover_switch", "pins": { "common": "A4", "normally_closed": "B3", "normally_open": "A5" }, "parameters": {} },
+    { "id": "R2", "kind": "resistor", "pins": { "a": "B5", "b": "A6" }, "parameters": { "resistance": 100.0 } },
+    { "id": "LED1", "kind": "led", "pins": { "anode": "B6", "cathode": "TP-:3" }, "parameters": { "forward_voltage": 2.8, "series_resistance": 20.0 } }
+  ],
+  "wires": [
+    { "id": "W1", "from": "A7", "to": "TP+:2" }
+  ],
+  "initial_conditions": {
+    "capacitor_voltages": { "SC1": 0.0 },
+    "controls": { "S1": "switch_normally_closed" }
+  }
+}

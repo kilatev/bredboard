@@ -838,8 +838,8 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
     }
     for (id, voltage) in &project.initial_conditions.capacitor_voltages {
         match project.components.iter().find(|c| &c.id == id) {
-            Some(c) if c.kind == ComponentKind::Capacitor && voltage.is_finite() => {}
-            Some(c) if c.kind == ComponentKind::Capacitor => errors.push(Diagnostic::new(
+            Some(c) if is_transient_capacitor(c) && voltage.is_finite() => {}
+            Some(c) if is_transient_capacitor(c) => errors.push(Diagnostic::new(
                 "non_finite_initial_condition",
                 format!("initial_conditions.capacitor_voltages.{}", id.0),
                 "initial capacitor voltage must be finite",
@@ -1543,11 +1543,19 @@ fn validate_module_resistance(c: &Component, errors: &mut Vec<Diagnostic>, path:
     }
 }
 
+fn is_transient_capacitor(component: &Component) -> bool {
+    component.kind == ComponentKind::Capacitor
+        || component.other_device.as_ref().is_some_and(|spec| {
+            matches!(&spec.behavior, OtherDeviceBehavior::Supercapacitor { .. })
+        })
+}
+
 fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec<Diagnostic>) {
     use OtherDeviceBehavior::{
         BjtTestSocket as BjtTestSocketBehavior, CoupledWinding,
         DiodeTestSocket as DiodeTestSocketBehavior, LinearTransfer, ReedSwitch, Resistive,
-        RingModulator, StepperLoad, Transformer, VoltageControlledResistance, VoltageSource,
+        RingModulator, StepperLoad, Supercapacitor, Transformer, VoltageControlledResistance,
+        VoltageSource,
     };
     use OtherDevicePinRole::{Control, Ground, Input, Output, Reference, Supply, Terminal};
 
@@ -1597,6 +1605,40 @@ fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec
                 ));
             }
             validate_other_resistance(c, errors, "resistance", *value);
+        }
+        Supercapacitor {
+            positive,
+            negative,
+            capacitance,
+            rated_voltage,
+        } => {
+            if !role_is(positive, |role| matches!(role, Terminal | Output | Supply))
+                || !role_is(negative, |role| {
+                    matches!(role, Terminal | Reference | Ground)
+                })
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_supercapacitor_roles",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "supercapacitor pins must have positive supply/output/terminal and negative terminal/reference/ground roles",
+                ));
+            }
+            validate_other_finite(c, errors, "capacitance", *capacitance);
+            validate_other_finite(c, errors, "rated_voltage", *rated_voltage);
+            if !capacitance.is_finite() || !(0.1..=10.0).contains(capacitance) {
+                errors.push(Diagnostic::new(
+                    "other_device_supercapacitor_capacitance",
+                    format!("components.{}.other_device.behavior.capacitance", c.id.0),
+                    "supercapacitor capacitance must be in 0.1..=10.0 F",
+                ));
+            }
+            if !rated_voltage.is_finite() || !(0.1..=12.0).contains(rated_voltage) {
+                errors.push(Diagnostic::new(
+                    "other_device_supercapacitor_voltage",
+                    format!("components.{}.other_device.behavior.rated_voltage", c.id.0),
+                    "supercapacitor rated_voltage must be in 0.1..=12.0 V",
+                ));
+            }
         }
         ReedSwitch {
             a,

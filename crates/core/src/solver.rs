@@ -1316,6 +1316,16 @@ fn solve_internal(
                 currents.insert(positive.clone(), current);
                 currents.insert(negative.clone(), -current);
             }
+            OtherDeviceBehavior::Supercapacitor {
+                positive, negative, ..
+            } => {
+                let current = capacitor_currents
+                    .get(&component.id)
+                    .copied()
+                    .unwrap_or(0.0);
+                currents.insert(positive.clone(), current);
+                currents.insert(negative.clone(), -current);
+            }
             OtherDeviceBehavior::ReedSwitch {
                 a,
                 b,
@@ -2228,6 +2238,36 @@ fn make_branches(
                             b,
                             value: *resistance,
                             previous_voltage: 0.0,
+                        });
+                    }
+                    OtherDeviceBehavior::Supercapacitor {
+                        positive,
+                        negative,
+                        capacitance,
+                        rated_voltage: _,
+                    } => {
+                        let dt = options.dt.ok_or_else(|| {
+                            calc(
+                                "supercapacitor_requires_transient",
+                                format!(
+                                    "component {} requires fixed-step transient simulation",
+                                    component.id.0
+                                ),
+                            )
+                        })?;
+                        let positive = node(&positive.0)?;
+                        let negative = node(&negative.0)?;
+                        active.extend([positive, negative]);
+                        branches.push(Branch {
+                            component: component.id.clone(),
+                            kind: BranchKind::Capacitor,
+                            a: positive,
+                            b: negative,
+                            value: *capacitance / dt,
+                            previous_voltage: capacitor_voltages
+                                .get(&component.id)
+                                .copied()
+                                .unwrap_or(0.0),
                         });
                     }
                     OtherDeviceBehavior::ReedSwitch {
@@ -5917,6 +5957,7 @@ mod tests {
         fixture_json!(C04_S06_11, "c04-s06-11-robot-voice.json");
         fixture_json!(C05_S07_05, "c05-s07-05-usb-5v-supply.json");
         fixture_json!(C05_S07_06, "c05-s07-06-adjustable-power-supply.json");
+        fixture_json!(C05_S10_05, "c05-s10-05-supercapacitor-flashlight.json");
         fixture_json!(C06_S08_08, "c06-s08-08-thermostatic-fan.json");
 
         #[test]
@@ -6755,6 +6796,66 @@ mod tests {
                 "peak LED current: {peak_led_current}"
             );
             assert!(peak_energy > 0.0, "peak stored energy: {peak_energy}");
+        }
+
+        #[test]
+        fn c05_s10_05_supercapacitor_charges_and_drives_led_discharge() {
+            let project = fixture(C05_S10_05);
+            let topology = compile_topology(&project).expect("supercapacitor topology");
+            assert_eq!(topology.len(), 7);
+
+            let charge_state =
+                BTreeMap::from([(ComponentId("S1".into()), ControlState::SwitchNormallyClosed)]);
+            let mut capacitor_voltages = BTreeMap::new();
+            let mut previous_charge = 0.0;
+            for _ in 0..4_000 {
+                let result = solve_transient(
+                    &project,
+                    &charge_state,
+                    &capacitor_voltages,
+                    &BTreeMap::new(),
+                )
+                .expect("supercapacitor charge step");
+                let charge = result.capacitor_voltages[&ComponentId("SC1".into())];
+                assert!(charge >= previous_charge - 1e-9);
+                assert!(charge <= 5.5 + 1e-9);
+                previous_charge = charge;
+                capacitor_voltages = result.capacitor_voltages;
+            }
+            assert!(previous_charge > 0.0);
+
+            let mut discharged_project = project.clone();
+            discharged_project
+                .initial_conditions
+                .capacitor_voltages
+                .insert(ComponentId("SC1".into()), 4.5);
+            let light_state =
+                BTreeMap::from([(ComponentId("S1".into()), ControlState::SwitchNormallyOpen)]);
+            let mut capacitor_voltages = BTreeMap::new();
+            let first = solve_transient(
+                &discharged_project,
+                &light_state,
+                &capacitor_voltages,
+                &BTreeMap::new(),
+            )
+            .expect("supercapacitor discharge start");
+            let initial_voltage = first.capacitor_voltages[&ComponentId("SC1".into())];
+            let initial_led = first.led_currents[&ComponentId("LED1".into())];
+            capacitor_voltages = first.capacitor_voltages;
+            for _ in 0..4_000 {
+                let result = solve_transient(
+                    &discharged_project,
+                    &light_state,
+                    &capacitor_voltages,
+                    &BTreeMap::new(),
+                )
+                .expect("supercapacitor discharge step");
+                let voltage = result.capacitor_voltages[&ComponentId("SC1".into())];
+                assert!(voltage < initial_voltage);
+                capacitor_voltages = result.capacitor_voltages;
+            }
+            assert!(initial_led > 0.005, "initial LED current: {initial_led}");
+            assert!(capacitor_voltages[&ComponentId("SC1".into())] < initial_voltage);
         }
 
         #[test]
