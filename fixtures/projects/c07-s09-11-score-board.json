@@ -1,0 +1,809 @@
+{
+  "format_version": 1,
+  "title": "C07-S09-11: Ping-pong score board",
+  "board": {
+    "model": {
+      "multi_board": {
+        "boards": [
+          {
+            "id": "score_a",
+            "model": "half_size_solderless"
+          },
+          {
+            "id": "score_b",
+            "model": "half_size_solderless"
+          }
+        ]
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "V1",
+      "kind": "dc_voltage_source",
+      "pins": {
+        "positive": "score_a/TP+:1",
+        "negative": "score_a/TP-:2"
+      },
+      "parameters": {
+        "voltage": 9.0
+      }
+    },
+    {
+      "id": "A_PLUS",
+      "kind": "momentary_button",
+      "pins": {
+        "a": "score_a/TP+:2",
+        "b": "score_a/A7"
+      },
+      "parameters": {}
+    },
+    {
+      "id": "A_MINUS",
+      "kind": "momentary_button",
+      "pins": {
+        "a": "score_a/TP+:3",
+        "b": "score_a/F7"
+      },
+      "parameters": {}
+    },
+    {
+      "id": "B_PLUS",
+      "kind": "momentary_button",
+      "pins": {
+        "a": "score_a/TP+:4",
+        "b": "score_a/A8"
+      },
+      "parameters": {}
+    },
+    {
+      "id": "B_MINUS",
+      "kind": "momentary_button",
+      "pins": {
+        "a": "score_a/TP+:5",
+        "b": "score_a/F8"
+      },
+      "parameters": {}
+    },
+    {
+      "id": "RESET",
+      "kind": "momentary_button",
+      "pins": {
+        "a": "score_a/TP+:6",
+        "b": "score_a/A6"
+      },
+      "parameters": {}
+    },
+    {
+      "id": "R_A_PLUS",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/B7",
+        "b": "score_a/TP-:3"
+      },
+      "parameters": {
+        "resistance": 10000.0
+      }
+    },
+    {
+      "id": "R_A_MINUS",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/G7",
+        "b": "score_a/TP-:4"
+      },
+      "parameters": {
+        "resistance": 10000.0
+      }
+    },
+    {
+      "id": "R_B_PLUS",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/B8",
+        "b": "score_a/TP-:5"
+      },
+      "parameters": {
+        "resistance": 10000.0
+      }
+    },
+    {
+      "id": "R_B_MINUS",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/G8",
+        "b": "score_a/TP-:6"
+      },
+      "parameters": {
+        "resistance": 10000.0
+      }
+    },
+    {
+      "id": "R_RESET",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/B6",
+        "b": "score_a/TP-:7"
+      },
+      "parameters": {
+        "resistance": 10000.0
+      }
+    },
+    {
+      "id": "C1",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "score_a/TP+:7",
+        "negative": "score_a/TP-:8"
+      },
+      "parameters": {
+        "capacitance": 1e-07
+      }
+    },
+    {
+      "id": "C2",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "score_a/TP+:8",
+        "negative": "score_a/TP-:9"
+      },
+      "parameters": {
+        "capacitance": 1e-07
+      }
+    },
+    {
+      "id": "C3",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "score_a/TP+:9",
+        "negative": "score_a/TP-:10"
+      },
+      "parameters": {
+        "capacitance": 1e-07
+      }
+    },
+    {
+      "id": "C4",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "score_a/TP+:10",
+        "negative": "score_a/TP-:11"
+      },
+      "parameters": {
+        "capacitance": 1e-07
+      }
+    },
+    {
+      "id": "C5",
+      "kind": "capacitor",
+      "pins": {
+        "positive": "score_a/TP+:11",
+        "negative": "score_a/TP-:12"
+      },
+      "parameters": {
+        "capacitance": 1e-07
+      }
+    },
+    {
+      "id": "G_A_CLOCK",
+      "kind": "logic_gate",
+      "pins": {
+        "gnd": "score_a/TP-:13",
+        "input_a": "score_a/C7",
+        "input_b": "score_a/H7",
+        "output": "score_a/A9",
+        "vcc": "score_a/TP+:12"
+      },
+      "parameters": {
+        "operation": 1.0,
+        "output_resistance": 100.0
+      }
+    },
+    {
+      "id": "G_A_CARRY",
+      "kind": "logic_gate",
+      "pins": {
+        "gnd": "score_a/TP-:14",
+        "input_a": "score_a/B9",
+        "input_b": "score_a/F9",
+        "output": "score_a/A10",
+        "vcc": "score_a/TP+:13"
+      },
+      "parameters": {
+        "operation": 0.0,
+        "output_resistance": 100.0
+      }
+    },
+    {
+      "id": "G_B_CLOCK",
+      "kind": "logic_gate",
+      "pins": {
+        "gnd": "score_a/TP-:15",
+        "input_a": "score_a/C8",
+        "input_b": "score_a/H8",
+        "output": "score_a/F10",
+        "vcc": "score_a/TP+:14"
+      },
+      "parameters": {
+        "operation": 1.0,
+        "output_resistance": 100.0
+      }
+    },
+    {
+      "id": "G_B_CARRY",
+      "kind": "logic_gate",
+      "pins": {
+        "gnd": "score_a/TP-:16",
+        "input_a": "score_a/G10",
+        "input_b": "score_a/A11",
+        "output": "score_a/F11",
+        "vcc": "score_a/TP+:15"
+      },
+      "parameters": {
+        "operation": 0.0,
+        "output_resistance": 100.0
+      }
+    },
+    {
+      "id": "U_A0",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "score_a/C9",
+        "carry": "score_a/G9",
+        "direction": "score_a/D7",
+        "enable": "score_a/TP+:16",
+        "gnd": "score_a/TP-:17",
+        "q0": "score_a/A12",
+        "q1": "score_a/F12",
+        "q2": "score_a/A13",
+        "q3": "score_a/F13",
+        "reset": "score_a/C6",
+        "vcc": "score_a/TP+:17"
+      },
+      "parameters": {
+        "modulus": 10.0,
+        "output_mode": 0.0,
+        "output_resistance": 100.0
+      }
+    },
+    {
+      "id": "U_A1",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "score_a/B10",
+        "carry": "score_a/TP-:18",
+        "direction": "score_a/E7",
+        "enable": "score_a/TP+:18",
+        "gnd": "score_a/TP-:19",
+        "q0": "score_a/A14",
+        "q1": "score_a/F14",
+        "q2": "score_a/A15",
+        "q3": "score_a/F15",
+        "reset": "score_a/D6",
+        "vcc": "score_a/TP+:19"
+      },
+      "parameters": {
+        "modulus": 10.0,
+        "output_mode": 0.0,
+        "output_resistance": 100.0
+      }
+    },
+    {
+      "id": "U_B0",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "score_a/H10",
+        "carry": "score_a/B11",
+        "direction": "score_a/D8",
+        "enable": "score_a/TP+:20",
+        "gnd": "score_a/TP-:20",
+        "q0": "score_a/A16",
+        "q1": "score_a/F16",
+        "q2": "score_a/A17",
+        "q3": "score_a/F17",
+        "reset": "score_a/F6",
+        "vcc": "score_a/TP+:21"
+      },
+      "parameters": {
+        "modulus": 10.0,
+        "output_mode": 0.0,
+        "output_resistance": 100.0
+      }
+    },
+    {
+      "id": "U_B1",
+      "kind": "digital_counter",
+      "pins": {
+        "clock": "score_a/G11",
+        "carry": "score_a/TP-:21",
+        "direction": "score_a/E8",
+        "enable": "score_a/TP+:22",
+        "gnd": "score_a/TP-:22",
+        "q0": "score_a/A18",
+        "q1": "score_a/F18",
+        "q2": "score_a/A19",
+        "q3": "score_a/F19",
+        "reset": "score_a/G6",
+        "vcc": "score_a/TP+:23"
+      },
+      "parameters": {
+        "modulus": 10.0,
+        "output_mode": 0.0,
+        "output_resistance": 100.0
+      }
+    },
+    {
+      "id": "R_A0_A",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/B20",
+        "b": "score_a/TP-:23"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_A0_B",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/G20",
+        "b": "score_a/TP-:24"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_A0_C",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/B21",
+        "b": "score_a/TP-:25"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_A0_D",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/G21",
+        "b": "score_a/TP-:26"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_A0_E",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/B22",
+        "b": "score_a/TP-:27"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_A0_F",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/G22",
+        "b": "score_a/TP-:28"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_A0_G",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/B23",
+        "b": "score_a/TP-:29"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "DISP_A0",
+      "kind": "seven_segment_display",
+      "pins": {
+        "input_b0": "score_a/B12",
+        "input_b1": "score_a/G12",
+        "input_b2": "score_a/B13",
+        "input_b3": "score_a/G13",
+        "a": "score_a/A20",
+        "b": "score_a/F20",
+        "c": "score_a/A21",
+        "d": "score_a/F21",
+        "e": "score_a/A22",
+        "f": "score_a/F22",
+        "g": "score_a/A23",
+        "common": "score_a/TP-:30",
+        "gnd": "score_a/A1",
+        "vcc": "score_a/TP+:24"
+      },
+      "parameters": {
+        "output_resistance": 100.0
+      }
+    },
+    {
+      "id": "R_A1_A",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/G23",
+        "b": "score_a/B1"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_A1_B",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/B24",
+        "b": "score_a/C1"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_A1_C",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/G24",
+        "b": "score_a/F1"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_A1_D",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/B25",
+        "b": "score_a/G1"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_A1_E",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/G25",
+        "b": "score_a/H1"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_A1_F",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/B26",
+        "b": "score_a/A2"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_A1_G",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/G26",
+        "b": "score_a/B2"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "DISP_A1",
+      "kind": "seven_segment_display",
+      "pins": {
+        "input_b0": "score_a/B14",
+        "input_b1": "score_a/G14",
+        "input_b2": "score_a/B15",
+        "input_b3": "score_a/G15",
+        "a": "score_a/F23",
+        "b": "score_a/A24",
+        "c": "score_a/F24",
+        "d": "score_a/A25",
+        "e": "score_a/F25",
+        "f": "score_a/A26",
+        "g": "score_a/F26",
+        "common": "score_a/C2",
+        "gnd": "score_a/F2",
+        "vcc": "score_a/TP+:25"
+      },
+      "parameters": {
+        "output_resistance": 100.0
+      }
+    },
+    {
+      "id": "R_B0_A",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/B27",
+        "b": "score_a/G2"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_B0_B",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/G27",
+        "b": "score_a/H2"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_B0_C",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/B28",
+        "b": "score_a/A3"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_B0_D",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/G28",
+        "b": "score_a/B3"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_B0_E",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/B29",
+        "b": "score_a/C3"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_B0_F",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/G29",
+        "b": "score_a/F3"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_B0_G",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/B30",
+        "b": "score_a/G3"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "DISP_B0",
+      "kind": "seven_segment_display",
+      "pins": {
+        "input_b0": "score_a/B16",
+        "input_b1": "score_a/G16",
+        "input_b2": "score_a/B17",
+        "input_b3": "score_a/G17",
+        "a": "score_a/A27",
+        "b": "score_a/F27",
+        "c": "score_a/A28",
+        "d": "score_a/F28",
+        "e": "score_a/A29",
+        "f": "score_a/F29",
+        "g": "score_a/A30",
+        "common": "score_a/H3",
+        "gnd": "score_a/A4",
+        "vcc": "score_a/TP+:26"
+      },
+      "parameters": {
+        "output_resistance": 100.0
+      }
+    },
+    {
+      "id": "R_B1_A",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_a/G30",
+        "b": "score_a/B4"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_B1_B",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_b/B1",
+        "b": "score_a/C4"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_B1_C",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_b/G1",
+        "b": "score_a/F4"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_B1_D",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_b/B2",
+        "b": "score_a/G4"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_B1_E",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_b/G2",
+        "b": "score_a/H4"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_B1_F",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_b/B3",
+        "b": "score_a/A5"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "R_B1_G",
+      "kind": "resistor",
+      "pins": {
+        "a": "score_b/G3",
+        "b": "score_a/B5"
+      },
+      "parameters": {
+        "resistance": 470.0
+      }
+    },
+    {
+      "id": "DISP_B1",
+      "kind": "seven_segment_display",
+      "pins": {
+        "input_b0": "score_a/B18",
+        "input_b1": "score_a/G18",
+        "input_b2": "score_a/B19",
+        "input_b3": "score_a/G19",
+        "a": "score_a/F30",
+        "b": "score_b/A1",
+        "c": "score_b/F1",
+        "d": "score_b/A2",
+        "e": "score_b/F2",
+        "f": "score_b/A3",
+        "g": "score_b/F3",
+        "common": "score_a/C5",
+        "gnd": "score_a/F5",
+        "vcc": "score_a/TP+:27"
+      },
+      "parameters": {
+        "output_resistance": 100.0
+      }
+    }
+  ],
+  "wires": [
+    {
+      "id": "W_GND_01",
+      "from": "score_a/E1",
+      "to": "score_a/I1"
+    },
+    {
+      "id": "W_GND_02",
+      "from": "score_a/J1",
+      "to": "score_a/D2"
+    },
+    {
+      "id": "W_GND_03",
+      "from": "score_a/E2",
+      "to": "score_a/I2"
+    },
+    {
+      "id": "W_GND_04",
+      "from": "score_a/J2",
+      "to": "score_a/D3"
+    },
+    {
+      "id": "W_GND_05",
+      "from": "score_a/E3",
+      "to": "score_a/I3"
+    },
+    {
+      "id": "W_GND_06",
+      "from": "score_a/J3",
+      "to": "score_a/D4"
+    },
+    {
+      "id": "W_GND_07",
+      "from": "score_a/E4",
+      "to": "score_a/I4"
+    },
+    {
+      "id": "W_GND_08",
+      "from": "score_a/J4",
+      "to": "score_a/D5"
+    },
+    {
+      "id": "W_GND_09",
+      "from": "score_a/E5",
+      "to": "score_a/I5"
+    },
+    {
+      "id": "W_GND_RAIL",
+      "from": "score_a/J5",
+      "to": "score_a/TP-:1"
+    },
+    {
+      "id": "W_RESET_BRIDGE",
+      "from": "score_a/E6",
+      "to": "score_a/J6"
+    }
+  ],
+  "initial_conditions": {
+    "controls": {
+      "A_PLUS": "button_released",
+      "A_MINUS": "button_released",
+      "B_PLUS": "button_released",
+      "B_MINUS": "button_released",
+      "RESET": "button_released"
+    },
+    "digital_states": {
+      "U_A0": 0,
+      "U_A1": 0,
+      "U_B0": 0,
+      "U_B1": 0
+    }
+  }
+}
+
