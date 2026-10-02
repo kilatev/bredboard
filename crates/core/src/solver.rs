@@ -2,8 +2,9 @@ use crate::module::adjustable_output_target;
 use crate::{
     BjtPolarity, BjtTestState, Component, ComponentId, ComponentKind, Contact, ControlState,
     Diagnostic, DiodeModel, DiodePolarity, DiodeSpec, DiodeTestState, IcDeviceBehavior,
-    IcLogicOperation, ModuleBehavior, Node, OtherDeviceBehavior, PinId, Project, compile_topology,
-    controlled_resistance, reed_resistance, ring_modulator_output,
+    IcLogicOperation, ModuleBehavior, Node, OtherDeviceBehavior, PinId, Project,
+    bound_coupled_winding_currents, compile_topology, controlled_resistance,
+    coupled_winding_energy, reed_resistance, ring_modulator_output,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -69,6 +70,9 @@ pub struct SolveResult {
     /// Calculated output pin voltages for linear-transfer `Other` devices.
     #[serde(default)]
     pub other_output_voltages: BTreeMap<ComponentId, BTreeMap<PinId, f64>>,
+    /// Calculated magnetic energy for coupled-winding `Other` devices.
+    #[serde(default)]
+    pub other_stored_energy_joules: BTreeMap<ComponentId, f64>,
     /// Calculated output pin voltages for ready-made module contracts.
     #[serde(default)]
     pub module_output_voltages: BTreeMap<ComponentId, BTreeMap<PinId, f64>>,
@@ -350,6 +354,20 @@ enum NonlinearElement {
         primary_resistance: f64,
         secondary_resistance: f64,
     },
+    OtherCoupledWinding {
+        primary_positive: usize,
+        primary_negative: usize,
+        secondary_positive: usize,
+        secondary_negative: usize,
+        turns_ratio: f64,
+        primary_inductance: f64,
+        coupling: f64,
+        primary_resistance: f64,
+        secondary_resistance: f64,
+        boost_voltage_limit: f64,
+        previous_currents: [f64; 2],
+        dt: f64,
+    },
     OtherRingModulator {
         signal: usize,
         carrier: usize,
@@ -407,6 +425,7 @@ pub fn solve_dc(
         &BTreeMap::new(),
         ratios,
         &BTreeMap::new(),
+        &BTreeMap::new(),
         SolveOptions {
             dt: None,
             step: 0,
@@ -442,12 +461,36 @@ pub(crate) fn solve_transient_with_digital_states(
     step: u64,
     max_iterations: usize,
 ) -> Result<SolveResult, ElectricalError> {
+    solve_transient_with_digital_and_winding_states(
+        project,
+        states,
+        capacitor_voltages,
+        ratios,
+        digital_states,
+        &BTreeMap::new(),
+        step,
+        max_iterations,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn solve_transient_with_digital_and_winding_states(
+    project: &Project,
+    states: &BTreeMap<ComponentId, ControlState>,
+    capacitor_voltages: &BTreeMap<ComponentId, f64>,
+    ratios: &BTreeMap<ComponentId, f64>,
+    digital_states: &BTreeMap<ComponentId, u32>,
+    coupled_winding_currents: &BTreeMap<ComponentId, [f64; 2]>,
+    step: u64,
+    max_iterations: usize,
+) -> Result<SolveResult, ElectricalError> {
     solve_internal(
         project,
         states,
         capacitor_voltages,
         ratios,
         digital_states,
+        coupled_winding_currents,
         SolveOptions {
             dt: Some(FIXED_STEP_SECONDS),
             step,
@@ -462,6 +505,7 @@ fn solve_internal(
     capacitor_voltages: &BTreeMap<ComponentId, f64>,
     ratios: &BTreeMap<ComponentId, f64>,
     digital_states: &BTreeMap<ComponentId, u32>,
+    coupled_winding_currents: &BTreeMap<ComponentId, [f64; 2]>,
     options: SolveOptions,
 ) -> Result<SolveResult, ElectricalError> {
     let topology = compile_topology(project).map_err(ElectricalError::Structure)?;
@@ -478,6 +522,7 @@ fn solve_internal(
         &cap_state,
         &ratio_state,
         digital_states,
+        coupled_winding_currents,
         options,
     )?;
     let coupled_transient = options.dt.is_some()
@@ -516,6 +561,7 @@ fn solve_internal(
             ic_device_output_voltages: BTreeMap::new(),
             other_terminal_currents: BTreeMap::new(),
             other_output_voltages: BTreeMap::new(),
+            other_stored_energy_joules: BTreeMap::new(),
             module_output_voltages: BTreeMap::new(),
         });
     }
@@ -802,6 +848,16 @@ fn solve_internal(
                 (*primary_positive, *primary_negative),
                 (*secondary_positive, *secondary_negative),
             ],
+            NonlinearElement::OtherCoupledWinding {
+                primary_positive,
+                primary_negative,
+                secondary_positive,
+                secondary_negative,
+                ..
+            } => vec![
+                (*primary_positive, *primary_negative),
+                (*secondary_positive, *secondary_negative),
+            ],
             NonlinearElement::OtherRingModulator {
                 signal,
                 carrier,
@@ -1020,6 +1076,7 @@ fn solve_internal(
     let mut ic_device_output_voltages = BTreeMap::new();
     let mut other_terminal_currents = BTreeMap::new();
     let mut other_output_voltages = BTreeMap::new();
+    let mut other_stored_energy_joules = BTreeMap::new();
     let mut module_output_voltages = BTreeMap::new();
     for branch in &branches {
         let current = match branch.kind {
@@ -1173,6 +1230,7 @@ fn solve_internal(
             | NonlinearElement::OtherDiodeSocket { .. }
             | NonlinearElement::OtherLinearTransfer { .. }
             | NonlinearElement::OtherTransformer { .. }
+            | NonlinearElement::OtherCoupledWinding { .. }
             | NonlinearElement::OtherRingModulator { .. }
             | NonlinearElement::OtherControlledResistance { .. } => {}
             NonlinearElement::LogicGate { .. }
@@ -1421,6 +1479,59 @@ fn solve_internal(
                     BTreeMap::from([(secondary_positive.clone(), voltage_at(secondary_positive)?)]),
                 );
             }
+            OtherDeviceBehavior::CoupledWinding {
+                primary_positive,
+                primary_negative,
+                secondary_positive,
+                secondary_negative,
+                turns_ratio,
+                primary_inductance,
+                coupling,
+                primary_resistance,
+                secondary_resistance,
+                boost_voltage_limit,
+                max_stored_energy_joules,
+            } => {
+                let previous_currents = coupled_winding_currents
+                    .get(&component.id)
+                    .copied()
+                    .unwrap_or([0.0, 0.0]);
+                let raw_currents = coupled_winding_step_currents(
+                    voltage_at(primary_positive)? - voltage_at(primary_negative)?,
+                    voltage_at(secondary_positive)? - voltage_at(secondary_negative)?,
+                    (*turns_ratio * voltage_at(primary_positive)?)
+                        .clamp(-*boost_voltage_limit, *boost_voltage_limit),
+                    *turns_ratio,
+                    *primary_inductance,
+                    *coupling,
+                    *primary_resistance,
+                    *secondary_resistance,
+                    previous_currents,
+                    FIXED_STEP_SECONDS,
+                );
+                let secondary_inductance = *primary_inductance * *turns_ratio * *turns_ratio;
+                let winding_currents = bound_coupled_winding_currents(
+                    *primary_inductance,
+                    secondary_inductance,
+                    *coupling,
+                    *max_stored_energy_joules,
+                    raw_currents,
+                );
+                currents.insert(primary_positive.clone(), winding_currents[0]);
+                currents.insert(primary_negative.clone(), -winding_currents[0]);
+                currents.insert(secondary_positive.clone(), winding_currents[1]);
+                currents.insert(secondary_negative.clone(), -winding_currents[1]);
+                other_stored_energy_joules.insert(
+                    component.id.clone(),
+                    coupled_winding_energy(
+                        *primary_inductance,
+                        secondary_inductance,
+                        *coupling,
+                        winding_currents[0],
+                        winding_currents[1],
+                    ),
+                );
+            }
             OtherDeviceBehavior::RingModulator {
                 signal,
                 carrier,
@@ -1507,6 +1618,7 @@ fn solve_internal(
         ic_device_output_voltages,
         other_terminal_currents,
         other_output_voltages,
+        other_stored_energy_joules,
         module_output_voltages,
     })
 }
@@ -1532,6 +1644,7 @@ type CompiledBranches = (
     BTreeSet<usize>,
 );
 type ComponentBranch = (&'static str, &'static str, BranchKind, f64, f64);
+#[allow(clippy::too_many_arguments)]
 fn make_branches(
     project: &Project,
     topology: &[Node],
@@ -1539,6 +1652,7 @@ fn make_branches(
     capacitor_voltages: &BTreeMap<ComponentId, f64>,
     ratios: &BTreeMap<ComponentId, f64>,
     digital_states: &BTreeMap<ComponentId, u32>,
+    coupled_winding_currents: &BTreeMap<ComponentId, [f64; 2]>,
     options: SolveOptions,
 ) -> Result<CompiledBranches, ElectricalError> {
     let node_contacts: Vec<_> = topology.iter().map(|n| n.contacts.clone()).collect();
@@ -2281,6 +2395,65 @@ fn make_branches(
                             secondary_resistance: *secondary_resistance,
                         });
                     }
+                    OtherDeviceBehavior::CoupledWinding {
+                        primary_positive,
+                        primary_negative,
+                        secondary_positive,
+                        secondary_negative,
+                        turns_ratio,
+                        primary_inductance,
+                        coupling,
+                        primary_resistance,
+                        secondary_resistance,
+                        boost_voltage_limit,
+                        max_stored_energy_joules,
+                    } => {
+                        let dt = options.dt.ok_or_else(|| {
+                            calc(
+                                "coupled_winding_requires_transient",
+                                format!(
+                                    "component {} requires fixed-step transient simulation",
+                                    component.id.0
+                                ),
+                            )
+                        })?;
+                        let primary_positive = node(&primary_positive.0)?;
+                        let primary_negative = node(&primary_negative.0)?;
+                        let secondary_positive = node(&secondary_positive.0)?;
+                        let secondary_negative = node(&secondary_negative.0)?;
+                        let secondary_inductance =
+                            *primary_inductance * *turns_ratio * *turns_ratio;
+                        let previous_currents = bound_coupled_winding_currents(
+                            *primary_inductance,
+                            secondary_inductance,
+                            *coupling,
+                            *max_stored_energy_joules,
+                            coupled_winding_currents
+                                .get(&component.id)
+                                .copied()
+                                .unwrap_or([0.0, 0.0]),
+                        );
+                        active.extend([
+                            primary_positive,
+                            primary_negative,
+                            secondary_positive,
+                            secondary_negative,
+                        ]);
+                        nonlinear.push(NonlinearElement::OtherCoupledWinding {
+                            primary_positive,
+                            primary_negative,
+                            secondary_positive,
+                            secondary_negative,
+                            turns_ratio: *turns_ratio,
+                            primary_inductance: *primary_inductance,
+                            coupling: *coupling,
+                            primary_resistance: *primary_resistance,
+                            secondary_resistance: *secondary_resistance,
+                            boost_voltage_limit: *boost_voltage_limit,
+                            previous_currents,
+                            dt,
+                        });
+                    }
                     OtherDeviceBehavior::RingModulator {
                         signal,
                         carrier,
@@ -2517,6 +2690,46 @@ fn component_branch(
 fn voltage(solution: &[f64], vars: &BTreeMap<usize, usize>, node: usize) -> f64 {
     vars.get(&node).map_or(0.0, |&i| solution[i])
 }
+
+#[allow(clippy::too_many_arguments)]
+fn coupled_winding_step_currents(
+    primary_voltage: f64,
+    secondary_voltage: f64,
+    boost_voltage: f64,
+    turns_ratio: f64,
+    primary_inductance: f64,
+    coupling: f64,
+    primary_resistance: f64,
+    secondary_resistance: f64,
+    previous_currents: [f64; 2],
+    dt: f64,
+) -> [f64; 2] {
+    let secondary_inductance = primary_inductance * turns_ratio * turns_ratio;
+    let mutual = coupling * (primary_inductance * secondary_inductance).sqrt();
+    let a = primary_resistance + primary_inductance / dt;
+    let d = secondary_resistance + secondary_inductance / dt;
+    let b = mutual / dt;
+    let determinant = (a * d - b * b).max(1e-18);
+    let g11 = d / determinant;
+    let g12 = -b / determinant;
+    let g21 = -b / determinant;
+    let g22 = a / determinant;
+    let history_primary =
+        (primary_inductance * previous_currents[0] + mutual * previous_currents[1]) / dt;
+    let history_secondary =
+        (mutual * previous_currents[0] + secondary_inductance * previous_currents[1]) / dt;
+    [
+        g11 * primary_voltage
+            + g12 * (secondary_voltage - boost_voltage)
+            + g11 * history_primary
+            + g12 * history_secondary,
+        g21 * primary_voltage
+            + g22 * (secondary_voltage - boost_voltage)
+            + g21 * history_primary
+            + g22 * history_secondary,
+    ]
+}
+
 fn stamp_conductance(
     m: &mut [Vec<f64>],
     vars: &BTreeMap<usize, usize>,
@@ -3527,6 +3740,39 @@ fn stamp_element(
                 rhs,
             );
         }
+        NonlinearElement::OtherCoupledWinding {
+            primary_positive,
+            primary_negative,
+            secondary_positive,
+            secondary_negative,
+            turns_ratio,
+            primary_inductance,
+            coupling,
+            primary_resistance,
+            secondary_resistance,
+            boost_voltage_limit,
+            previous_currents,
+            dt,
+            ..
+        } => stamp_other_coupled_winding(
+            *primary_positive,
+            *primary_negative,
+            *secondary_positive,
+            *secondary_negative,
+            *turns_ratio,
+            *primary_inductance,
+            *coupling,
+            *primary_resistance,
+            *secondary_resistance,
+            (*turns_ratio * voltage(guess, vars, *primary_positive))
+                .clamp(-*boost_voltage_limit, *boost_voltage_limit),
+            *previous_currents,
+            *dt,
+            guess,
+            vars,
+            matrix,
+            rhs,
+        ),
         NonlinearElement::OtherRingModulator {
             signal,
             carrier,
@@ -3740,6 +3986,74 @@ fn stamp_other_diode_socket(
             stamp_conductance(matrix, vars, anode, cathode, 1.0 / short_resistance)
         }
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn stamp_other_coupled_winding(
+    primary_positive: usize,
+    primary_negative: usize,
+    secondary_positive: usize,
+    secondary_negative: usize,
+    turns_ratio: f64,
+    primary_inductance: f64,
+    coupling: f64,
+    primary_resistance: f64,
+    secondary_resistance: f64,
+    boost_voltage: f64,
+    previous_currents: [f64; 2],
+    dt: f64,
+    guess: &[f64],
+    vars: &BTreeMap<usize, usize>,
+    matrix: &mut [Vec<f64>],
+    rhs: &mut [f64],
+) {
+    let secondary_inductance = primary_inductance * turns_ratio * turns_ratio;
+    let mutual = coupling * (primary_inductance * secondary_inductance).sqrt();
+    let a = primary_resistance + primary_inductance / dt;
+    let d = secondary_resistance + secondary_inductance / dt;
+    let b = mutual / dt;
+    let determinant = (a * d - b * b).max(1e-18);
+    let g11 = d / determinant;
+    let g12 = -b / determinant;
+    let g21 = -b / determinant;
+    let g22 = a / determinant;
+    let history_primary =
+        (primary_inductance * previous_currents[0] + mutual * previous_currents[1]) / dt;
+    let history_secondary =
+        (mutual * previous_currents[0] + secondary_inductance * previous_currents[1]) / dt;
+    let v1 = voltage(guess, vars, primary_positive) - voltage(guess, vars, primary_negative);
+    let v2 = voltage(guess, vars, secondary_positive) - voltage(guess, vars, secondary_negative);
+    let v2 = v2 - boost_voltage;
+    let i1 = g11 * v1 + g12 * v2 + g11 * history_primary + g12 * history_secondary;
+    let i2 = g21 * v1 + g22 * v2 + g21 * history_primary + g22 * history_secondary;
+    stamp_current(
+        (primary_positive, primary_negative),
+        i1,
+        &[
+            (primary_positive, g11),
+            (primary_negative, -g11),
+            (secondary_positive, g12),
+            (secondary_negative, -g12),
+        ],
+        guess,
+        vars,
+        matrix,
+        rhs,
+    );
+    stamp_current(
+        (secondary_positive, secondary_negative),
+        i2,
+        &[
+            (primary_positive, g21),
+            (primary_negative, -g21),
+            (secondary_positive, g22),
+            (secondary_negative, -g22),
+        ],
+        guess,
+        vars,
+        matrix,
+        rhs,
+    );
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -5157,6 +5471,7 @@ mod tests {
             &BTreeMap::new(),
             &BTreeMap::new(),
             &BTreeMap::new(),
+            &BTreeMap::new(),
             SolveOptions {
                 dt: None,
                 step: 0,
@@ -5344,6 +5659,7 @@ mod tests {
             &BTreeMap::new(),
             &BTreeMap::new(),
             &BTreeMap::new(),
+            &BTreeMap::new(),
             SolveOptions {
                 dt: None,
                 step: 0,
@@ -5369,6 +5685,7 @@ mod tests {
             &BTreeMap::new(),
             &BTreeMap::new(),
             &BTreeMap::new(),
+            &BTreeMap::new(),
             SolveOptions {
                 dt: None,
                 step: 0,
@@ -5381,6 +5698,7 @@ mod tests {
         let pressed = solve_internal(
             &project,
             &BTreeMap::from([(ComponentId("REED1".into()), ControlState::ButtonPressed)]),
+            &BTreeMap::new(),
             &BTreeMap::new(),
             &BTreeMap::new(),
             &BTreeMap::new(),
@@ -5422,6 +5740,7 @@ mod tests {
         let blocked = solve_internal(
             &project,
             &BTreeMap::from([(ComponentId("B1".into()), ControlState::ButtonPressed)]),
+            &BTreeMap::new(),
             &BTreeMap::new(),
             &BTreeMap::new(),
             &BTreeMap::new(),
@@ -6394,6 +6713,48 @@ mod tests {
                 (3.9..=4.1).contains(&dropout_output),
                 "output={dropout_output}"
             );
+        }
+
+        #[test]
+        fn c05_s10_04_coupled_winding_boosts_and_bounds_stored_energy() {
+            let project: Project = serde_json::from_str(include_str!(
+                "../../../fixtures/projects/c05-s10-04-joule-thief.json"
+            ))
+            .unwrap();
+            let mut winding_currents = project.initial_conditions.coupled_winding_currents.clone();
+            let mut peak_led_current = 0.0_f64;
+            let mut peak_energy = 0.0_f64;
+            for step in 0..4_000 {
+                let result = solve_transient_with_digital_and_winding_states(
+                    &project,
+                    &BTreeMap::new(),
+                    &BTreeMap::new(),
+                    &BTreeMap::new(),
+                    &BTreeMap::new(),
+                    &winding_currents,
+                    step,
+                    MAX_NONLINEAR_ITERATIONS,
+                )
+                .unwrap();
+                peak_led_current =
+                    peak_led_current.max(result.led_currents[&ComponentId("LED1".into())]);
+                peak_energy =
+                    peak_energy.max(result.other_stored_energy_joules[&ComponentId("T1".into())]);
+                assert!(result.other_stored_energy_joules[&ComponentId("T1".into())] <= 1e-5);
+                let terminals = &result.other_terminal_currents[&ComponentId("T1".into())];
+                winding_currents.insert(
+                    ComponentId("T1".into()),
+                    [
+                        terminals[&crate::PinId("primary_positive".into())],
+                        terminals[&crate::PinId("secondary_positive".into())],
+                    ],
+                );
+            }
+            assert!(
+                peak_led_current > 0.001,
+                "peak LED current: {peak_led_current}"
+            );
+            assert!(peak_energy > 0.0, "peak stored energy: {peak_energy}");
         }
 
         #[test]

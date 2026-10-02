@@ -21,10 +21,12 @@ pub use module::{
     MODULE_MIN_RESISTANCE, ModuleBehavior, ModuleChannel, ModuleInput, ModulePinRole, ModuleSpec,
 };
 pub use other_device::{
-    BjtPolarity, BjtTestSocket, BjtTestState, DiodePolarity, DiodeSubjectKind, DiodeTestSocket,
-    DiodeTestState, MAX_OTHER_DEVICE_PINS, OTHER_DEVICE_MAX_RESISTANCE,
-    OTHER_DEVICE_MIN_RESISTANCE, OtherDeviceBehavior, OtherDeviceLinearInput, OtherDevicePinRole,
-    OtherDeviceSpec, controlled_resistance, reed_resistance, ring_modulator_output,
+    BjtPolarity, BjtTestSocket, BjtTestState, COUPLED_WINDING_MAX_ENERGY,
+    COUPLED_WINDING_MAX_INDUCTANCE, COUPLED_WINDING_MIN_INDUCTANCE, DiodePolarity,
+    DiodeSubjectKind, DiodeTestSocket, DiodeTestState, MAX_OTHER_DEVICE_PINS,
+    OTHER_DEVICE_MAX_RESISTANCE, OTHER_DEVICE_MIN_RESISTANCE, OtherDeviceBehavior,
+    OtherDeviceLinearInput, OtherDevicePinRole, OtherDeviceSpec, bound_coupled_winding_currents,
+    controlled_resistance, coupled_winding_energy, reed_resistance, ring_modulator_output,
 };
 pub use persistence::{
     ACTION_LOG_FORMAT_VERSION, ActionEvent, ActionLog, MODEL_VERSION, PersistenceError,
@@ -138,6 +140,10 @@ pub struct InitialConditions {
     /// bits are always initialized by the simulator and are not serialized.
     #[serde(default)]
     pub digital_states: BTreeMap<ComponentId, u32>,
+    /// Initial currents for stateful coupled-winding `Other` devices, as
+    /// `[primary, secondary]` amperes.
+    #[serde(default)]
+    pub coupled_winding_currents: BTreeMap<ComponentId, [f64; 2]>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -845,6 +851,53 @@ pub fn compile_topology(project: &Project) -> Result<Vec<Node>, Vec<Diagnostic>>
             )),
         }
     }
+    for (id, currents) in &project.initial_conditions.coupled_winding_currents {
+        let Some(component) = project.components.iter().find(|c| &c.id == id) else {
+            errors.push(Diagnostic::new(
+                "invalid_initial_condition_reference",
+                format!("initial_conditions.coupled_winding_currents.{}", id.0),
+                "initial winding currents must refer to a coupled-winding component",
+            ));
+            continue;
+        };
+        let Some(OtherDeviceSpec {
+            behavior:
+                OtherDeviceBehavior::CoupledWinding {
+                    turns_ratio,
+                    primary_inductance,
+                    coupling,
+                    max_stored_energy_joules,
+                    ..
+                },
+            ..
+        }) = component.other_device.as_ref()
+        else {
+            errors.push(Diagnostic::new(
+                "invalid_initial_condition_reference",
+                format!("initial_conditions.coupled_winding_currents.{}", id.0),
+                "initial winding currents must refer to a coupled-winding component",
+            ));
+            continue;
+        };
+        let secondary_inductance = primary_inductance * turns_ratio * turns_ratio;
+        let energy = coupled_winding_energy(
+            *primary_inductance,
+            secondary_inductance,
+            *coupling,
+            currents[0],
+            currents[1],
+        );
+        if currents.iter().any(|current| !current.is_finite())
+            || !energy.is_finite()
+            || energy > *max_stored_energy_joules
+        {
+            errors.push(Diagnostic::new(
+                "invalid_initial_winding_state",
+                format!("initial_conditions.coupled_winding_currents.{}", id.0),
+                "initial winding currents must be finite and within the declared stored-energy limit",
+            ));
+        }
+    }
     for (id, state) in &project.initial_conditions.controls {
         let valid = project.components.iter().any(|c| match (c.kind, state) {
             (
@@ -1492,9 +1545,9 @@ fn validate_module_resistance(c: &Component, errors: &mut Vec<Diagnostic>, path:
 
 fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec<Diagnostic>) {
     use OtherDeviceBehavior::{
-        BjtTestSocket as BjtTestSocketBehavior, DiodeTestSocket as DiodeTestSocketBehavior,
-        LinearTransfer, ReedSwitch, Resistive, RingModulator, StepperLoad, Transformer,
-        VoltageControlledResistance, VoltageSource,
+        BjtTestSocket as BjtTestSocketBehavior, CoupledWinding,
+        DiodeTestSocket as DiodeTestSocketBehavior, LinearTransfer, ReedSwitch, Resistive,
+        RingModulator, StepperLoad, Transformer, VoltageControlledResistance, VoltageSource,
     };
     use OtherDevicePinRole::{Control, Ground, Input, Output, Reference, Supply, Terminal};
 
@@ -1831,6 +1884,97 @@ fn validate_other_device(c: &Component, spec: &OtherDeviceSpec, errors: &mut Vec
                     "other_device_transformer_ratio",
                     format!("components.{}.other_device.behavior.turns_ratio", c.id.0),
                     "transformer turns_ratio must be in 0.1..=10",
+                ));
+            }
+            validate_other_resistance(c, errors, "primary_resistance", *primary_resistance);
+            validate_other_resistance(c, errors, "secondary_resistance", *secondary_resistance);
+        }
+        CoupledWinding {
+            primary_positive,
+            primary_negative,
+            secondary_positive,
+            secondary_negative,
+            turns_ratio,
+            primary_inductance,
+            coupling,
+            primary_resistance,
+            secondary_resistance,
+            boost_voltage_limit,
+            max_stored_energy_joules,
+        } => {
+            if !role_is(primary_positive, |role| {
+                matches!(role, Input | Terminal | Supply)
+            }) || !role_is(primary_negative, |role| {
+                matches!(role, Terminal | Reference | Ground)
+            }) || !role_is(secondary_positive, |role| {
+                matches!(role, Output | Terminal | Supply)
+            }) || !role_is(secondary_negative, |role| {
+                matches!(role, Terminal | Reference | Ground | Output | Supply)
+            }) {
+                errors.push(Diagnostic::new(
+                    "other_device_coupled_winding_roles",
+                    format!("components.{}.other_device.behavior", c.id.0),
+                    "coupled windings require primary input/reference and secondary output/reference roles",
+                ));
+            }
+            validate_other_finite(c, errors, "turns_ratio", *turns_ratio);
+            validate_other_finite(c, errors, "coupling", *coupling);
+            validate_other_finite(c, errors, "primary_inductance", *primary_inductance);
+            validate_other_finite(c, errors, "boost_voltage_limit", *boost_voltage_limit);
+            validate_other_finite(
+                c,
+                errors,
+                "max_stored_energy_joules",
+                *max_stored_energy_joules,
+            );
+            if !turns_ratio.is_finite() || !(0.1..=10.0).contains(turns_ratio) {
+                errors.push(Diagnostic::new(
+                    "other_device_coupled_winding_ratio",
+                    format!("components.{}.other_device.behavior.turns_ratio", c.id.0),
+                    "turns_ratio must be in 0.1..=10",
+                ));
+            }
+            if !primary_inductance.is_finite()
+                || !(COUPLED_WINDING_MIN_INDUCTANCE..=COUPLED_WINDING_MAX_INDUCTANCE)
+                    .contains(primary_inductance)
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_coupled_winding_inductance",
+                    format!("components.{}.other_device.behavior.primary_inductance", c.id.0),
+                    format!(
+                        "primary_inductance must be in {COUPLED_WINDING_MIN_INDUCTANCE}..={COUPLED_WINDING_MAX_INDUCTANCE} H"
+                    ),
+                ));
+            }
+            if !coupling.is_finite() || !(-1.0..1.0).contains(coupling) || coupling.abs() < 1e-6 {
+                errors.push(Diagnostic::new(
+                    "other_device_coupled_winding_coupling",
+                    format!("components.{}.other_device.behavior.coupling", c.id.0),
+                    "coupling must be finite, non-zero, and in -1.0..1.0",
+                ));
+            }
+            if !max_stored_energy_joules.is_finite()
+                || !(1e-12..=COUPLED_WINDING_MAX_ENERGY).contains(max_stored_energy_joules)
+            {
+                errors.push(Diagnostic::new(
+                    "other_device_coupled_winding_energy",
+                    format!(
+                        "components.{}.other_device.behavior.max_stored_energy_joules",
+                        c.id.0
+                    ),
+                    format!(
+                        "max_stored_energy_joules must be in 1e-12..={COUPLED_WINDING_MAX_ENERGY} J"
+                    ),
+                ));
+            }
+            if !boost_voltage_limit.is_finite() || !(0.0..=24.0).contains(boost_voltage_limit) {
+                errors.push(Diagnostic::new(
+                    "other_device_coupled_winding_boost_limit",
+                    format!(
+                        "components.{}.other_device.behavior.boost_voltage_limit",
+                        c.id.0
+                    ),
+                    "boost_voltage_limit must be in 0..=24 V",
                 ));
             }
             validate_other_resistance(c, errors, "primary_resistance", *primary_resistance);

@@ -15,6 +15,9 @@ use std::collections::BTreeMap;
 pub const MAX_OTHER_DEVICE_PINS: usize = 32;
 pub const OTHER_DEVICE_MIN_RESISTANCE: f64 = 1e-3;
 pub const OTHER_DEVICE_MAX_RESISTANCE: f64 = 1e12;
+pub const COUPLED_WINDING_MIN_INDUCTANCE: f64 = 1e-9;
+pub const COUPLED_WINDING_MAX_INDUCTANCE: f64 = 1.0;
+pub const COUPLED_WINDING_MAX_ENERGY: f64 = 1.0;
 
 /// Map a control voltage to the bounded resistance used by
 /// `VoltageControlledResistance`. Values outside the declared control range
@@ -57,6 +60,44 @@ pub fn reed_resistance(closed_resistance: f64, open_resistance: f64, closed: boo
         closed_resistance
     } else {
         open_resistance
+    }
+}
+
+/// Return the magnetic energy represented by two coupled winding currents.
+pub fn coupled_winding_energy(
+    primary_inductance: f64,
+    secondary_inductance: f64,
+    coupling: f64,
+    primary_current: f64,
+    secondary_current: f64,
+) -> f64 {
+    let mutual = coupling * (primary_inductance * secondary_inductance).sqrt();
+    (0.5 * (primary_inductance * primary_current * primary_current
+        + secondary_inductance * secondary_current * secondary_current
+        + 2.0 * mutual * primary_current * secondary_current))
+        .max(0.0)
+}
+
+/// Keep persisted winding currents within the declared energy envelope.
+pub fn bound_coupled_winding_currents(
+    primary_inductance: f64,
+    secondary_inductance: f64,
+    coupling: f64,
+    max_energy: f64,
+    currents: [f64; 2],
+) -> [f64; 2] {
+    let energy = coupled_winding_energy(
+        primary_inductance,
+        secondary_inductance,
+        coupling,
+        currents[0],
+        currents[1],
+    );
+    if energy <= max_energy || energy == 0.0 {
+        currents
+    } else {
+        let scale = (max_energy / energy).sqrt();
+        [currents[0] * scale, currents[1] * scale]
     }
 }
 
@@ -234,6 +275,22 @@ pub enum OtherDeviceBehavior {
         primary_resistance: f64,
         secondary_resistance: f64,
     },
+    /// A two-winding backward-Euler magnetic contract. Unlike `Transformer`,
+    /// this preserves bounded winding current and magnetic stored energy
+    /// between fixed simulation steps.
+    CoupledWinding {
+        primary_positive: PinId,
+        primary_negative: PinId,
+        secondary_positive: PinId,
+        secondary_negative: PinId,
+        turns_ratio: f64,
+        primary_inductance: f64,
+        coupling: f64,
+        primary_resistance: f64,
+        secondary_resistance: f64,
+        boost_voltage_limit: f64,
+        max_stored_energy_joules: f64,
+    },
     /// A bounded multiplicative signal transfer used by the four-diode ring
     /// modulator fixture. The carrier and signal are normalized around the
     /// reference pin; finite input/output resistances keep the transfer part
@@ -279,6 +336,9 @@ impl OtherDeviceSpec {
         match &self.behavior {
             OtherDeviceBehavior::LinearTransfer { output, .. } => vec![output],
             OtherDeviceBehavior::Transformer {
+                secondary_positive, ..
+            } => vec![secondary_positive],
+            OtherDeviceBehavior::CoupledWinding {
                 secondary_positive, ..
             } => vec![secondary_positive],
             OtherDeviceBehavior::RingModulator { output, .. } => vec![output],
@@ -327,6 +387,18 @@ impl OtherDeviceSpec {
                 pins
             }
             OtherDeviceBehavior::Transformer {
+                primary_positive,
+                primary_negative,
+                secondary_positive,
+                secondary_negative,
+                ..
+            } => vec![
+                primary_positive,
+                primary_negative,
+                secondary_positive,
+                secondary_negative,
+            ],
+            OtherDeviceBehavior::CoupledWinding {
                 primary_positive,
                 primary_negative,
                 secondary_positive,
