@@ -156,6 +156,8 @@ const C05_S07_14_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-14-capacitance-meter.json");
 const C05_S07_13_JSON: &str =
     include_str!("../../../fixtures/projects/c05-s07-13-battery-charge-gauge.json");
+const C05_S10_04_JSON: &str =
+    include_str!("../../../fixtures/projects/c05-s10-04-joule-thief.json");
 const C06_S08_01_JSON: &str =
     include_str!("../../../fixtures/projects/c06-s08-01-motor-with-switch.json");
 const C06_S08_05_JSON: &str =
@@ -305,6 +307,7 @@ enum Circuit {
     C05S07_05,
     C05S07_13,
     C05S07_14,
+    C05S10_04,
     C06S08_01,
     C06S08_05,
     C06S08_08,
@@ -350,7 +353,7 @@ struct DialSpec {
 }
 impl Circuit {
     #[cfg(test)]
-    fn all() -> [Self; 120] {
+    fn all() -> [Self; 121] {
         [
             Self::C01S01_01,
             Self::C01S01_02,
@@ -411,6 +414,7 @@ impl Circuit {
             Self::C05S07_08,
             Self::C05S07_06,
             Self::C05S07_13,
+            Self::C05S10_04,
             Self::C06S08_01,
             Self::C06S08_05,
             Self::C06S08_08,
@@ -568,6 +572,7 @@ impl Circuit {
             Self::C05S07_05 => C05_S07_05_JSON,
             Self::C05S07_13 => C05_S07_13_JSON,
             Self::C05S07_14 => C05_S07_14_JSON,
+            Self::C05S10_04 => C05_S10_04_JSON,
             Self::C06S08_01 => C06_S08_01_JSON,
             Self::C06S08_05 => C06_S08_05_JSON,
             Self::C06S08_08 => C06_S08_08_JSON,
@@ -692,6 +697,7 @@ impl Circuit {
             Self::C05S07_05 => "C05-S07-05: BATTERY 5 V USB SUPPLY",
             Self::C05S07_13 => "C05-S07-13: BATTERY CHARGE GAUGE",
             Self::C05S07_14 => "C05-S07-14: CAPACITANCE METER",
+            Self::C05S10_04 => "C05-S10-04: JOULE THIEF",
             Self::C06S08_01 => "C06-S08-01: MOTOR WITH SWITCH",
             Self::C06S08_05 => "C06-S08-05: VIBRATION BOT",
             Self::C06S08_08 => "C06-S08-08: THERMOSTATIC FAN",
@@ -964,6 +970,10 @@ impl Circuit {
             Self::C05S07_14 => (
                 "A calculated monostable measures the selected capacitor's charge time with a fixed-step reference oscillator. An AND gate windows the reference pulses, three decimal counters advance on those calculated edges, and their BCD outputs drive current-limited seven-segment displays. The source's physical unknown-capacitor socket and exact CD4026/NE555 package behavior remain explicit discrepancies.",
                 "Task: press MEASURE, toggle RANGE between the unknown and 10 µF reference, run the fixture, and compare the calculated counter value.",
+            ),
+            Self::C05S10_04 => (
+                "A bounded backward-Euler coupled-winding model stores magnetic energy and applies a bounded boost term to the Joule-thief secondary. The NPN, 1 kΩ feedback branch, and white LED remain calculated electrical behavior; ferrite-ring geometry and exact startup waveform are presentation discrepancies.",
+                "Task: run the fixture and compare the calculated LED current with the T1 winding-energy readout; confirm the stored energy remains bounded.",
             ),
             Self::C06S08_01 => (
                 "A calculated 3 V source drives a two-terminal DC motor through an SPDT switch. Motor current and signed no-load speed are derived from terminal voltage; the source propeller remains a presentation discrepancy.",
@@ -1648,7 +1658,11 @@ impl Circuit {
                     is_switch: true,
                 },
             ],
-            Self::C05S07_05 | Self::C05S07_06 | Self::C05S07_08 | Self::C05S07_13 => &[],
+            Self::C05S07_05
+            | Self::C05S07_06
+            | Self::C05S07_08
+            | Self::C05S07_13
+            | Self::C05S10_04 => &[],
             Self::C06S08_01 => &[ControlSpec {
                 label: "S1: MOTOR POWER",
                 component: "S1",
@@ -4186,6 +4200,27 @@ fn update_view(
                         "CX {:.3} V   RANGE {range}   COUNT {count:03}",
                         bench.simulation.capacitor_voltages[&ComponentId("CX".into())]
                     )
+                } else if bench.circuit == Circuit::C05S10_04 {
+                    bench.simulation.last_valid.as_ref().map_or(
+                        "Joule thief: run to measure".into(),
+                        |result| {
+                            let led = result
+                                .led_currents
+                                .get(&ComponentId("LED1".into()))
+                                .copied()
+                                .unwrap_or(0.0);
+                            let energy = result
+                                .other_stored_energy_joules
+                                .get(&ComponentId("T1".into()))
+                                .copied()
+                                .unwrap_or(0.0);
+                            format!(
+                                "LED {:.2} mA   T1 ENERGY {:.3} µJ",
+                                led * 1000.0,
+                                energy * 1e6
+                            )
+                        },
+                    )
                 } else if bench.circuit == Circuit::C10S18_07 {
                     bench.simulation.last_valid.as_ref().map_or(
                         "Diode OR output: run to measure".into(),
@@ -5067,7 +5102,7 @@ mod tests {
                 .iter()
                 .filter(|item| matches!(item, exercise_catalog::Item::Circuit(_)))
                 .count(),
-            120
+            121
         );
         assert!(matches!(
             items[0],

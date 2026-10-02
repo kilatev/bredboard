@@ -1,6 +1,6 @@
 use crate::{
-    Action, ComponentKind, ControlState, Project, SimulationState, advance_steps, apply_actions,
-    compile_topology,
+    Action, ComponentKind, ControlState, OtherDeviceBehavior, Project, SimulationState,
+    advance_steps, apply_actions, compile_topology, coupled_winding_energy,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -130,6 +130,63 @@ pub fn restore_snapshot(
             "invalid_capacitor_state",
             "snapshot capacitor state is incomplete or non-finite",
         ));
+    }
+    let winding_ids: BTreeSet<_> = snapshot
+        .project
+        .components
+        .iter()
+        .filter(|c| {
+            c.other_device.as_ref().is_some_and(|spec| {
+                matches!(&spec.behavior, OtherDeviceBehavior::CoupledWinding { .. })
+            })
+        })
+        .map(|c| c.id.clone())
+        .collect();
+    if winding_ids
+        != snapshot
+            .state
+            .coupled_winding_currents
+            .keys()
+            .cloned()
+            .collect()
+    {
+        return Err(persistence_error(
+            "invalid_coupled_winding_state",
+            "snapshot coupled-winding state is incomplete",
+        ));
+    }
+    for component in snapshot.project.components.iter().filter(|c| {
+        c.other_device.as_ref().is_some_and(|spec| {
+            matches!(&spec.behavior, OtherDeviceBehavior::CoupledWinding { .. })
+        })
+    }) {
+        let Some(OtherDeviceBehavior::CoupledWinding {
+            turns_ratio,
+            primary_inductance,
+            coupling,
+            max_stored_energy_joules,
+            ..
+        }) = component.other_device.as_ref().map(|spec| &spec.behavior)
+        else {
+            unreachable!("filtered coupled-winding component")
+        };
+        let currents = snapshot.state.coupled_winding_currents[&component.id];
+        let energy = coupled_winding_energy(
+            *primary_inductance,
+            *primary_inductance * *turns_ratio * *turns_ratio,
+            *coupling,
+            currents[0],
+            currents[1],
+        );
+        if currents.iter().any(|current| !current.is_finite())
+            || !energy.is_finite()
+            || energy > *max_stored_energy_joules
+        {
+            return Err(persistence_error(
+                "invalid_coupled_winding_state",
+                "snapshot coupled-winding state is non-finite or exceeds stored-energy limit",
+            ));
+        }
     }
     let control_ids: BTreeSet<_> = snapshot
         .project

@@ -1,0 +1,38 @@
+{
+  "format_version": 1,
+  "title": "C05-S10-04: Joule thief",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 0.8 } },
+    {
+      "id": "T1",
+      "kind": "other",
+      "pins": { "primary_positive": "TP+:2", "primary_negative": "A5", "secondary_positive": "A8", "secondary_negative": "TP+:3" },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": { "primary_positive": "supply", "primary_negative": "terminal", "secondary_positive": "output", "secondary_negative": "supply" },
+        "behavior": {
+          "behavior": "coupled_winding",
+          "primary_positive": "primary_positive",
+          "primary_negative": "primary_negative",
+          "secondary_positive": "secondary_positive",
+          "secondary_negative": "secondary_negative",
+          "turns_ratio": 4.0,
+          "primary_inductance": 0.0001,
+          "coupling": -0.98,
+          "primary_resistance": 4.0,
+          "secondary_resistance": 4.0,
+          "boost_voltage_limit": 5.0,
+          "max_stored_energy_joules": 0.00001
+        }
+      }
+    },
+    { "id": "R1", "kind": "resistor", "pins": { "a": "B8", "b": "A9" }, "parameters": { "resistance": 1000.0 } },
+    { "id": "Q1", "kind": "npn_transistor", "pins": { "base": "B9", "collector": "B5", "emitter": "TP-:2" }, "parameters": { "beta": 1000.0, "saturation_current": 1e-12 } },
+    { "id": "LED1", "kind": "led", "pins": { "anode": "C8", "cathode": "TP+:4" }, "parameters": { "forward_voltage": 2.8, "series_resistance": 20.0 } }
+  ],
+  "wires": [],
+  "initial_conditions": {
+    "coupled_winding_currents": { "T1": [0.02, 0.0] }
+  }
+}

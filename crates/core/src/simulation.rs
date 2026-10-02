@@ -57,6 +57,9 @@ pub struct SimulationState {
     /// latched outputs. Edge-history bits are implementation state.
     #[serde(default)]
     pub digital_states: BTreeMap<ComponentId, u32>,
+    /// Stateful coupled-winding currents as `[primary, secondary]` amperes.
+    #[serde(default)]
+    pub coupled_winding_currents: BTreeMap<ComponentId, [f64; 2]>,
     pub controls: BTreeMap<ComponentId, ControlState>,
     /// Continuous 0.0..=1.0 control ratio per variable resistor.
     #[serde(default)]
@@ -81,6 +84,7 @@ impl SimulationState {
     pub fn new(project: &Project) -> Self {
         let mut capacitor_voltages = BTreeMap::new();
         let mut digital_states = BTreeMap::new();
+        let mut coupled_winding_currents = BTreeMap::new();
         let mut controls = BTreeMap::new();
         let mut control_ratios = BTreeMap::new();
         for component in &project.components {
@@ -163,6 +167,21 @@ impl SimulationState {
                             .unwrap_or(0),
                     );
                 }
+                ComponentKind::Other
+                    if component.other_device.as_ref().is_some_and(|spec| {
+                        matches!(&spec.behavior, OtherDeviceBehavior::CoupledWinding { .. })
+                    }) =>
+                {
+                    coupled_winding_currents.insert(
+                        component.id.clone(),
+                        project
+                            .initial_conditions
+                            .coupled_winding_currents
+                            .get(&component.id)
+                            .copied()
+                            .unwrap_or([0.0, 0.0]),
+                    );
+                }
                 _ => {}
             }
         }
@@ -171,6 +190,7 @@ impl SimulationState {
             running: false,
             capacitor_voltages,
             digital_states,
+            coupled_winding_currents,
             controls,
             control_ratios,
             piezo_current_history: BTreeMap::new(),
@@ -475,31 +495,37 @@ fn step_once_with_iteration_limit(
     state: &mut SimulationState,
     max_iterations: usize,
 ) -> bool {
-    if !state.needs_solve && state.last_valid.is_some() && state.capacitor_voltages.is_empty() {
+    if !state.needs_solve
+        && state.last_valid.is_some()
+        && state.capacitor_voltages.is_empty()
+        && state.coupled_winding_currents.is_empty()
+    {
         if let Some(result) = state.last_valid.clone() {
             record_piezo_currents(project, state, &result);
         }
         state.step += 1;
         return true;
     }
-    match crate::solver::solve_transient_with_digital_states(
+    match crate::solver::solve_transient_with_digital_and_winding_states(
         project,
         &state.controls,
         &state.capacitor_voltages,
         &state.control_ratios,
         &state.digital_states,
+        &state.coupled_winding_currents,
         state.step,
         max_iterations,
     ) {
         Ok(mut result) => {
             update_digital_states(project, &mut state.digital_states, &result);
             if !state.digital_states.is_empty() {
-                result = match crate::solver::solve_transient_with_digital_states(
+                result = match crate::solver::solve_transient_with_digital_and_winding_states(
                     project,
                     &state.controls,
                     &state.capacitor_voltages,
                     &state.control_ratios,
                     &state.digital_states,
+                    &state.coupled_winding_currents,
                     state.step,
                     max_iterations,
                 ) {
@@ -520,6 +546,9 @@ fn step_once_with_iteration_limit(
             state
                 .capacitor_voltages
                 .extend(result.capacitor_voltages.clone());
+            for (id, currents) in coupled_winding_currents_from_result(project, &result) {
+                state.coupled_winding_currents.insert(id, currents);
+            }
             record_piezo_currents(project, state, &result);
             state.last_valid = Some(result);
             state.step += 1;
@@ -540,6 +569,35 @@ fn step_once_with_iteration_limit(
             false
         }
     }
+}
+
+fn coupled_winding_currents_from_result(
+    project: &Project,
+    result: &SolveResult,
+) -> BTreeMap<ComponentId, [f64; 2]> {
+    project
+        .components
+        .iter()
+        .filter_map(|component| {
+            let spec = component.other_device.as_ref()?;
+            let OtherDeviceBehavior::CoupledWinding {
+                primary_positive,
+                secondary_positive,
+                ..
+            } = &spec.behavior
+            else {
+                return None;
+            };
+            let currents = result.other_terminal_currents.get(&component.id)?;
+            Some((
+                component.id.clone(),
+                [
+                    currents.get(primary_positive).copied().unwrap_or(0.0),
+                    currents.get(secondary_positive).copied().unwrap_or(0.0),
+                ],
+            ))
+        })
+        .collect()
 }
 
 fn record_piezo_currents(project: &Project, state: &mut SimulationState, result: &SolveResult) {

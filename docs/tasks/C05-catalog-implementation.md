@@ -246,10 +246,37 @@ segments, the absolute-range property test passes, and the fixture validates
 with 8 components, 0 wires, and 16 derived nodes. Manual browser/breadboard
 evidence remains pending.
 
+The CAT-S10-04 slice admits
+`fixtures/projects/c05-s10-04-joule-thief.json` through a new bounded
+backward-Euler `CoupledWinding` behavior. Its two winding terminals, turns
+ratio, signed coupling, winding resistances, boost-voltage limit, and maximum
+stored-energy contract are validated and threaded through transient solver,
+simulation, and snapshot state. The NPN/1 kΩ feedback branch and white LED are
+calculated from the assembled topology; the ferrite-ring geometry and exact
+Joule-thief startup waveform remain explicit approximations.
+
+Focused CAT-S10-04 evidence on 2026-10-02:
+
+```text
+cargo run -p bredboard-tools --locked -- validate fixtures/projects/c05-s10-04-joule-thief.json — passed; 5 components, 0 wires, 5 derived nodes
+cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c05-s10-04-joule-thief.json 4000 — passed; transient state advanced without diagnostics
+cargo test -p bredboard-core c05_s10_04_coupled_winding_boosts_and_bounds_stored_energy --locked — passed; calculated LED current and bounded T1 stored energy
+cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
+cargo test -p bredboard-app exercise_catalog_keeps_search_groups_and_circuits_separate --locked — passed; 121 circuits
+```
+
+The final CAT-S10-04 workspace gate also passed: `cargo fmt --all --check`,
+`cargo clippy --workspace --all-targets --locked -- -D warnings`,
+`cargo test --workspace --locked` (65 app, 154 core, 3 tools, 0 doc-test
+failures), native Linux and WASM app builds, `validate-catalog` (20 sections,
+212 schematics), and `git diff --check`. Manual browser and real-breadboard
+evidence remain pending.
+
 ## Current blockers
 
 - Physical probes, the remaining unknown-device socket (S07-12), AC sources, battery and lemon-cell
-  models, comparators, counters, measurement modules, inductors,
+  models, comparators, counters, measurement modules, and inductors for the
+  still-blocked power fixtures,
   MOSFETs, supercapacitors, charger modules, solar sources, and bargraph
   instrumentation are not yet available. The shared diode model is available;
   row-specific diode wiring and power-stage behavior remain fixture work.
