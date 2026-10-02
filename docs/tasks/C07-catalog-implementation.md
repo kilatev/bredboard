@@ -1,8 +1,9 @@
 # C07 — Hardware-logic and module fixtures
 
-Status: in_progress; source review is recorded and implementation starts with
-the two-station telegraph entry whose electrical branches are calculable while
-the long cable remains a presentation-only discrepancy.
+Status: in_progress; source review is recorded and implementation includes
+the admitted talking-card and two-station telegraph entries whose electrical
+contracts are calculable while their physical/audio details remain explicit
+discrepancies.
 
 ## Scope
 
@@ -18,8 +19,10 @@ The source record is
 - S09-01 is admitted with the existing Schmitt inverter, digital counter,
   seven-segment display, and button-as-wire-ring substitute. The physical
   contact prop remains a presentation discrepancy.
-- S09-02 needs an ISD1820 voice module, reed switch, and recorded audio; keep
-  it blocked.
+- S09-02 is admitted with a calculated reed-switch contract and an
+  ISD1820-style threshold-output module contract. The 4.5 V trigger path and
+  8 ohm speaker load are calculated; recorded speech, magnetic mechanics, and
+  one-shot playback timing remain presentation discrepancies.
 - S09-03 is the first admissible slice: two buttons, two active buzzer loads,
   two LEDs, two resistors, and one source. The long cable is represented by
   calculated wires and remains an explicit presentation discrepancy.
@@ -132,6 +135,31 @@ cargo run -p bredboard-tools --locked -- validate fixtures/projects/c07-s09-01-h
 cargo run -p bredboard-tools --locked -- simulate fixtures/projects/c07-s09-01-hot-wire-button-counter.json 500 — passed; transient state advanced without diagnostics
 cargo test -p bredboard-app all_embedded_boards_have_unique_lead_and_wire_holes --locked — passed
 ```
+
+The CAT-S09-02 slice adds
+`fixtures/projects/c07-s09-02-talking-card.json` and registers it in the app
+menu. The source's ISD1820 pins map to the shared module contract: PLAYE is a
+threshold input, SPK+ is a bounded output, and SPK− is grounded through the
+board. The new calculated reed-switch contract uses ordered button-style
+control actions while retaining the source BOM's one reed component. The
+speaker is presented from solved current using the existing fixed-tone audio
+scope; no recorded clip or scripted phrase result is used.
+
+Focused evidence for the slice:
+
+```text
+cargo run -q -p bredboard-tools --locked -- validate fixtures/projects/c07-s09-02-talking-card.json — passed; 4 components, 1 wire, 4 derived nodes
+cargo run -q -p bredboard-tools --locked -- simulate fixtures/projects/c07-s09-02-talking-card.json 500 — passed; step 500 at 0.050000 s without diagnostics
+cargo test -p bredboard-core --locked talking_card_reed_triggers_calculated_module_and_speaker_load -- --nocapture — passed
+cargo test -p bredboard-app --locked c07_s09_02_reed_control_drives_the_talking_card_speaker -- --nocapture — passed
+cargo test -p bredboard-app --locked all_embedded_boards_have_unique_lead_and_wire_holes -- --nocapture — passed
+```
+
+The CAT-S09-02 full automated gate passed on 2026-10-02: `cargo fmt --all
+--check`, Clippy with `-D warnings`, `cargo test --workspace --locked` (62
+app, 151 core, 3 tools, 0 doc-test failures), native Linux and WASM app
+builds, `validate-catalog` (20 sections, 212 schematics), and `git diff
+--check`. Manual browser, audio, and real-breadboard evidence remain pending.
 
 The shared board-model slice now provides a validated multi_board contract
 for up to eight named half_size_solderless boards. Qualified

@@ -3,7 +3,7 @@ use crate::{
     BjtPolarity, BjtTestState, Component, ComponentId, ComponentKind, Contact, ControlState,
     Diagnostic, DiodeModel, DiodePolarity, DiodeSpec, DiodeTestState, IcDeviceBehavior,
     IcLogicOperation, ModuleBehavior, Node, OtherDeviceBehavior, PinId, Project, compile_topology,
-    controlled_resistance, ring_modulator_output,
+    controlled_resistance, reed_resistance, ring_modulator_output,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -1257,6 +1257,21 @@ fn solve_internal(
                 currents.insert(positive.clone(), current);
                 currents.insert(negative.clone(), -current);
             }
+            OtherDeviceBehavior::ReedSwitch {
+                a,
+                b,
+                closed_resistance,
+                open_resistance,
+            } => {
+                let resistance = reed_resistance(
+                    *closed_resistance,
+                    *open_resistance,
+                    control_state.get(&component.id) == Some(&ControlState::ButtonPressed),
+                );
+                let current = (voltage_at(a)? - voltage_at(b)?) / resistance;
+                currents.insert(a.clone(), current);
+                currents.insert(b.clone(), -current);
+            }
             OtherDeviceBehavior::VoltageSource {
                 positive,
                 negative,
@@ -2083,6 +2098,29 @@ fn make_branches(
                             a,
                             b,
                             value: *resistance,
+                            previous_voltage: 0.0,
+                        });
+                    }
+                    OtherDeviceBehavior::ReedSwitch {
+                        a,
+                        b,
+                        closed_resistance,
+                        open_resistance,
+                    } => {
+                        let a = node(&a.0)?;
+                        let b = node(&b.0)?;
+                        let resistance = reed_resistance(
+                            *closed_resistance,
+                            *open_resistance,
+                            states.get(&component.id) == Some(&ControlState::ButtonPressed),
+                        );
+                        active.extend([a, b]);
+                        branches.push(Branch {
+                            component: component.id.clone(),
+                            kind: BranchKind::Resistor,
+                            a,
+                            b,
+                            value: resistance,
                             previous_voltage: 0.0,
                         });
                     }
@@ -5298,6 +5336,59 @@ mod tests {
         assert!(first.resistor_currents[&ComponentId("BZ1".into())].abs() > 0.01);
         assert!(first.led_currents[&ComponentId("D2".into())].abs() < 1e-12);
         assert!(first.resistor_currents[&ComponentId("BZ2".into())].abs() < 1e-12);
+    }
+
+    #[test]
+    fn talking_card_reed_triggers_calculated_module_and_speaker_load() {
+        let project: Project = serde_json::from_str(include_str!(
+            "../../../fixtures/projects/c07-s09-02-talking-card.json"
+        ))
+        .unwrap();
+        let released = solve_internal(
+            &project,
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            SolveOptions {
+                dt: None,
+                step: 0,
+                max_iterations: MAX_NONLINEAR_ITERATIONS,
+            },
+        )
+        .unwrap();
+        assert!(released.resistor_currents[&ComponentId("SPK1".into())].abs() < 1e-9);
+
+        let pressed = solve_internal(
+            &project,
+            &BTreeMap::from([(ComponentId("REED1".into()), ControlState::ButtonPressed)]),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            SolveOptions {
+                dt: None,
+                step: 0,
+                max_iterations: MAX_NONLINEAR_ITERATIONS,
+            },
+        )
+        .unwrap();
+        let playe = pressed
+            .node_voltages
+            .iter()
+            .find(|node| {
+                node.contacts.contains(&Contact::ComponentPin(
+                    ComponentId("U1".into()),
+                    PinId("playe".into()),
+                ))
+            })
+            .unwrap()
+            .voltage;
+        assert!(playe > 4.0, "PLAYE voltage: {playe}");
+        assert!(pressed.resistor_currents[&ComponentId("SPK1".into())].abs() > 0.05);
+        assert!(
+            pressed.module_output_voltages[&ComponentId("U1".into())][&PinId("sp_plus".into())]
+                > 0.5
+        );
     }
 
     #[test]

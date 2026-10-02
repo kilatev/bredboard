@@ -49,6 +49,17 @@ pub fn ring_modulator_output(
     reference_voltage + raw.clamp(min_output, max_output)
 }
 
+/// Select the finite resistance of a reed contact from its ordered control
+/// state. Keeping this helper pure makes the open/closed invariant testable
+/// independently of the board solver.
+pub fn reed_resistance(closed_resistance: f64, open_resistance: f64, closed: bool) -> f64 {
+    if closed {
+        closed_resistance
+    } else {
+        open_resistance
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum OtherDevicePinRole {
@@ -162,6 +173,16 @@ pub enum OtherDeviceBehavior {
         negative: PinId,
         resistance: f64,
     },
+    /// A magnetically actuated two-terminal contact. The simulation exposes
+    /// its open/closed state through the same ordered control actions as a
+    /// momentary button; the magnet and mechanical hysteresis remain outside
+    /// the electrical contract.
+    ReedSwitch {
+        a: PinId,
+        b: PinId,
+        closed_resistance: f64,
+        open_resistance: f64,
+    },
     /// A five-wire unipolar stepper load. The common pin feeds four equal
     /// phase coils; each phase current is calculated from the solved terminal
     /// voltage. This is an electrical load contract, not a mechanical
@@ -262,6 +283,7 @@ impl OtherDeviceSpec {
             } => vec![secondary_positive],
             OtherDeviceBehavior::RingModulator { output, .. } => vec![output],
             OtherDeviceBehavior::Resistive { .. }
+            | OtherDeviceBehavior::ReedSwitch { .. }
             | OtherDeviceBehavior::StepperLoad { .. }
             | OtherDeviceBehavior::VoltageSource { .. }
             | OtherDeviceBehavior::BjtTestSocket { .. }
@@ -274,6 +296,11 @@ impl OtherDeviceSpec {
         match &self.behavior {
             OtherDeviceBehavior::Resistive {
                 positive, negative, ..
+            }
+            | OtherDeviceBehavior::ReedSwitch {
+                a: positive,
+                b: negative,
+                ..
             }
             | OtherDeviceBehavior::VoltageSource {
                 positive, negative, ..
@@ -337,7 +364,8 @@ impl OtherDeviceSpec {
 #[cfg(test)]
 mod tests {
     use super::{
-        BjtPolarity, BjtTestSocket, BjtTestState, controlled_resistance, ring_modulator_output,
+        BjtPolarity, BjtTestSocket, BjtTestState, controlled_resistance, reed_resistance,
+        ring_modulator_output,
     };
     use crate::PinId;
     use proptest::prelude::*;
@@ -446,6 +474,20 @@ mod tests {
                 BjtTestState::Open
             };
             prop_assert_eq!(socket.effective_state(), expected);
+        }
+
+        #[test]
+        fn reed_resistance_selects_a_finite_bounded_contact(
+            closed in 0.01f64..1000.0,
+            gap in 0.01f64..1_000_000.0,
+            is_closed in any::<bool>(),
+        ) {
+            let open = closed + gap;
+            let resistance = reed_resistance(closed, open, is_closed);
+            prop_assert!(resistance.is_finite());
+            prop_assert!(resistance >= closed);
+            prop_assert!(resistance <= open);
+            prop_assert_eq!(resistance, if is_closed { closed } else { open });
         }
     }
 }

@@ -1,0 +1,49 @@
+{
+  "format_version": 1,
+  "title": "C07-S09-02: Talking card",
+  "board": { "model": "half_size_solderless" },
+  "components": [
+    { "id": "V1", "kind": "dc_voltage_source", "pins": { "positive": "TP+:1", "negative": "TP-:1" }, "parameters": { "voltage": 4.5 } },
+    {
+      "id": "REED1",
+      "kind": "other",
+      "pins": { "a": "TP+:3", "b": "C1" },
+      "parameters": {},
+      "other_device": {
+        "pin_roles": { "a": "terminal", "b": "terminal" },
+        "behavior": {
+          "behavior": "reed_switch",
+          "a": "a",
+          "b": "b",
+          "closed_resistance": 1.0,
+          "open_resistance": 1000000000.0
+        }
+      }
+    },
+    {
+      "id": "U1",
+      "kind": "module",
+      "pins": { "gnd": "TP-:2", "playe": "E1", "sp_minus": "B5", "sp_plus": "B4", "vcc": "TP+:2" },
+      "parameters": {},
+      "module": {
+        "pin_roles": { "gnd": "ground", "playe": "input", "sp_minus": "reference", "sp_plus": "output", "vcc": "supply" },
+        "behavior": {
+          "behavior": "threshold_output",
+          "input": "playe",
+          "reference": "gnd",
+          "output": "sp_plus",
+          "threshold": 2.25,
+          "high_output": 4.0,
+          "low_output": 0.0,
+          "input_resistance": 1000000.0,
+          "output_resistance": 32.0
+        }
+      }
+    },
+    { "id": "SPK1", "kind": "speaker", "pins": { "positive": "D4", "negative": "D5" }, "parameters": { "resistance": 8.0 } }
+  ],
+  "wires": [
+    { "id": "W_SP_MINUS", "from": "E5", "to": "TP-:5" }
+  ],
+  "initial_conditions": { "controls": { "REED1": "button_released" } }
+}

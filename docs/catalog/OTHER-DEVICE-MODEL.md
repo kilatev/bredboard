@@ -13,6 +13,8 @@ other component. A behavior may only refer to pins declared by the contract.
 The supported calculated behaviors are:
 
 - `resistive`: a two-terminal finite impedance;
+- `reed_switch`: a two-terminal contact whose finite resistance is selected by
+  the ordered `button_pressed`/`button_released` control state;
 - `voltage_source`: a bounded Thevenin source with non-zero internal
   resistance;
 - `linear_transfer`: one finite-resistance output driven by named input
@@ -63,3 +65,8 @@ declared pin. Linear-transfer output voltages are reported separately in
 `SolveResult::other_output_voltages`. All values are derived from the solved
 node voltages on fixed solver steps and are deterministic for the same project
 and controls.
+
+The reed-switch contract uses `closed_resistance` and `open_resistance`, with
+the closed value required to be lower. It models the electrical contact used
+by the talking-card fixture; magnet position, contact bounce, and mechanical
+hysteresis remain presentation or hardware concerns.
