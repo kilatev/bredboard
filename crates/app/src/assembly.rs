@@ -183,6 +183,11 @@ impl Editor {
                 }
                 self.undo.push(previous);
                 self.message = labels::UPDATED.into();
+                if matches!(self.tool, Some(Tool::Place(_) | Tool::Wire))
+                    && let Some(tool) = learning::next_tool(bench)
+                {
+                    self.tool = Some(tool);
+                }
                 if !bench
                     .project
                     .components
@@ -368,7 +373,8 @@ impl Editor {
                 let holes = std::mem::take(&mut self.pending);
                 let mut project = bench.project.clone();
                 if let Some(Tool::Place(kind)) = self.tool {
-                    let mut part = template(kind);
+                    let mut part =
+                        learning::reference_template(bench, kind).unwrap_or_else(|| template(kind));
                     let prefix = match kind {
                         ComponentKind::Resistor => "R",
                         ComponentKind::Capacitor => "C",
@@ -508,6 +514,20 @@ fn wire_at(project: &Project, point: Vec2) -> Option<WireId> {
         .map(|w| w.id.clone())
 }
 
+pub fn assisted_edit(bench: &mut Bench, candidate: Project) {
+    if let Some(mut editor) = bench.editor.take() {
+        editor.cancel();
+        let previous = bench.project.clone();
+        editor.commit(bench, candidate);
+        if bench.project != previous
+            && let Some(tool) = learning::next_tool(bench)
+        {
+            editor.tool = Some(tool);
+        }
+        bench.editor = Some(editor);
+    }
+}
+
 pub fn command(bench: &mut Bench, value: Command) {
     if let Some(mut editor) = bench.editor.take() {
         editor.apply(bench, value);
@@ -530,13 +550,15 @@ pub fn draw(commands: &mut Commands, images: &mut Assets<Image>, bench: &Bench) 
         -1.0,
     );
     spawn_board(commands, images, bench);
-    label(
-        commands,
-        labels::TITLE,
-        Vec2::new(185.0, 330.0),
-        28.0,
-        Color::srgb(0.42, 0.90, 0.76),
-    );
+    if bench.learning.is_none() {
+        label(
+            commands,
+            labels::TITLE,
+            Vec2::new(185.0, 330.0),
+            28.0,
+            Color::srgb(0.42, 0.90, 0.76),
+        );
+    }
     for (index, (kind, name)) in PARTS.iter().enumerate() {
         button(
             commands,
@@ -684,6 +706,9 @@ pub fn keyboard(
     let Some(bench) = session.bench.as_mut() else {
         return;
     };
+    if !learning::is_board(bench) {
+        return;
+    }
     let Some(mut editor) = bench.editor.take() else {
         return;
     };
@@ -754,7 +779,7 @@ pub fn keyboard(
     bench.editor = Some(editor);
     if changed {
         clear_scene(&mut commands, &scene);
-        draw(&mut commands, &mut images, bench);
+        spawn_bench(&mut commands, &mut images, bench);
     }
 }
 

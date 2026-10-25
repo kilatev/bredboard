@@ -6,6 +6,18 @@ Build an educational 2D breadboard simulator for a school-age beginner with no e
 
 English is canonical for all project artifacts: plans, task cards, documentation, code comments, UI, board labels, component descriptions, lessons, diagnostics, JSON Schema descriptions, examples, and commit messages. Keep user-facing strings separate from logic. Russian localization is outside the MVP.
 
+**Current baseline (owner clarification, T31):** editing belongs in the normal
+beginner learning flow. Start from an electrical schematic, use the virtual
+board to invent a placement, or copy a ready physical example. Optional short
+steps and one-step assistance support children who want to build before they
+understand the theory. The first introductory path uses the three existing
+benches; a general lesson authoring engine is not required.
+
+### Historical closed MVP boundary
+
+The next two paragraphs describe the completed T14 release, not restrictions on
+the current owner-requested beginner experience.
+
 The MVP menu selects one of three fixed, physically buildable circuits: LED and resistor, capacitor charge/discharge, or transistor-controlled LED. Each opens paused with a run/pause control, reset, and its switch or press/release button. Show calculated voltage/current, calculation failures, and LED brightness driven by calculated current. Hovering a hole reveals its exact ID and plugged leads. No guided lesson engine, parameter editor, graph, or user-facing JSON file workflow is required for the MVP.
 
 Exclude free assembly, isometric rendering, programmable devices, imported lessons, accounts, a required remote backend, and integrated AI chat. External AI tools can author documented JSON through the core and CLI. Optional online sharing, Workshop integration, and synchronization may be added later, but the local application remains usable offline. The MVP does not model heating, production variability, wire parasitics, or irreversible component damage; component rating warnings can be added with editable assembly.
@@ -87,9 +99,9 @@ The MVP boundary is closed at T14. T00–T14 and the accepted prerequisite cards
 
 See [the post-MVP roadmap](roadmap/POST-MVP.md) for free assembly, AI-authored lessons, expanded analog simulation, and a separate digital-logic plan.
 
-### Current post-MVP direction
+### Catalog expansion track
 
-Expand the 212-scheme reference catalog into playable content in small, reviewable batches. The immediate work is:
+Expand the 212-scheme reference catalog into playable content in small, reviewable batches. Its catalog work is:
 
 1. audit every source schematic, BOM, and visual reference for design defects;
 2. record defects such as missing artwork, unsupported parts, ambiguous pins, impossible or unsafe BOMs, unreadable layouts, and non-buildable connections;
@@ -122,3 +134,13 @@ T30 adds free assembly on the standard single board and editing copies of
 single-board exercises, using the existing 2D sprites and the same core. This
 explicit request overrides the deferral of free assembly for T30 only.
 Fixed exercises and their source fixtures remain available unchanged.
+
+## Build-first beginner experience (T31)
+
+The owner clarified that assembly editing belongs in the baseline product.
+The introductory path combines electrical schematics, an editable virtual board,
+a ready physical layout and optional step-by-step help. Children may copy a
+working example before understanding the theory. Later lessons can start empty
+without hiding the example. T31 implements this for the three introductory
+benches; historical MVP and catalog-only deferrals above are not current limits
+on this explicitly requested path.
