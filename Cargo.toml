@@ -14,3 +14,7 @@ serde_json = "=1.0.145"
 schemars = { version = "=1.2.2", features = ["derive"] }
 proptest = "=1.11.0"
 jsonschema = "=0.33.0"
+
+# Editing recalculates immediately; optimize the solver without optimizing Bevy.
+[profile.dev.package.bredboard-core]
+opt-level = 2

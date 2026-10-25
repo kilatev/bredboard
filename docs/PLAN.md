@@ -115,3 +115,10 @@ The complete execution sequence for this work is documented in the [212-scheme c
 - [Proptest](https://proptest-rs.github.io/proptest/intro.html)
 - [ngspice documentation](https://ngspice.sourceforge.io/docs.html)
 - [Codex Goals](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex)
+
+## Owner-requested assembly editor
+
+T30 adds free assembly on the standard single board and editing copies of
+single-board exercises, using the existing 2D sprites and the same core. This
+explicit request overrides the deferral of free assembly for T30 only.
+Fixed exercises and their source fixtures remain available unchanged.
