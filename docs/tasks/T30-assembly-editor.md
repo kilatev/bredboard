@@ -120,3 +120,11 @@ leaving the editor discards the current unsaved assembly.
   dependencies). Browser runtime was not exercised and is not claimed.
 - Ready status records verification only; publication is reported separately
   from this task card after the actual remote operation.
+
+## Recorded demonstration
+
+[40-second native screen recording](../design/assembly/editor-demo.mp4)
+(1200 × 760, H.264 MP4, silent): blank board, resistor and LED placement,
+supply wiring, calculated current, resistance entry, moving a lead, removing
+a wire and Undo restoring the real circuit. Recorded directly from the app
+window; no app implementation changes were needed for recording.

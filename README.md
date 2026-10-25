@@ -100,3 +100,5 @@ The electrical core still advances consecutive fixed steps; simulation can run
 slower than wall time.
 
 ![Interactive 2D assembly with calculated LED readings](docs/design/assembly/editor.png)
+
+[Watch the 40-second native assembly demo](docs/design/assembly/editor-demo.mp4)
