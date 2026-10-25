@@ -50,9 +50,9 @@ T28 is an explicit owner request that reopens T20's "no audio output" scope
 decision; it is not part of the catalog-expansion priority below and does
 not authorize reopening any other closed scope.
 
-## Current priority: catalog expansion and buildability audit
+## Catalog track: expansion and buildability audit
 
-The next work is not a general product-improvement pass. It is the staged
+This track, separate from the owner-requested T31 beginner path, is the staged
 conversion of the 212-scheme reference catalog into buildable game content.
 Each batch should first inspect its source schematic, BOM, and visual assets;
 then record design defects; then implement only the schemes whose required
@@ -135,3 +135,10 @@ useful background and are not deleted.
 The owner explicitly requested T30 out of the catalog sequence. Free assembly
 is in scope for this task only; it does not reopen the closed MVP or start
 other post-MVP phases.
+
+## Current owner-requested beginner path
+
+[T31](tasks/T31-guided-assembly.md) makes editing part of the basic learning
+experience, with schematics, independent ready-board previews and optional
+guidance. This owner request supersedes the earlier deferral of guided learning
+for this bounded introductory path.

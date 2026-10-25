@@ -1,3 +1,7 @@
+> Current owner priority: [T31 beginner learning](docs/tasks/T31-guided-assembly.md).
+> The catalog-batch handoff below is historical context, not authorization to
+> resume batch work during the beginner-flow task.
+
 # Handoff: optimize + resume catalog "schemes" batch wave
 
 Context ran out in the previous session. This file is the handoff plan.

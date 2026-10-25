@@ -2,9 +2,38 @@
 
 An educational 2D breadboard simulator in Rust and Bevy, with a standalone electrical simulation core.
 
-**Status: MVP complete.** T00–T14 and their accepted dependencies are complete, including the three-circuit Linux app, integrated verification, and the verified Linux release artifact. Work after this boundary is post-MVP and must not reopen MVP scope.
+Start with **START HERE: BUILD & LEARN**. Editing is part of the beginner
+experience: follow an electrical schematic, build your own virtual layout, or
+inspect a ready board to copy onto real hardware. The three introductory
+lessons cover an LED, a capacitor and an NPN transistor. No physical board,
+account or theory quiz is required.
 
-One Bevy app contains the menu, board, controls, and readouts for Linux and WASM. Linux is the MVP interaction target. The same app compiles to WASM, but browser runtime testing is deferred. The MVP has three fixed circuits and no user-facing file workflow or assembly editor. The original MVP boards remain fixed; readable automatic placement is tracked as post-MVP T18. An optional single-board assembly editor is now available (T30; see below).
+One Bevy app provides the learning path, circuit library, editor and calculated
+readings on Linux. The same app compiles to WASM; browser runtime verification
+remains deferred. The original fixed-circuit MVP was completed at T14; current
+learning features are documented in T30/T31. User-facing file saving is still
+outside the implemented scope.
+
+## Learn by building
+
+- **SCHEMATIC** shows an electrical diagram; **MY BOARD** is your editable
+  assembly; **READY BOARD** shows a separate, read-only physical example.
+- The first lesson starts with the ready example. **NEXT LESSON** opens the RC
+  and transistor lessons from their schematic, with an empty learner board.
+- **GUIDE** is optional. **SHOW HOLES** selects the next tool and highlights the
+  example's contacts. **PLACE NEXT** installs just one example part or wire;
+  ordinary **UNDO** reverses it. You can assemble manually at every step.
+- A different layout is welcome: read the actual calculated currents/voltages
+  and operate the parts. Exact-hole guidance describes one example, not a
+  mandatory answer. Viewing a diagram or example preserves your work and Undo.
+- Physical builds: disconnect power before wiring; use a current-limited 5 V
+  supply; check polarity and your actual transistor pinout. A generic four-leg
+  tactile button has internally paired legs: identify those pairs first.
+
+Editable [SVG schematics](crates/app/assets/learning) are original project
+artwork. Their checked-in PNG renderings are embedded for identical offline
+presentation on Linux and WASM; no runtime SVG parser is required. Regenerate
+with `inkscape INPUT.svg --export-type=png --export-filename=OUTPUT.png`.
 
 ## Project documents
 
@@ -67,7 +96,7 @@ The project is open source under the [MIT License](LICENSE), selected in the ini
 
 Repository: [kilatev/bredboard](https://github.com/kilatev/bredboard). The local checkout uses colocated Git/Jujutsu with `origin` set to `git@github.com:kilatev/bredboard.git`. Configure contributor identity at repository scope in both Git and Jujutsu; do not change global identity settings for this project.
 
-## Interactive assembly (post-MVP T30)
+## Assembly controls (T30/T31)
 
 Choose **FREE ASSEMBLY** for a standard 30-row board with a 5 V supply, or
 **EDIT A COPY** on a single-board exercise. The original fixtures are never

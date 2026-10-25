@@ -1,5 +1,6 @@
 mod assembly;
 mod exercise_catalog;
+mod learning;
 mod sprites;
 mod text;
 
@@ -2128,6 +2129,7 @@ impl Circuit {
 }
 
 struct Bench {
+    learning: Option<learning::Lesson>,
     editor: Option<assembly::Editor>,
     circuit: Circuit,
     project: Project,
@@ -2142,6 +2144,7 @@ impl Bench {
         Self {
             circuit,
             editor: None,
+            learning: None,
             initial: project.clone(),
             simulation: SimulationState::new(&project),
             project,
@@ -2336,6 +2339,7 @@ fn dial_layout(index: usize, count: usize) -> (Vec2, Vec2) {
 }
 #[derive(Clone, Copy)]
 enum Control {
+    Learning(learning::Command),
     Build,
     EditCopy,
     Assembly(assembly::Command),
@@ -2575,6 +2579,13 @@ fn menu_section_label(commands: &mut Commands, section: exercise_catalog::Sectio
 }
 
 fn spawn_menu(commands: &mut Commands) {
+    button(
+        commands,
+        text::learning::START,
+        Vec2::new(-420.0, 330.0),
+        Vec2::new(320.0, 40.0),
+        Control::Learning(learning::Command::Open(Circuit::Led)),
+    );
     button(
         commands,
         text::assembly::TITLE,
@@ -3098,6 +3109,10 @@ fn component_summary(component: &Component) -> String {
 }
 
 fn spawn_bench(commands: &mut Commands, images: &mut Assets<Image>, bench: &Bench) {
+    if bench.learning.is_some() {
+        learning::draw(commands, images, bench);
+        return;
+    }
     if bench.editor.is_some() {
         assembly::draw(commands, images, bench);
         return;
@@ -3569,6 +3584,17 @@ fn handle_mouse(
         .then_some(target.0)
     });
     match selected {
+        Some(Control::Learning(command)) => {
+            if let learning::Command::Open(circuit) = command {
+                state.session.bench = Some(learning::open(circuit));
+            } else if let Some(bench) = &mut state.session.bench {
+                learning::command(bench, command);
+            }
+            if let Some(bench) = &state.session.bench {
+                clear_scene(&mut commands, &scene);
+                spawn_bench(&mut commands, &mut images, bench);
+            }
+        }
         Some(Control::Build) => {
             clear_scene(&mut commands, &scene);
             let bench = assembly::blank();
@@ -3644,6 +3670,7 @@ fn handle_mouse(
         None => {
             if let Some(bench) = &mut state.session.bench
                 && bench.editor.is_some()
+                && learning::is_board(bench)
             {
                 assembly::click(bench, point);
                 clear_scene(&mut commands, &scene);
@@ -3694,6 +3721,11 @@ fn update_view(
     let Some(bench) = &session.bench else {
         return;
     };
+    let hover_project = bench
+        .learning
+        .as_ref()
+        .filter(|l| l.view == learning::View::Ready)
+        .map_or(&bench.project, |l| &l.reference);
     let hover = windows
         .single()
         .ok()
@@ -3701,14 +3733,14 @@ fn update_view(
         .and_then(hole_at)
         .map(|id| {
             let mut contacts = Vec::new();
-            for component in &bench.project.components {
+            for component in &hover_project.components {
                 for (pin, hole) in &component.pins {
                     if hole.0 == id {
                         contacts.push(format!("{} {}", component.id.0, pin.0));
                     }
                 }
             }
-            for wire in &bench.project.wires {
+            for wire in &hover_project.wires {
                 if wire.from.0 == id {
                     contacts.push(format!("{} to {}", wire.id.0, wire.to.0));
                 } else if wire.to.0 == id {
@@ -3730,9 +3762,19 @@ fn update_view(
                 .map_or_else(String::new, |e| e.description(bench)),
             Readout::Status => {
                 if bench.simulation.stale {
-                    color.0 = Color::srgb(1.0, 0.40, 0.32);
+                    let building = learning::is_building(bench);
+                    color.0 = if building {
+                        Color::srgb(0.95, 0.77, 0.40)
+                    } else {
+                        Color::srgb(1.0, 0.40, 0.32)
+                    };
                     format!(
-                        "CALCULATION FAILED: {}",
+                        "{}: {}",
+                        if building {
+                            text::learning::STILL_BUILDING
+                        } else {
+                            "CALCULATION FAILED"
+                        },
                         bench
                             .simulation
                             .diagnostics
@@ -4761,6 +4803,100 @@ mod tests {
             .copied()
             .unwrap_or(0.0)
     }
+    #[test]
+    fn beginner_tabs_assistance_and_read_only_preview_use_real_input() {
+        let (mut app, window) = editor_app();
+        click(&mut app, window, Vec2::new(-420.0, 330.0));
+        assert_eq!(
+            app.world()
+                .resource::<Session>()
+                .bench
+                .as_ref()
+                .unwrap()
+                .learning
+                .as_ref()
+                .unwrap()
+                .view,
+            learning::View::Ready
+        );
+        let empty = app
+            .world()
+            .resource::<Session>()
+            .bench
+            .as_ref()
+            .unwrap()
+            .project
+            .clone();
+        // Clicking a ready component or typing Space must never edit/run the learner board.
+        editor_hole(&mut app, window, "A5");
+        editor_key(&mut app, KeyCode::Space);
+        assert_eq!(
+            app.world()
+                .resource::<Session>()
+                .bench
+                .as_ref()
+                .unwrap()
+                .project,
+            empty
+        );
+        assert!(
+            !app.world()
+                .resource::<Session>()
+                .bench
+                .as_ref()
+                .unwrap()
+                .simulation
+                .running
+        );
+        click(&mut app, window, Vec2::new(235.0, 330.0));
+        for _ in 0..5 {
+            click(&mut app, window, Vec2::new(-300.0, -350.0));
+        }
+        let project = app
+            .world()
+            .resource::<Session>()
+            .bench
+            .as_ref()
+            .unwrap()
+            .project
+            .clone();
+        assert_eq!(project.components.len(), 4);
+        assert_eq!(project.wires.len(), 2);
+        click(&mut app, window, Vec2::new(15.0, 330.0));
+        click(&mut app, window, Vec2::new(455.0, 330.0));
+        click(&mut app, window, Vec2::new(235.0, 330.0));
+        assert_eq!(
+            app.world()
+                .resource::<Session>()
+                .bench
+                .as_ref()
+                .unwrap()
+                .project,
+            project
+        );
+        click(&mut app, window, Vec2::new(20.0, 105.0));
+        editor_hole(&mut app, window, "E10");
+        click(&mut app, window, Vec2::new(290.0, -223.0));
+        {
+            let mut session = app.world_mut().resource_mut::<Session>();
+            let bench = session.bench.as_mut().unwrap();
+            bench.act(Action::SingleStep);
+        }
+        assert!(editor_current(&app) > 0.001);
+        click(&mut app, window, Vec2::new(35.0, -312.0));
+        assert_eq!(
+            app.world()
+                .resource::<Session>()
+                .bench
+                .as_ref()
+                .unwrap()
+                .project
+                .wires
+                .len(),
+            1
+        );
+    }
+
     #[test]
     fn editor_real_pointer_assembly_nominal_entry_and_undo() {
         let (mut app, window) = editor_app();
