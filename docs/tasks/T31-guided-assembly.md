@@ -135,3 +135,13 @@ catalog. The existing library and seven-kind free-assembly palette remain
 available. No lesson DSL, persistent progress, automatic grading, file-saving
 UI or localization was added. Guidance follows the example contacts, while
 independent layouts remain supported by the normal solver/editor.
+
+## Two-level native demonstration
+
+[90-second recorded demo](../design/learning/two-levels-demo.mp4): First Light
+(0:02) and RC charge/discharge (0:34). Recorded directly from the native window
+after first-paint warmup. Shows schematic/reference/learner views, manual first
+placements, assisted subsequent steps, actual 8.576 mA LED operation and C1
+voltage rising/falling when S1 changes. English captions occupy an added strip
+below the app viewport; there is no audio. No app source was changed to record
+the demonstration.

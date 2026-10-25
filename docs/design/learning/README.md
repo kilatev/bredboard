@@ -1,5 +1,12 @@
 # Beginner assembly path
 
+[Watch two lessons in the real app — 90-second video](two-levels-demo.mp4)
+
+LED lesson starts at 0:02; RC lesson at 0:34. The recording shows schematic
+and ready-board views, manual and assisted assembly, calculated LED current,
+and capacitor charging/discharging. Captions sit below the unmodified app
+viewport. Silent H.264 MP4, 1200 × 820, 20 fps.
+
 Choose **START HERE: BUILD & LEARN**. First Light starts with the ready board;
 **NEXT LESSON** opens the RC and transistor lessons from their schematics.
 **MY BOARD** always contains an independently editable assembly. Looking at
