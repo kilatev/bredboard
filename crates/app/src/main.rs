@@ -1,3 +1,4 @@
+mod assembly;
 mod exercise_catalog;
 mod sprites;
 mod text;
@@ -2127,6 +2128,7 @@ impl Circuit {
 }
 
 struct Bench {
+    editor: Option<assembly::Editor>,
     circuit: Circuit,
     project: Project,
     initial: Project,
@@ -2139,6 +2141,7 @@ impl Bench {
         compile_topology(&project).expect("embedded project topology");
         Self {
             circuit,
+            editor: None,
             initial: project.clone(),
             simulation: SimulationState::new(&project),
             project,
@@ -2333,6 +2336,9 @@ fn dial_layout(index: usize, count: usize) -> (Vec2, Vec2) {
 }
 #[derive(Clone, Copy)]
 enum Control {
+    Build,
+    EditCopy,
+    Assembly(assembly::Command),
     Select(Circuit),
     ToggleSection(exercise_catalog::Section),
     Back,
@@ -2343,6 +2349,7 @@ enum Control {
 }
 #[derive(Component)]
 enum Readout {
+    Editor,
     Status,
     Value,
     Control,
@@ -2383,9 +2390,13 @@ fn setup_audio(mut commands: Commands, mut pitches: ResMut<Assets<Pitch>>) {
     });
 }
 
+const MAX_FRAME_CATCH_UP: std::time::Duration = std::time::Duration::from_millis(50);
+
 fn main() {
     let mut app = App::new();
-    app.insert_resource(Time::<Virtual>::from_max_delta(std::time::Duration::MAX))
+    // Bound wall-time catch-up so slow rendering cannot starve editor input.
+    // Electrical time still advances only through consecutive fixed core steps.
+    app.insert_resource(Time::<Virtual>::from_max_delta(MAX_FRAME_CATCH_UP))
         .insert_resource(Time::<Fixed>::from_hz(1_000.0))
         .insert_resource(Session::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -2419,6 +2430,7 @@ fn main() {
                 handle_mouse,
                 update_section_labels,
                 handle_keyboard,
+                assembly::keyboard,
                 update_search_label,
                 handle_dial,
                 update_dial_handle,
@@ -2563,6 +2575,13 @@ fn menu_section_label(commands: &mut Commands, section: exercise_catalog::Sectio
 }
 
 fn spawn_menu(commands: &mut Commands) {
+    button(
+        commands,
+        text::assembly::TITLE,
+        Vec2::new(440.0, 330.0),
+        Vec2::new(250.0, 40.0),
+        Control::Build,
+    );
     rect(
         commands,
         Vec2::ZERO,
@@ -3079,6 +3098,22 @@ fn component_summary(component: &Component) -> String {
 }
 
 fn spawn_bench(commands: &mut Commands, images: &mut Assets<Image>, bench: &Bench) {
+    if bench.editor.is_some() {
+        assembly::draw(commands, images, bench);
+        return;
+    }
+    if matches!(
+        bench.project.board.model,
+        bredboard_core::BoardModel::HalfSizeSolderless
+    ) {
+        button(
+            commands,
+            text::assembly::EDIT_COPY,
+            Vec2::new(480.0, 350.0),
+            Vec2::new(210.0, 38.0),
+            Control::EditCopy,
+        );
+    }
     rect(
         commands,
         Vec2::ZERO,
@@ -3534,6 +3569,26 @@ fn handle_mouse(
         .then_some(target.0)
     });
     match selected {
+        Some(Control::Build) => {
+            clear_scene(&mut commands, &scene);
+            let bench = assembly::blank();
+            spawn_bench(&mut commands, &mut images, &bench);
+            state.session.bench = Some(bench);
+        }
+        Some(Control::EditCopy) => {
+            if let Some(bench) = &mut state.session.bench {
+                assembly::enable(bench);
+                clear_scene(&mut commands, &scene);
+                spawn_bench(&mut commands, &mut images, bench);
+            }
+        }
+        Some(Control::Assembly(command)) => {
+            if let Some(bench) = &mut state.session.bench {
+                assembly::command(bench, command);
+                clear_scene(&mut commands, &scene);
+                spawn_bench(&mut commands, &mut images, bench);
+            }
+        }
         Some(Control::Select(circuit)) => {
             clear_scene(&mut commands, &scene);
             let bench = Bench::new(circuit);
@@ -3586,7 +3641,15 @@ fn handle_mouse(
                 bench.toggle(index);
             }
         }
-        None => {}
+        None => {
+            if let Some(bench) = &mut state.session.bench
+                && bench.editor.is_some()
+            {
+                assembly::click(bench, point);
+                clear_scene(&mut commands, &scene);
+                spawn_bench(&mut commands, &mut images, bench);
+            }
+        }
     }
 }
 
@@ -3594,6 +3657,9 @@ fn handle_keyboard(keys: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>
     let Some(bench) = &mut session.bench else {
         return;
     };
+    if bench.editor.is_some() {
+        return;
+    }
     if keys.just_pressed(KeyCode::Space) {
         bench.act(if bench.simulation.running {
             Action::Pause
@@ -3658,6 +3724,10 @@ fn update_view(
         .unwrap_or_default();
     for (kind, mut text, mut color) in &mut labels {
         text.0 = match kind {
+            Readout::Editor => bench
+                .editor
+                .as_ref()
+                .map_or_else(String::new, |e| e.description(bench)),
             Readout::Status => {
                 if bench.simulation.stale {
                     color.0 = Color::srgb(1.0, 0.40, 0.32);
@@ -4620,6 +4690,223 @@ mod tests {
         mouse.press(MouseButton::Left);
         app.world_mut().insert_resource(mouse);
         app.update();
+    }
+
+    fn editor_app() -> (App, Entity) {
+        let mut app = App::new();
+        app.insert_resource(Session::default())
+            .insert_resource(MenuScroll::default())
+            .insert_resource(MenuFilter::default())
+            .insert_resource(MenuCollapsed::default())
+            .insert_resource(ButtonInput::<MouseButton>::default())
+            .insert_resource(ButtonInput::<KeyCode>::default())
+            .init_resource::<Assets<Image>>()
+            .add_message::<bevy::input::keyboard::KeyboardInput>()
+            .add_systems(Startup, setup)
+            .add_systems(
+                Update,
+                (handle_mouse, assembly::keyboard, update_view).chain(),
+            );
+        let window = app
+            .world_mut()
+            .spawn(Window {
+                resolution: (1200, 760).into(),
+                ..default()
+            })
+            .id();
+        app.update();
+        (app, window)
+    }
+    fn editor_hole(app: &mut App, window: Entity, id: &str) {
+        click(app, window, hole_position(id).unwrap());
+    }
+    fn editor_key(app: &mut App, key: KeyCode) {
+        app.world_mut()
+            .insert_resource(ButtonInput::<MouseButton>::default());
+        let name = format!("{key:?}");
+        let text: Option<String> =
+            name.strip_prefix("Digit")
+                .map(str::to_string)
+                .or_else(|| match key {
+                    KeyCode::Minus => Some("-".into()),
+                    _ => None,
+                });
+        app.world_mut()
+            .resource_mut::<Messages<bevy::input::keyboard::KeyboardInput>>()
+            .write(bevy::input::keyboard::KeyboardInput {
+                key_code: key,
+                logical_key: bevy::input::keyboard::Key::Character(
+                    text.clone().unwrap_or_default().into(),
+                ),
+                text: text.map(Into::into),
+                state: bevy::input::ButtonState::Pressed,
+                repeat: false,
+                window: Entity::PLACEHOLDER,
+            });
+        let mut keys = ButtonInput::<KeyCode>::default();
+        keys.press(key);
+        app.world_mut().insert_resource(keys);
+        app.update();
+        app.world_mut()
+            .insert_resource(ButtonInput::<KeyCode>::default());
+    }
+    fn editor_current(app: &App) -> f64 {
+        let bench = app.world().resource::<Session>().bench.as_ref().unwrap();
+        bench
+            .simulation
+            .last_valid
+            .as_ref()
+            .filter(|_| !bench.simulation.stale)
+            .and_then(|r| r.led_currents.get(&ComponentId("D1".into())))
+            .copied()
+            .unwrap_or(0.0)
+    }
+    #[test]
+    fn editor_real_pointer_assembly_nominal_entry_and_undo() {
+        let (mut app, window) = editor_app();
+        click(&mut app, window, Vec2::new(440.0, 330.0));
+        for (point, holes) in [
+            (Vec2::new(75.0, 278.0), ["A5", "A8"]),
+            (Vec2::new(295.0, 278.0), ["B8", "A11"]),
+            (Vec2::new(132.0, 105.0), ["TP+:5", "B5"]),
+            (Vec2::new(132.0, 105.0), ["B11", "TP-:11"]),
+        ] {
+            click(&mut app, window, point);
+            for hole in holes {
+                editor_hole(&mut app, window, hole);
+            }
+        }
+        let original = editor_current(&app);
+        assert!(original > 0.005, "LED must use the calculated current");
+        click(&mut app, window, Vec2::new(20.0, 105.0));
+        editor_hole(&mut app, window, "A5");
+        click(&mut app, window, Vec2::new(290.0, -180.0));
+        // Several key presses can arrive in one rendered frame, including repeats.
+        for ch in "1000".chars() {
+            app.world_mut()
+                .resource_mut::<Messages<bevy::input::keyboard::KeyboardInput>>()
+                .write(bevy::input::keyboard::KeyboardInput {
+                    key_code: if ch == '1' {
+                        KeyCode::Digit1
+                    } else {
+                        KeyCode::Digit0
+                    },
+                    logical_key: bevy::input::keyboard::Key::Character(ch.to_string().into()),
+                    text: Some(ch.to_string().into()),
+                    state: bevy::input::ButtonState::Pressed,
+                    repeat: false,
+                    window,
+                });
+        }
+        editor_key(&mut app, KeyCode::Enter);
+        assert!(editor_current(&app) > 0.001 && editor_current(&app) < original);
+        let project = app
+            .world()
+            .resource::<Session>()
+            .bench
+            .as_ref()
+            .unwrap()
+            .project
+            .clone();
+        assert_eq!(
+            project
+                .components
+                .iter()
+                .find(|c| c.id.0 == "R1")
+                .unwrap()
+                .parameters["resistance"],
+            1000.0
+        );
+        click(&mut app, window, Vec2::new(290.0, -180.0));
+        for key in [KeyCode::Minus, KeyCode::Digit1, KeyCode::Enter] {
+            editor_key(&mut app, key);
+        }
+        assert_eq!(
+            app.world()
+                .resource::<Session>()
+                .bench
+                .as_ref()
+                .unwrap()
+                .project,
+            project,
+            "Rejected nominal must preserve the assembly"
+        );
+        click(&mut app, window, Vec2::new(356.0, 105.0));
+        editor_hole(&mut app, window, "B5");
+        assert!(editor_current(&app) < 1e-6);
+        click(&mut app, window, Vec2::new(35.0, -312.0));
+        assert!(editor_current(&app) > 0.001);
+        click(&mut app, window, Vec2::new(132.0, 105.0));
+        editor_hole(&mut app, window, "A20");
+        editor_key(&mut app, KeyCode::Escape);
+        assert_eq!(
+            app.world()
+                .resource::<Session>()
+                .bench
+                .as_ref()
+                .unwrap()
+                .project,
+            project,
+            "Esc cancels an unfinished wire"
+        );
+        click(&mut app, window, Vec2::new(180.0, -312.0));
+        assert_eq!(
+            app.world()
+                .resource::<Session>()
+                .bench
+                .as_ref()
+                .unwrap()
+                .project
+                .components
+                .len(),
+            1
+        );
+        click(&mut app, window, Vec2::new(35.0, -312.0));
+        assert_eq!(
+            app.world()
+                .resource::<Session>()
+                .bench
+                .as_ref()
+                .unwrap()
+                .project,
+            project
+        );
+    }
+    #[test]
+    fn editing_an_rc_copy_can_remove_a_stateful_part_without_affecting_fixture() {
+        let (mut app, window) = editor_app();
+        click(&mut app, window, Vec2::new(0.0, menu_entry_base_y(2)));
+        click(&mut app, window, Vec2::new(480.0, 350.0));
+        click(&mut app, window, Vec2::new(356.0, 105.0));
+        editor_hole(&mut app, window, "A11");
+        assert!(
+            !app.world()
+                .resource::<Session>()
+                .bench
+                .as_ref()
+                .unwrap()
+                .project
+                .components
+                .iter()
+                .any(|c| c.id.0 == "C1")
+        );
+        assert!(
+            Bench::new(Circuit::Rc)
+                .project
+                .components
+                .iter()
+                .any(|c| c.id.0 == "C1")
+        );
+        click(&mut app, window, Vec2::new(55.0, -270.0));
+        assert!(
+            app.world()
+                .resource::<Session>()
+                .bench
+                .as_ref()
+                .unwrap()
+                .simulation
+                .running
+        );
     }
 
     #[test]
@@ -5758,6 +6045,35 @@ mod tests {
             );
         app.update();
         assert_eq!(view(&mut app), (0, false, false));
+    }
+
+    #[test]
+    fn slow_frame_bounds_catch_up_without_skipping_core_steps() {
+        let mut bench = Bench::new(Circuit::Rc);
+        bench.act(Action::Run);
+        let initial = bench.simulation.clone();
+        let project = bench.project.clone();
+        let mut app = App::new();
+        app.add_plugins(TimePlugin)
+            .insert_resource(Time::<Virtual>::from_max_delta(MAX_FRAME_CATCH_UP))
+            .insert_resource(Time::<Fixed>::from_hz(1_000.0))
+            .insert_resource(Session { bench: Some(bench) })
+            .add_systems(FixedUpdate, fixed_step);
+        app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO));
+        app.update();
+        app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs(10)));
+        app.update();
+        let actual = &app
+            .world()
+            .resource::<Session>()
+            .bench
+            .as_ref()
+            .unwrap()
+            .simulation;
+        let mut expected = initial;
+        advance_steps(&project, &mut expected, 50);
+        assert_eq!(actual.step, 50);
+        assert_eq!(*actual, expected);
     }
 
     #[test]

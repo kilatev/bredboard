@@ -44,6 +44,7 @@ No Codex Goal is currently active merely because these files exist. Copy a card'
 | [T27](tasks/T27-fixed-exercises-e26-e30.md) | Five fixed practice exercises (E26–E30) | T21 |
 | [T28](tasks/T28-buzzer-speaker-audio.md) | Buzzer/speaker audio and a speaker component kind | T20 |
 | [T29](tasks/T29-passive-piezo-drive.md) | Passive-piezo oscillating-drive distinction | T28 |
+| [T30](tasks/T30-assembly-editor.md) | Owner-requested interactive 2D assembly editor | T17 |
 
 T28 is an explicit owner request that reopens T20's "no audio output" scope
 decision; it is not part of the catalog-expansion priority below and does
@@ -130,3 +131,7 @@ assembly audit is the active priority. Their existing specifications remain
 useful background and are not deleted.
 
 [Post-MVP phases](roadmap/POST-MVP.md) are intentionally not executable MVP cards. Specify and decompose each phase before implementation.
+
+The owner explicitly requested T30 out of the catalog sequence. Free assembly
+is in scope for this task only; it does not reopen the closed MVP or start
+other post-MVP phases.
